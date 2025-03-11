@@ -1,8 +1,12 @@
+import time
+
 import pymem
+import win32com
 import win32gui
 import win32process
 
 from GhostBot import logger
+from GhostBot.lib import vk_codes, win32messages
 
 
 def get_pointer(self, base, offsets):
@@ -37,17 +41,30 @@ class ClientWindow:
         self.char = self.proc.read_int(self.char_addr)
         self._name = None
         self._active = False
+        self._window_handle = None
         self._set_window_name()
 
     @property
     def window_handle(self):
-        hwnds = get_hwnds_for_pid(self.proc.process_id)
-        if len(hwnds) == 1:
-            return hwnds[0]
+        if self._window_handle is None:
+            hwnds = get_hwnds_for_pid(self.proc.process_id)
+            if len(hwnds) == 1:
+                self._window_handle = hwnds[0]
+        return self._window_handle
 
     def _set_window_name(self):
         if self.name is not None:
             win32gui.SetWindowText(self.window_handle, f'Talisman Online | {self.name}')
+
+    def new_target(self):
+        self._press_key(vk_codes['tab'])
+        return self
+
+    def _press_key(self, key):
+        win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, key)
+        time.sleep(0.2)
+        win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, key)
+        time.sleep(0.2)
 
     @property
     def hp(self):

@@ -17,8 +17,9 @@ setup(
     install_requires=[
         'pymem',
         'npyscreen',
-        'windows-curses'
+        'windows-curses',
+        'pywin32'
     ],
     extras_require={},
-    entry_points='',
+    entry_points='ghost-bot:Ghostbot.UX.main.py',
 )

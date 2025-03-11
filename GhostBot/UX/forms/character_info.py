@@ -20,6 +20,7 @@ class BoxedCharacterInfo(npyscreen.BoxTitle):
         self.values = [
             f'HP  : {client.hp}',
             f'MANA: [{client.mana}/{client.max_mana}]',
-            f'Pos :  {client.location}'
+            f'Pos : {client.location}',
+            f'T/HP: {client.target_hp}'
         ]
         self.display()

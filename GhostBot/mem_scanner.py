@@ -20,13 +20,13 @@ class BotController:
         return list(str(k) for k in self.clients.keys())
 
     def add_client(self, client: ClientWindow) -> None:
-        self.threads[client.name] = threading.Thread(target=self._run_scan, args=(client, ))
+        self.threads[client.name] = threading.Thread(target=self._run_bot, args=(client, ))
         self.clients[client.name] = client
 
     def start_bot(self, client: ClientWindow) -> None:
         self.threads.get(client.name).start()
 
-    def _run_scan(self) -> None:
+    def _run_bot(self) -> None:
         pass
 
     def stop_all_bots(self, timeout=30) -> None:
@@ -37,8 +37,3 @@ class BotController:
         for name, thread in self.threads.items():
             logger.info(f'stopping {client.name}')
             thread.join(timeout)
-
-
-if __name__ == "__main__":
-    c = BotController()
-    c.start_scan()

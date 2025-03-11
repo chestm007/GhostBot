@@ -13,7 +13,7 @@ class MainWindowForm(npyscreen.FormBaseNew):
     def create(self):
         x, y = self.useable_space()
         self.character_selector: BoxedCharacterSelector = self.add_widget(BoxedCharacterSelector, max_width=30)
-        self.character_info: BoxedCharacterInfo = self.add_widget(BoxedCharacterInfo, max_width=50,
+        self.character_info: BoxedCharacterInfo = self.add_widget(BoxedCharacterInfo, max_width=30,
                                                                   relx=self.character_selector.width+2,
                                                                   rely=self.character_selector.rely)
         self.refresh_char_list()
