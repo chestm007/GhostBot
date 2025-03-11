@@ -17,7 +17,10 @@ setup(
     description='',
     long_description='',
     install_requires=[
-        'pymem'
+        'pymem',
+        'npyscreen',
+        'win32gui',
+        'win32process'
     ],
     extras_require={},
     entry_points='',

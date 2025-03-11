@@ -3,7 +3,6 @@ import win32gui
 import win32process
 
 from GhostBot import logger
-from pywinauto.application import Application
 
 
 def get_pointer(self, base, offsets):
@@ -35,7 +34,6 @@ class ClientWindow:
 
     def __init__(self, proc):
         self.proc = pymem.Pymem(proc.th32ProcessID)
-        self.app = Application()
         self.char = self.proc.read_int(self.char_addr)
         self._name = None
         self._active = False
