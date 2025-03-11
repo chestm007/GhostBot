@@ -1,5 +1,3 @@
-import os
-import time
 from distutils.core import setup
 
 from setuptools import find_packages
@@ -19,8 +17,7 @@ setup(
     install_requires=[
         'pymem',
         'npyscreen',
-        'win32gui',
-        'win32process'
+        'windows-curses'
     ],
     extras_require={},
     entry_points='',
