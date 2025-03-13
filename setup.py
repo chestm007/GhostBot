@@ -19,7 +19,7 @@ setup(
         'npyscreen',
         'windows-curses',
         'pywin32',
-        'attrdict'
+        'attrdict',
     ],
     extras_require={},
     entry_points='ghost-bot:Ghostbot.UX.main.py',

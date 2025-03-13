@@ -2,7 +2,7 @@ import curses
 
 import npyscreen
 
-from GhostBot.client_window import ClientWindow
+from GhostBot.mem_scanner import ExtendedClient
 
 
 class CharacterInfoForm(npyscreen.Pager):
@@ -20,7 +20,7 @@ class BoxedCharacterInfo(npyscreen.BoxTitle):
             curses.KEY_RIGHT: self.h_exit_right
         })
 
-    def update_char_info(self, client: ClientWindow):
+    def update_char_info(self, client: ExtendedClient):
         self.name = f'{client.name} - {client.level}'
         self.values = [
             f'HP      : [{client.hp}/{client.max_hp}]',
@@ -29,6 +29,7 @@ class BoxedCharacterInfo(npyscreen.BoxTitle):
             f'Battle  : {client.in_battle}',
             f'Sitting : {client.sitting}',
             f'Tgt Name: {client.target_name}',
-            f'Tgt HP  : {client.target_hp}'
+            f'Tgt HP  : {client.target_hp}',
+            f'Status  : {client.bot_status_string}'
         ]
         self.display()
