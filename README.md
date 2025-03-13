@@ -3,8 +3,9 @@ opensource bot for Talisman Online written in python.
 
 ### Contributions are very welcome ###
 
-I pretty much got fed up with people charging wild amounts for something that a few people could collaborate on 
-and make an equally good version, with complete control to add or remove features as they wish. 
+I figured a few people could collaborate on this and make something useful for everyone
+ with complete control to add or remove features as they wish. Everyone seems to have crazy UO scripts
+ or their favourite bot app.
 
 ### What Works: ###
 
