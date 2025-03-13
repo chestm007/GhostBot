@@ -1,11 +1,12 @@
+import curses
+
 import npyscreen
 
 from GhostBot.client_window import ClientWindow
 
 
-class CharacterInfoForm(npyscreen.MultiLine):
-    def display_value(self, vl):
-        return str(vl)
+class CharacterInfoForm(npyscreen.Pager):
+    pass
 
 
 class BoxedCharacterInfo(npyscreen.BoxTitle):
@@ -14,13 +15,20 @@ class BoxedCharacterInfo(npyscreen.BoxTitle):
     def __init__(self, *args, **kwargs):
         self.name = 'Info'
         super(BoxedCharacterInfo, self).__init__(*args, **kwargs)
+        self.add_handlers({
+            curses.KEY_LEFT: self.h_exit_left,
+            curses.KEY_RIGHT: self.h_exit_right
+        })
 
     def update_char_info(self, client: ClientWindow):
-        self.name = client.name
+        self.name = f'{client.name} - {client.level}'
         self.values = [
-            f'HP  : {client.hp}',
-            f'MANA: [{client.mana}/{client.max_mana}]',
-            f'Pos : {client.location}',
-            f'T/HP: {client.target_hp}'
+            f'HP      : [{client.hp}/{client.max_hp}]',
+            f'MANA    : [{client.mana}/{client.max_mana}]',
+            f'Pos     : [{client.location_x}/{client.location_y}]',
+            f'Battle  : {client.in_battle}',
+            f'Sitting : {client.sitting}',
+            f'Tgt Name: {client.target_name}',
+            f'Tgt HP  : {client.target_hp}'
         ]
         self.display()

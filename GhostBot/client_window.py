@@ -1,7 +1,5 @@
 import time
-
 import pymem
-import win32com
 import win32gui
 import win32process
 
@@ -33,16 +31,18 @@ pymem.Pymem.get_pointer = get_pointer
 
 
 class ClientWindow:
-    base_addr = 0x00400000
-    char_addr = base_addr + 0x00C20980
+    base_addr = 0x400000
+    char_addr = base_addr + 0xC20980
 
     def __init__(self, proc):
         self.proc = pymem.Pymem(proc.th32ProcessID)
         self.char = self.proc.read_int(self.char_addr)
         self._name = None
+        self._max_hp = 0
         self._active = False
         self._window_handle = None
         self._set_window_name()
+        self._target_name_offsets = None
 
     @property
     def window_handle(self):
@@ -55,24 +55,50 @@ class ClientWindow:
     def _set_window_name(self):
         if self.name is not None:
             win32gui.SetWindowText(self.window_handle, f'Talisman Online | {self.name}')
-
-    def new_target(self):
-        self._press_key(vk_codes['tab'])
         return self
 
-    def _press_key(self, key):
+    def new_target(self):
+        self.press_key(vk_codes['tab'])
+        return self
+
+    def target_self(self):
+        self.press_key(vk_codes['F1'])
+        return self
+
+    def press_key(self, key):
         win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, key)
-        time.sleep(0.2)
+        time.sleep(0.5)
         win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, key)
-        time.sleep(0.2)
+        time.sleep(0.5)
+        return self
+
+    def left_click(self, x, y):
+        lparam = win32gui.MAKELONG(x, y)
+        win32gui.SendMessage(self.window_handle, win32messages.WM_LBUTTONDOWN, x, y, 0, 0)
+        time.sleep(0.3)
+        win32gui.SendMessage(self.window_handle, win32messages.WM_LBUTTONUP, lparam=lparam)
+        time.sleep(0.3)
 
     @property
     def hp(self):
-        return self.proc.read_int(self.char + 0x320)
+        hp = self.proc.read_int(self.char + 0x320)
+        if hp > self._max_hp:
+            self._max_hp = hp
+        return hp
+
+    @property
+    def max_hp(self):
+        """
+        this is a hack, we should calculate instead
+        """
+        return self._max_hp
 
     @property
     def max_mana(self):
-         return self.proc.read_int(self.char + 0x2B4)
+        """
+        this reads base mana before pet buffs
+        """
+        return self.proc.read_int(self.char + 0x2B4)
 
     @property
     def mana(self):
@@ -80,38 +106,126 @@ class ClientWindow:
 
     @property
     def name(self):
+        """
+        Character name
+        """
         if self._name is None:
             self._name = self.proc.read_string(self.char + 0x3C4, byte=16)
         return self._name
 
     @property
     def level(self):
+        """
+        Character Level
+        """
         return self.proc.read_short(self.char + 0x32C)
 
     @property
-    def location(self):
-        return self.proc.read_float(self.char + 0x778) / 20, self.proc.read_float(self.char + 0x77C) / 20
+    def sitting(self):
+        """
+        200 if sitting, 100 otherwise
+        :return: `True` if char sitting, `False` if not
+        """
+        val = self.proc.read_int(self.base_addr + 0xD450EC)
+        return self.proc.read_int(val + 0x290) == 200
+
+    @property
+    def in_battle(self):
+        """
+        boolean value, `True` if in battle, `False` otherwise
+        :return:
+        """
+        val = self.proc.read_int(self.base_addr + 0xD450EC)
+        return self.proc.read_bool(val + 0x854)
+
+    @property
+    def location_x(self):
+        """
+        character location * 20, usually also off by .5
+        :returns character location as it appears in game
+        """
+        return self.proc.read_float(self.char + 0x778) / 20
+
+    @property
+    def location_y(self):
+        """
+        character location * 20, usually also off by .5
+        :returns character location as it appears in game
+        """
+        return self.proc.read_float(self.char + 0x77C) / 20
 
     @property
     def target_hp(self):
+        """
+        NOT LINEAR
+        597 when 100%
+        460 when 0%
+        0 when dead
+        :returns target HP 0-137
+        """
         try:
-            value = self.proc.read_int(self.base_addr + 0x00ECE2E0)
+            value = self.proc.read_int(self.base_addr + 0xECE2E0)
             for offset in [0x18, 0x1BDC, 0x0, 0xC, 0x1F8, 0x448, 0xC00]:
                 value = self.proc.read_int(value + offset)
-            return value
+            return value - 460 if value > 460 else 0
         except pymem.exception.MemoryReadError as e:
             logger.error(e)
+
+    @property
+    def target_name(self):
+        def get_var(in_offsets, get_func, **kwargs):
+            """
+            gets the data at the last offset in `in_offsets`
+            :param in_offsets: List of offsets to get to the data we want
+            :param get_func: should be one of `self.proc.read_x` and is used to read the last offset
+            :param kwargs: passed directly into `get_func`
+            :return: result of `get_func`
+            """
+            try:
+                offsets = list(in_offsets)
+                var = 0
+                last = offsets.pop()
+                for offset in offsets:
+                    var = self.proc.read_int(var + offset)
+                return get_func(var + last, **kwargs)
+            except UnicodeDecodeError as e:
+                pass
+
+        if self._target_name_offsets is not None:  # If we've already save the right offset, use that
+            return get_var(self._target_name_offsets, self.proc.read_string, byte=32)
+
+        self.target_self()  # target ourself, so we know what `target_name` should be
+
+        self._target_name_offsets = [self.base_addr + 0xECE2E0, 0x18, 0xB1C, 0x0, 0xC, 0xD9C, 0x9AC]
+        target_name = get_var(self._target_name_offsets, self.proc.read_string, byte=32)
+        if target_name == self.name:
+            return target_name
+        else:  # if we didnt get our name, try the second location
+            self._target_name_offsets.append(0x0)
+            target_name = get_var(self._target_name_offsets, self.proc.read_string, byte=32)
+            if target_name == self.name:
+                return target_name
+
+        # if we get here, its because bot addresses didnt read the right target name
+        self._target_name_offsets = None
+        raise Exception(f'target name not found for {self.name}: found {target_name}')
 
 
 def main():
     for proc in pymem.process.list_processes():
         if proc.szExeFile == b'client.exe':
             client = ClientWindow(proc)
-            print(f'-- {client.name} | {client.level} --  {client.proc.process_id}')
-            print(f'HP: {client.hp}')
-            print(f'MP: {client.mana}/{client.max_mana}')
-            print(f'XY: {client.location}')
-            print(f'THP: {client.target_hp}')
+            #if client.name == '1dollarsucky':
+            #if client.name == 'Arcadiia':
+            if True:
+                print(f'-- {client.name} | {client.level} --  {client.proc.process_id}')
+                print(f'HP: {client.hp}')
+                print(f'MP: {client.mana}/{client.max_mana}')
+                print(f'XY: {client.location_x}/{client.location_y}')
+                print(f'THP: {client.target_hp}')
+                print(f'Sit: {client.sitting}')
+                print(f'Bat: {client.in_battle}')
+                print(f'Target_name: {client.target_name}')
 
 
 if __name__ == "__main__":
