@@ -1,10 +1,8 @@
 import curses
-import time
 
 import npyscreen
 
 from GhostBot import logger
-from GhostBot.lib import vk_codes
 
 
 class CharacterSelectForm(npyscreen.MultiSelect):

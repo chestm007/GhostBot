@@ -1,6 +1,6 @@
 import math
 import time
-from operator import mul, sub, add
+from operator import mul, add
 
 import pymem
 import win32api
@@ -210,16 +210,14 @@ class ClientWindow:
 
     @property
     def target_name(self):
-        if self._target_name_offsets is not None:  # If we've already save the right offset, use that
+        if self._target_name_offsets is not None:  # If we've already saved the right offset, use that
             return self._read_with_offsets(self._target_name_offsets, self.proc.read_string, byte=32)
-
-        #self.target_self()  # target ourself, so we know what `target_name` should be
 
         self._target_name_offsets = [self.base_addr + 0xECE2E0, 0x18, 0xB1C, 0x0, 0xC, 0xD9C, 0x9AC]
         target_name = self._read_with_offsets(self._target_name_offsets, self.proc.read_string, byte=32)
         if  target_name and target_name.replace(' ', '').isalnum():
             return target_name
-        else:  # if we didnt get our name, try the second location
+        else:  # if its jibberish try the second location
             self._target_name_offsets.append(0x0)
             target_name = self._read_with_offsets(self._target_name_offsets, self.proc.read_string, byte=32)
             if target_name and target_name.replace(' ', '').isalnum():
