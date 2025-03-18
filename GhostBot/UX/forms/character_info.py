@@ -25,7 +25,7 @@ class BoxedCharacterInfo(npyscreen.BoxTitle):
         self.values = [
             f'HP      : [{client.hp}/{client.max_hp}]',
             f'MANA    : [{client.mana}/{client.max_mana}]',
-            f'Pos     : [{client.location_x}/{client.location_y}]',
+            f'Pos     : [{int(client.location_x)}/{int(client.location_y)}]',
             f'Battle  : {client.in_battle}',
             f'Sitting : {client.sitting}',
             f'Tgt Name: {client.target_name}',

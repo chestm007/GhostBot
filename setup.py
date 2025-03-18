@@ -20,6 +20,7 @@ setup(
         'windows-curses',
         'pywin32',
         'attrdict',
+        'pyyaml',
     ],
     extras_require={},
     entry_points='ghost-bot:Ghostbot.UX.main.py',

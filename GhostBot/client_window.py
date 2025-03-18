@@ -140,7 +140,11 @@ class ClientWindow:
         Character name
         """
         if self._name is None:
-            self._name = self.proc.read_string(self.char + 0x3C4, byte=16)
+            try:
+                name = self.proc.read_string(self.char + 0x3C4, byte=16)
+            except UnicodeDecodeError:
+                return None
+            self._name = name
         return self._name
 
     @property

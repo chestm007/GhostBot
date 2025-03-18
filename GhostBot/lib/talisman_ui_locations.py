@@ -8,3 +8,5 @@ UI_locations = AttrDict(
         team_4=(30, 445),
         minimap_centre=(919, 115)
 )
+
+TeamLocations = [UI_locations.player, UI_locations.team_1, UI_locations.team_2, UI_locations.team_3, UI_locations.team_4]
