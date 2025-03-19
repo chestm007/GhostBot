@@ -2,7 +2,7 @@ import curses
 
 import npyscreen
 
-from GhostBot.mem_scanner import ExtendedClient
+from GhostBot.bot_controller import ExtendedClient
 
 
 class CharacterInfoForm(npyscreen.Pager):

@@ -1,7 +1,7 @@
 import npyscreen
 
 from GhostBot.UX.forms.main_window import MainWindowForm
-from GhostBot.mem_scanner import BotController
+from GhostBot.bot_controller import BotController
 
 
 class BotApplication(npyscreen.NPSAppManaged):

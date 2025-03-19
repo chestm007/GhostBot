@@ -6,7 +6,7 @@ import npyscreen
 from GhostBot.UX.character_selector import BoxedCharacterSelector, CharacterSelectForm
 from GhostBot.UX.forms.character_info import BoxedCharacterInfo
 from GhostBot.UX.forms.function_menu import BoxedFunctionSelect
-from GhostBot.mem_scanner import BotController
+from GhostBot.bot_controller import BotController
 
 
 class MainWindowForm(npyscreen.FormBaseNew):
