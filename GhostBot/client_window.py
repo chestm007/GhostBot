@@ -10,6 +10,7 @@ import win32process
 from GhostBot import logger
 from GhostBot.lib import vk_codes, win32messages
 from GhostBot.lib.math import position_difference
+from GhostBot.lib.talisman_online_python.pointers import Pointers
 from GhostBot.lib.talisman_ui_locations import UI_locations
 
 TARGET_MAX_HP=597
@@ -43,10 +44,11 @@ class ClientWindow:
     char_addr = base_addr + 0xC20980
 
     def __init__(self, proc):
-        self.proc = pymem.Pymem(proc.th32ProcessID)
+        self.process_id = proc.th32ProcessID
+        self.proc = pymem.Pymem(self.process_id)
+        self.pointers = Pointers(self.process_id)
         self.char = self.proc.read_int(self.char_addr)
         self._name = None
-        self._max_hp = 0
         self._active = False
         self._window_handle = None
         self._set_window_name()
@@ -55,7 +57,7 @@ class ClientWindow:
     @property
     def window_handle(self):
         if self._window_handle is None:
-            hwnds = get_hwnds_for_pid(self.proc.process_id)
+            hwnds = get_hwnds_for_pid(self.process_id)
             if len(hwnds) == 1:
                 self._window_handle = hwnds[0]
         return self._window_handle
@@ -111,28 +113,25 @@ class ClientWindow:
 
     @property
     def hp(self):
-        hp = self.proc.read_int(self.char + 0x320)
-        if hp > self._max_hp:
-            self._max_hp = hp
-        return hp
+        return self.pointers.get_hp()
 
     @property
     def max_hp(self):
         """
         this is a hack, we should calculate instead
         """
-        return self._max_hp
+        return self.pointers.get_max_hp()
 
     @property
     def max_mana(self):
         """
         this reads base mana before pet buffs
         """
-        return self.proc.read_int(self.char + 0x2B4)
+        return self.pointers.get_max_mana()
 
     @property
     def mana(self):
-        return self.proc.read_int(self.char + 0x324)
+        return self.pointers.get_mana()
 
     @property
     def name(self):
@@ -143,7 +142,7 @@ class ClientWindow:
             try:
                 name = self.proc.read_string(self.char + 0x3C4, byte=16)
             except UnicodeDecodeError:
-                return None
+                name = self.pointers.get_char_name()
             self._name = name
         return self._name
 
@@ -152,7 +151,7 @@ class ClientWindow:
         """
         Character Level
         """
-        return self.proc.read_short(self.char + 0x32C)
+        return self.pointers.get_level()
 
     @property
     def sitting(self):
@@ -160,8 +159,7 @@ class ClientWindow:
         200 if sitting, 100 otherwise
         :return: `True` if char sitting, `False` if not
         """
-        val = self.proc.read_int(self.base_addr + 0xD450EC)
-        return self.proc.read_int(val + 0x290) == 200
+        return self.pointers.is_sitting()
 
     @property
     def in_battle(self):
@@ -169,8 +167,7 @@ class ClientWindow:
         boolean value, `True` if in battle, `False` otherwise
         :return:
         """
-        val = self.proc.read_int(self.base_addr + 0xD450EC)
-        return self.proc.read_bool(val + 0x854)
+        return self.pointers.is_in_battle()
 
     @property
     def location_x(self):
@@ -178,7 +175,7 @@ class ClientWindow:
         character location * 20, usually also off by .5
         :returns character location as it appears in game
         """
-        return self.proc.read_float(self.char + 0x778) / 20
+        return self.pointers.get_x()
 
     @property
     def location_y(self):
@@ -186,7 +183,7 @@ class ClientWindow:
         character location * 20, usually also off by .5
         :returns character location as it appears in game
         """
-        return self.proc.read_float(self.char + 0x77C) / 20
+        return self.pointers.get_y()
 
     @property
     def location(self):
@@ -205,31 +202,14 @@ class ClientWindow:
         :returns target HP 0-100
         """
         try:
-            value = self._read_with_offsets(
-                    [self.base_addr + 0xECE2E0, 0x18, 0x1BDC, 0x0, 0xC, 0x1F8, 0x448, 0xC00],
-                    self.proc.read_int)
+            value = self.pointers.target_hp()
             return math.ceil((value - TARGET_MIN_HP) / (TARGET_MAX_HP - TARGET_MIN_HP) * 100) if value >= TARGET_MIN_HP else -1
         except pymem.exception.MemoryReadError as e:
             logger.error(e)
 
     @property
     def target_name(self):
-        if self._target_name_offsets is not None:  # If we've already saved the right offset, use that
-            return self._read_with_offsets(self._target_name_offsets, self.proc.read_string, byte=32)
-
-        self._target_name_offsets = [self.base_addr + 0xECE2E0, 0x18, 0xB1C, 0x0, 0xC, 0xD9C, 0x9AC]
-        target_name = self._read_with_offsets(self._target_name_offsets, self.proc.read_string, byte=32)
-        if  target_name and target_name.replace(' ', '').isalnum():
-            return target_name
-        else:  # if its jibberish try the second location
-            self._target_name_offsets.append(0x0)
-            target_name = self._read_with_offsets(self._target_name_offsets, self.proc.read_string, byte=32)
-            if target_name and target_name.replace(' ', '').isalnum():
-                return target_name
-
-        # if we get here, its because bot addresses didnt read the right target name
-        self._target_name_offsets = None
-        raise Exception(f'target name not found for {self.name}: found {target_name}')
+        return self.pointers.get_target_name()
 
     def _read_with_offsets(self, in_offsets, get_func, **kwargs):
         """
