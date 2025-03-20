@@ -12,7 +12,7 @@ class BotApplication(npyscreen.NPSAppManaged):
         self.main_window = None
 
     def onStart(self):
-        self.bot_window = self.addForm('MAIN', MainWindowForm, name='Character Form', bot_controller=self.bot_controller)
+        self.bot_window = self.addForm('MAIN', MainWindowForm, name='GhostBot v0.0.1', bot_controller=self.bot_controller)
 
 
 if __name__ == '__main__':
