@@ -1,11 +1,21 @@
+from __future__ import annotations
 import curses
+from typing import TYPE_CHECKING
 
 import npyscreen
 
-from GhostBot.mem_scanner import ExtendedClient
+if TYPE_CHECKING:
+    from GhostBot.bot_controller import ExtendedClient
 
 
 class CharacterInfoForm(npyscreen.Pager):
+    def set_up_handlers(self):
+        super().set_up_handlers()
+        self.handlers.update({
+            curses.KEY_LEFT: self.h_exit_left,
+            curses.KEY_RIGHT: self.h_exit_right
+        })
+
     pass
 
 
@@ -22,6 +32,7 @@ class BoxedCharacterInfo(npyscreen.BoxTitle):
 
     def update_char_info(self, client: ExtendedClient):
         self.name = f'{client.name} - {client.level}'
+        self.footer = client.bot_status_string
         self.values = [
             f'HP      : [{client.hp}/{client.max_hp}]',
             f'MANA    : [{client.mana}/{client.max_mana}]',
@@ -30,6 +41,5 @@ class BoxedCharacterInfo(npyscreen.BoxTitle):
             f'Sitting : {client.sitting}',
             f'Tgt Name: {client.target_name}',
             f'Tgt HP  : {client.target_hp}',
-            f'Status  : {client.bot_status_string}'
         ]
         self.display()
