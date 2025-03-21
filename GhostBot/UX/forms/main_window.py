@@ -48,6 +48,7 @@ class MainWindowForm(npyscreen.FormBaseNew):
         self.char_info_thread = threading.Thread(target=self.char_info_thread_func)
         self.char_info_thread.start()
         logger.info('GhostBot loaded.')
+        self.footer = "=-=-=-=-=-=-=-=-=-=-"
 
     def refresh_char_list(self):
         self.character_selector.update_char_list(list(self.bot_controller.clients.values()))
@@ -63,3 +64,7 @@ class MainWindowForm(npyscreen.FormBaseNew):
     def stop_bot(self, client):
         self.bot_controller.stop_bot(client)
 
+
+class BoxedMainWindow(npyscreen.BoxTitle):
+    _contained_widget = MainWindowForm
+    name = "GhostBot v0.0.1"

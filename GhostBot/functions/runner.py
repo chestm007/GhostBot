@@ -9,6 +9,8 @@ from GhostBot.lib.math import linear_distance
 if TYPE_CHECKING:
     from GhostBot.bot_controller import ExtendedClient
 
+# TODO: class that interacts with NPC's, probably extend Locational
+
 
 class Runner(ABC):
     """
@@ -22,12 +24,23 @@ class Runner(ABC):
         pass
 
 
-class Locational(Runner):
-    start_location = (0, 0)
+class Locational(Runner, ABC):
+
+    def __init__(self, client: ExtendedClient):
+        super().__init__(client)
+        self.start_location: tuple[int, int] = self.determine_start_location()
+
+    # TODO: implement map navigation when X distance away
+
+    def determine_start_location(self):
+        if hasattr(self._client.config, 'attack_spot'):
+            return tuple(self._client.config.attack_spot)
+        else:
+            return self._client.location
 
     def _goto_start_location(self):
         while linear_distance(self.start_location, self._client.location) > 2:
             logger.debug(f'{self._client.name}: go to saved spot: {self.start_location}')
             self._client.move_to_pos(self.start_location)
-            time.sleep(0.5)
+            time.sleep(2)
 

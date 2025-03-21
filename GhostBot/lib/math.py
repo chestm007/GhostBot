@@ -23,3 +23,10 @@ def position_difference(a: tuple[float, float], b: tuple[float, float]) -> map:
     :return: (x, y)
     """
     return map(sub, a, b)
+
+
+def limit(number, _limit):
+    if number < 0:
+        return _limit * -1 if number < _limit * -1 else number
+    else:
+        return _limit if number > _limit else number

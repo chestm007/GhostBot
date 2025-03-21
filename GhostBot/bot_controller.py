@@ -11,6 +11,8 @@ Functions = {'attack': 'attack', 'fairy': 'fairy', 'regen': 'regen', 'petfood': 
 
 
 class Config:
+
+    # This should be the absolute bare minimum defaults required to get the bot running
     _config_dict = dict(
         mana_threshold=0.75,
         hp_threshold=0.75,
@@ -18,6 +20,8 @@ class Config:
         battle_mana_threshold=0.9,
         petfood_interval=50,
         buff_interval=10,
+        unstuck=True,
+        stuck_interval=10,
         attacks=[['2', 1]],
         bindings=dict(
                 petfood='9',
@@ -26,17 +30,22 @@ class Config:
                 hp_pot='F1',
                 mana_pot='F2',
                 battle_hp_pot='q',
-                battle_mana_pot='w',),
+                battle_mana_pot='w',
+        ),
         functions=('attack',
                    'petfood',
                    'regen',
-                   'buffs'),
-        )
+                   'buffs',
+        ),
+    )
 
     def __init__(self, client):
         self.client = client
         self.config_filepath = self._detect_path()
         self.load()
+        self.update()
+
+    def update(self):
         self.__dict__.update(self._config_dict)
 
     def _detect_path(self):
@@ -56,7 +65,7 @@ class Config:
     def load(self):
         try:
             with open(self.config_filepath, 'r') as c:
-                self._config_dict = yaml.safe_load(c.read())
+                self._config_dict.update(yaml.safe_load(c.read()))  # overwrite config defaults with whats in the loaded config
         except FileNotFoundError:
             self.save()
 
@@ -74,9 +83,12 @@ class ExtendedClient(ClientWindow):
         super().__init__(*args, **kwargs)
         self.load_config()
 
-    def load_config(self):
+    def load_config(self, config: Config=None):
         # TODO: we should do some validation of the config schema....
-        self.config = Config(self)
+        if config is None:
+            self.config = Config(self)
+        else:
+            self.config = config
 
     @property
     def hp_percent(self) -> int:
@@ -93,11 +105,18 @@ class BotController:
     def __init__(self):
         self.threads: dict[str, threading.Thread] = dict()
         self.clients: dict[str, ExtendedClient] = dict()
+
+        # TODO: maybe we want to scan this again to refresh the client list?
         for proc in pymem.process.list_processes():
             if proc.szExeFile == b'client.exe':
                 client = ExtendedClient(proc)
-                if client.name is not None and 0 < client.level <= 89:
-                    self.add_client(ExtendedClient(proc))
+                try:
+                    if client.name is not None and 0 < client.level <= 89:  # and client.name not in self.clients.keys()
+                        self.add_client(ExtendedClient(proc))
+                except TypeError:
+                    # TODO: do i want to track this for the autologin? might be an alright hook
+                    #       especially if we know which char to log...
+                    logger.info(f'cannot add client {proc}')
 
     @property
     def client_keys(self):
@@ -114,11 +133,6 @@ class BotController:
 
     def _run_bot(self, client: ExtendedClient) -> None:
         client.bot_status_string = 'Starting'
-        def determine_start_location():
-            if hasattr(client.config, 'attack_spot'):
-                return tuple(client.config.attack_spot)
-            else:
-                return client.location
 
         _runners = {
             'petfood': Petfood,
@@ -128,12 +142,8 @@ class BotController:
             'fairy': Fairy
         }
 
-        loc = determine_start_location()
-        logger.info(f'{client.name}: setting start location {loc}')
         for key, runner in _runners.items():
             _runners[key] = runner(client)
-            if issubclass(runner, Locational):  # TODO: this is a filthy hack.
-                runner.start_location = loc
 
         while client.running:
             client.bot_status_string = 'Running'

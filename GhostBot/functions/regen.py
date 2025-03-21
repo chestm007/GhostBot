@@ -11,10 +11,10 @@ class Regen(Locational):
         :return: True is we healed successfully, False if we were attacked, or in battle while healing
         """
         if self._mana_low() or self._hp_low():
-            logger.debug(f'{self._client.name}: low hp, waiting')
             time.sleep(2)
 
             if not self._client.in_battle:
+                logger.info(f'{self._client.name}: low hp/mana, starting Regen')
 
                 # mana/hp pots\
                 if self._client.config.bindings.get('hp_pot') is not None:

@@ -1,6 +1,6 @@
 import npyscreen
 
-from GhostBot.UX.forms.main_window import MainWindowForm
+from GhostBot.UX.forms.main_window import MainWindowForm, BoxedMainWindow
 from GhostBot.bot_controller import BotController
 
 

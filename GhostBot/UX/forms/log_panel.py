@@ -1,4 +1,6 @@
 import curses
+import time
+from datetime import datetime
 from logging import LogRecord
 
 import npyscreen
@@ -7,7 +9,7 @@ import npyscreen
 class LogForm(npyscreen.BufferPager):
     def display_value(self, vl: LogRecord):
         if vl:
-            return f'{vl.msg}'
+            return f'{datetime.fromtimestamp(vl.created).strftime("%H:%M:%S")}| {vl.msg}'
         else:
             return ''
 

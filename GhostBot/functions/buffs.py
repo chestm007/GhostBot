@@ -1,13 +1,22 @@
+from __future__ import annotations
+
 import time
+
+from typing import TYPE_CHECKING
 
 from GhostBot import logger
 from GhostBot.functions.runner import Runner
 from GhostBot.lib import vk_codes
 
+if TYPE_CHECKING:
+    from GhostBot.bot_controller import ExtendedClient
+
 
 class Buffs(Runner):
 
-    _last_time_used_buffs = 0
+    def __init__(self, client: ExtendedClient):
+        super().__init__(client)
+        self._last_time_used_buffs = 0
 
     def run(self) -> None:
         if time.time() - self._last_time_used_buffs > 60 * self._client.config.buff_interval:

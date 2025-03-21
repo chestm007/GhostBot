@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import time
+
 from typing import TYPE_CHECKING
 
 from GhostBot import logger
@@ -9,6 +11,7 @@ from GhostBot.lib.talisman_ui_locations import TeamLocations
 
 if TYPE_CHECKING:
     from GhostBot.bot_controller import ExtendedClient
+
 
 class Fairy(Locational):
 

@@ -9,7 +9,7 @@ import win32process
 
 from GhostBot import logger
 from GhostBot.lib import vk_codes, win32messages
-from GhostBot.lib.math import position_difference
+from GhostBot.lib.math import position_difference, limit
 from GhostBot.lib.talisman_online_python.pointers import Pointers
 from GhostBot.lib.talisman_ui_locations import UI_locations
 
@@ -80,6 +80,7 @@ class ClientWindow:
         return self
 
     def press_key(self, key):
+        # TODO: we should translate the vk_codes in here rather then all over the codebase...
         win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, key)
         time.sleep(0.2)
         win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, key)
@@ -106,9 +107,18 @@ class ClientWindow:
         """
         xy = (self.location_x, self.location_y)
         pos_diff = position_difference(xy, target_pos)
-        pos_diff_mm_pix = map(mul, pos_diff, (-1.6, 1.6))  # corrected to represent 1 pixel per meter
-        minimap_pos = tuple(map(math.ceil, map(add, UI_locations.minimap_centre, pos_diff_mm_pix)))  # mouse position
-                                                                                                     # relative to minimap center
+        pos_diff_mm_pix = tuple(map(mul, pos_diff, (-1.6, 1.6)))  # corrected to represent 1 pixel per meter
+
+        # if diff > 20, we wont have enough pixels
+        pos_diff_trimmed = tuple(map(lambda p: limit(p, 20), pos_diff_mm_pix))
+        logger.debug(f'raw: {pos_diff_mm_pix} | capped: {pos_diff_trimmed}')
+        minimap_pos = tuple(map(math.ceil, map(add, UI_locations.minimap_centre, pos_diff_trimmed)))  # mouse position
+        if any(map(lambda p: p > 20, pos_diff_trimmed)):
+            logger.error(f'{self.name}: minimap pos too big {pos_diff_trimmed}')
+            return
+
+        logger.debug(f'{self.name}: clicking {pos_diff_trimmed}')
+                                                                                              # relative to minimap center
         self.right_click(minimap_pos)
 
     @property
