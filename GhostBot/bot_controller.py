@@ -126,24 +126,22 @@ class BotController:
         self.clients[client.name] = client
 
     def start_bot(self, client: ExtendedClient) -> None:
+        client.bot_status_string = 'Starting.'
         client.running = True
         client.load_config()
         self.threads[client.name] = threading.Thread(target=self._run_bot, args=(client, ))
         self.threads.get(client.name).start()
 
     def _run_bot(self, client: ExtendedClient) -> None:
-        client.bot_status_string = 'Starting'
+        client.bot_status_string = 'Started.'
 
         _runners = {
-            'petfood': Petfood,
-            'regen': Regen,
-            'buffs': Buffs,
-            'attack': Attack,
-            'fairy': Fairy
+            'petfood': Petfood(client),
+            'regen': Regen(client),
+            'buffs': Buffs(client),
+            'attack': Attack(client),
+            'fairy': Fairy(client)
         }
-
-        for key, runner in _runners.items():
-            _runners[key] = runner(client)
 
         while client.running:
             client.bot_status_string = 'Running'

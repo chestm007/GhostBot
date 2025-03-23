@@ -1,11 +1,15 @@
 import math
 import time
+from ctypes import windll
+from ctypes.wintypes import LPARAM
 from operator import mul, add
 
 import pymem
 import win32api
 import win32gui
 import win32process
+import win32ui
+from pymem.exception import MemoryReadError, ProcessError
 
 from GhostBot import logger
 from GhostBot.lib import vk_codes, win32messages
@@ -46,8 +50,12 @@ class ClientWindow:
     def __init__(self, proc):
         self.process_id = proc.th32ProcessID
         self.proc = pymem.Pymem(self.process_id)
-        self.pointers = Pointers(self.process_id)
-        self.char = self.proc.read_int(self.char_addr)
+        try:
+            self.pointers = Pointers(self.process_id)
+            self.char = self.proc.read_int(self.char_addr)
+        except (ProcessError, MemoryReadError):
+            self.pointers = None  # TODO: set this when client login
+
         self._name = None
         self._active = False
         self._window_handle = None
@@ -79,13 +87,76 @@ class ClientWindow:
         self.press_key(vk_codes['x'])
         return self
 
+    def capture_screen(self):
+
+        left, top, right, bot = win32gui.GetWindowRect(self._window_handle)
+        w = right - left
+        h = bot - top
+
+        handle_dc = win32gui.GetWindowDC(self._window_handle)
+        mfc_dc = win32ui.CreateDCFromHandle(handle_dc)
+        save_dc = mfc_dc.CreateCompatibleDC()
+
+        save_bit_map = win32ui.CreateBitmap()
+        save_bit_map.CreateCompatibleBitmap(mfc_dc, w, h)
+
+        save_dc.SelectObject(save_bit_map)
+
+        # Change the line below depending on whether you want the whole window
+        # or just the client area.
+        # result = windll.user32.PrintWindow(hwnd, save_dc.GetSafeHdc(), 1)
+        result = windll.user32.PrintWindow(self._window_handle, save_dc.GetSafeHdc(), 1)
+        print(result)
+
+        bmpinfo = save_bit_map.GetInfo()
+        bmpstr = save_bit_map.GetBitmapBits(True)
+
+        from PIL import Image
+
+        im = Image.frombuffer(
+                'RGB',
+                (bmpinfo['bmWidth'], bmpinfo['bmHeight']),
+                bmpstr, 'raw', 'BGRX', 0, 1)
+
+        win32gui.DeleteObject(save_bit_map.GetHandle())
+        save_dc.DeleteDC()
+        mfc_dc.DeleteDC()
+        win32gui.ReleaseDC(self._window_handle, handle_dc)
+
+        if result == 1:
+            # PrintWindow Succeeded
+            im.save("test.png")
+
+
     def press_key(self, key):
-        # TODO: we should translate the vk_codes in here rather then all over the codebase...
-        win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, key)
-        time.sleep(0.2)
-        win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, key)
-        time.sleep(0.2)
+        _key = vk_codes[key.lower()] - 0x20 if key.isupper() else vk_codes[key.lower()]
+        #if key.isupper():
+        #    print(win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, vk_codes['left_shift'], LPARAM(0)))
+
+        win32gui.SendMessage(self.window_handle, win32messages.WM_CHAR, _key, LPARAM(0))
+
+        #if key.isupper():
+        #    print(win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, vk_codes['left_shift'], LPARAM(0)))
+        #    time.sleep(0.2)
+        return
+
+
+    def _press_key(self, key):
+        if key.isupper():
+            print(win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, vk_codes['left_shift'], LPARAM(0)))
+
+        print(win32gui.SendMessage(self.window_handle, win32messages.WM_CHAR, vk_codes[key.lower()], LPARAM(0)))
+        time.sleep(0.1)
+        #print(win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, vk_codes[key.lower()], LPARAM(0)))
+        time.sleep(0.1)
+        if key.isupper():
+            print(win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, vk_codes['left_shift'], LPARAM(0)))
+            time.sleep(0.1)
         return self
+
+    def type_keys(self, keys):
+        for key in keys:
+            self.press_key(key)
 
     def left_click(self, pos):
         lparam = win32api.MAKELONG(*pos)
@@ -117,9 +188,22 @@ class ClientWindow:
             logger.error(f'{self.name}: minimap pos too big {pos_diff_trimmed}')
             return
 
-        logger.debug(f'{self.name}: clicking {pos_diff_trimmed}')
-                                                                                              # relative to minimap center
+        logger.debug(f'{self.name}: clicking {pos_diff_trimmed}')  # relative to minimap center
         self.right_click(minimap_pos)
+
+    def open_surroundings_ui(self):
+        self.left_click(UI_locations.minimap_surroundings)
+
+    def search_surroundings(self, val):
+        self.open_surroundings_ui()
+        self.left_click(UI_locations.surroundings_search)
+        time.sleep(0.2)
+        self.type_keys(val)
+
+    def goto_first_surrounding_result(self):
+        self.left_click(UI_locations.surroundings_firstitem)
+        self.open_surroundings_ui()
+
 
     @property
     def hp(self):
@@ -153,6 +237,8 @@ class ClientWindow:
                 name = self.proc.read_string(self.char + 0x3C4, byte=16)
             except UnicodeDecodeError:
                 name = self.pointers.get_char_name()
+            except (MemoryReadError, AttributeError):
+                return None
             self._name = name
         return self._name
 
@@ -177,7 +263,7 @@ class ClientWindow:
         boolean value, `True` if in battle, `False` otherwise
         :return:
         """
-        return self.pointers.is_in_battle()
+        return self.pointers.is_in_battle() or False
 
     @property
     def location_x(self):
@@ -212,14 +298,20 @@ class ClientWindow:
         :returns target HP 0-100
         """
         try:
-            value = self.pointers.target_hp()
-            return math.ceil((value - TARGET_MIN_HP) / (TARGET_MAX_HP - TARGET_MIN_HP) * 100) if value >= TARGET_MIN_HP else -1
+            if self.pointers.is_target_selected():
+                value = self.pointers.target_hp()
+                return math.ceil((value - TARGET_MIN_HP) / (TARGET_MAX_HP - TARGET_MIN_HP) * 100) if value >= TARGET_MIN_HP else -1
+            else:
+                return None
         except pymem.exception.MemoryReadError as e:
             logger.error(e)
 
     @property
     def target_name(self):
-        return self.pointers.get_target_name()
+        if self.pointers.is_target_selected():
+            return self.pointers.get_target_name()
+        else:
+            return None
 
     def _read_with_offsets(self, in_offsets, get_func, **kwargs):
         """
