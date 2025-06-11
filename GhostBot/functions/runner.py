@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 class Runner(ABC):
     """
-    base class for any optional function to be ran on the bot, eg fairy, attack, ...
+    base class for any optional function to be run on the bot, eg. fairy, attack, ...
     """
     def __init__(self, client: ExtendedClient):
         self._client = client
@@ -25,6 +25,9 @@ class Runner(ABC):
 
 
 class Locational(Runner, ABC):
+    """
+    Represents a function that has a concept of location.
+    """
 
     def __init__(self, client: ExtendedClient):
         super().__init__(client)
@@ -33,12 +36,14 @@ class Locational(Runner, ABC):
     # TODO: implement map navigation when X distance away
 
     def determine_start_location(self):
+        """Returns either the config stored attack_spot, or the current location of the char as the `start_location`"""
         if hasattr(self._client.config, 'attack_spot'):
             return tuple(self._client.config.attack_spot)
         else:
             return self._client.location
 
     def _goto_start_location(self):
+        """Moves the char to the saved `start_location`"""
         while linear_distance(self.start_location, self._client.location) > 2:
             logger.debug(f'{self._client.name}: go to saved spot: {self.start_location}')
             self._client.move_to_pos(self.start_location)

@@ -1,7 +1,9 @@
 import math
 from operator import sub
 
-__all__ = ['linear_distance', 'position_difference']
+__all__ = ['linear_distance', 'position_difference', 'limit', 'seconds']
+
+# rounds up the position to what the TO client does (its dumb, and wrong, but the games chinese, what do you expect?
 pos = lambda a: a*-1 if a < 0 else a
 
 
@@ -30,3 +32,7 @@ def limit(number, _limit):
         return _limit * -1 if number < _limit * -1 else number
     else:
         return _limit if number > _limit else number
+
+
+def seconds(hours=0, minutes=0, seconds=0, tenths=0):
+    return (((hours * 60) + minutes) * 60) + seconds + (tenths / 10)

@@ -24,6 +24,7 @@ class BoxedFunctionSelect(npyscreen.BoxTitle):
             'Bindings',
             'Thresholds',
             'Intervals',
-            'Attack'
+            'Attack',
+            'Fairy'
         ]
         super(BoxedFunctionSelect, self).__init__(*args, values=values, **kwargs)

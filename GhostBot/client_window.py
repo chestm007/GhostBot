@@ -1,8 +1,10 @@
+import logging
 import math
 import time
 from ctypes import windll
 from ctypes.wintypes import LPARAM
 from operator import mul, add
+from typing import Tuple
 
 import pymem
 import win32api
@@ -16,6 +18,7 @@ from GhostBot.lib import vk_codes, win32messages
 from GhostBot.lib.math import position_difference, limit
 from GhostBot.lib.talisman_online_python.pointers import Pointers
 from GhostBot.lib.talisman_ui_locations import UI_locations
+from GhostBot.lib.win32.process import PymemProcess
 
 TARGET_MAX_HP=597
 TARGET_MIN_HP=461
@@ -48,8 +51,8 @@ class ClientWindow:
     char_addr = base_addr + 0xC20980
 
     def __init__(self, proc):
-        self.process_id = proc.th32ProcessID
-        self.proc = pymem.Pymem(self.process_id)
+        self.proc = proc
+        self.process_id = proc.process_id
         try:
             self.pointers = Pointers(self.process_id)
             self.char = self.proc.read_int(self.char_addr)
@@ -76,15 +79,15 @@ class ClientWindow:
         return self
 
     def new_target(self):
-        self.press_key(vk_codes['tab'])
+        self.press_key('tab')
         return self
 
     def target_self(self):
-        self.press_key(vk_codes['F1'])
+        self.press_key('F1')
         return self
 
     def sit(self):
-        self.press_key(vk_codes['x'])
+        self.press_key('x')
         return self
 
     def capture_screen(self):
@@ -127,32 +130,17 @@ class ClientWindow:
             # PrintWindow Succeeded
             im.save("test.png")
 
-
     def press_key(self, key):
-        _key = vk_codes[key.lower()] - 0x20 if key.isupper() else vk_codes[key.lower()]
-        #if key.isupper():
-        #    print(win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, vk_codes['left_shift'], LPARAM(0)))
-
+        try:
+            _key = vk_codes[key.lower()] - 0x20 if key.isupper() else vk_codes[key.lower()]
+        except AttributeError as e:
+            logger.exception(f'INTERNAL ERROR: {key} not found in vk_codes')
+            return
+        win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, _key, LPARAM(0))
+        win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, _key, LPARAM(0))
         win32gui.SendMessage(self.window_handle, win32messages.WM_CHAR, _key, LPARAM(0))
-
-        #if key.isupper():
-        #    print(win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, vk_codes['left_shift'], LPARAM(0)))
-        #    time.sleep(0.2)
         return
 
-
-    def _press_key(self, key):
-        if key.isupper():
-            print(win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, vk_codes['left_shift'], LPARAM(0)))
-
-        print(win32gui.SendMessage(self.window_handle, win32messages.WM_CHAR, vk_codes[key.lower()], LPARAM(0)))
-        time.sleep(0.1)
-        #print(win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, vk_codes[key.lower()], LPARAM(0)))
-        time.sleep(0.1)
-        if key.isupper():
-            print(win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, vk_codes['left_shift'], LPARAM(0)))
-            time.sleep(0.1)
-        return self
 
     def type_keys(self, keys):
         for key in keys:
@@ -204,6 +192,25 @@ class ClientWindow:
         self.left_click(UI_locations.surroundings_firstitem)
         self.open_surroundings_ui()
 
+    @property
+    def team_size(self):
+        return self.pointers.get_team_size()
+
+    @property
+    def team_members(self):
+        check = [
+            self.pointers.team_name_1,
+            self.pointers.team_name_2,
+            self.pointers.team_name_3,
+            self.pointers.team_name_4,
+        ]
+
+        return [check[m]() for m in range(self.team_size - 1)]
+
+    @property
+    def pet_active(self):
+        print(f'{self.pointers.get_hp_buff()} :: {self.pointers.get_mana_buff()}')
+        return bool(self.pointers.get_hp_buff() or self.pointers.get_mana_buff())
 
     @property
     def hp(self):
@@ -282,7 +289,7 @@ class ClientWindow:
         return self.pointers.get_y()
 
     @property
-    def location(self):
+    def location(self) -> Tuple[float, float]:
         """
         convenience method to return a tuple of our location
         """
@@ -333,9 +340,29 @@ class ClientWindow:
 
 
 def main():
-    for proc in pymem.process.list_processes():
-        if proc.szExeFile == b'client.exe':
+    logger.setLevel(logging.DEBUG)
+    for proc in PymemProcess.list_clients():
             client = ClientWindow(proc)
+            if client.name in ('Ch35TY16', 'Ch35TY17', 'Ch35TY18', 'Ch35TY19', 'WhoYouPay3'):
+                print(client.name)
+                print(client.team_members)
+                print('hp_buff')
+                print(client.pointers.get_hp_buff())
+                print(client.pointers.get_dc())
+                from GhostBot.functions import Petfood
+                from GhostBot.bot_controller import Config
+                client.config = Config(client)
+                pf = Petfood(client)
+                pf._respawn_pet()
+                continue
+
+                client.open_surroundings_ui()
+                client.search_surroundings('Kitchener')
+                client.goto_first_surrounding_result()
+            continue
+
+
+
             print(f'-- {client.name} | {client.level} --  {client.proc.process_id}')
             print(f'HP: {client.hp}')
             print(f'MP: {client.mana}/{client.max_mana}')

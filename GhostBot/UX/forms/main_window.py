@@ -24,7 +24,7 @@ class TerminalLogger(logging.Handler):
 
 class MainWindowForm(npyscreen.TitleForm):
     DEFAULT_LINES = 28
-    DEFAULT_COLUMNS = 250
+    DEFAULT_COLUMNS = 160
 
     def __init__(self, bot_controller, *args, **kwargs):
         self.bot_controller: BotController = bot_controller
@@ -40,7 +40,7 @@ class MainWindowForm(npyscreen.TitleForm):
                                                                     relx=self.character_selector.width+2,
                                                                     rely=self.character_info.height+self.character_info.rely)
         self.log_window: BoxedLogForm = self.add_widget(BoxedLogForm,
-                                                        relx=180, rely=self.character_selector.rely)
+                                                        relx=100, rely=self.character_selector.rely)
 
         self.term_log = TerminalLogger(self.log_window.add_log_message)
 

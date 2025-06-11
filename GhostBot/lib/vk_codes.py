@@ -1,3 +1,13 @@
+import sys
+
+if sys.version_info.major == 3:
+    if sys.version_info.minor > 9:
+        # Monkey patch collections for AttrDict.
+        import collections
+        import collections.abc
+        for type_name in collections.abc.__all__:
+            setattr(collections, type_name, getattr(collections.abc, type_name))
+
 from attrdict import AttrDict
 
 vk_codes = {
