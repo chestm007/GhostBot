@@ -1,3 +1,3 @@
 [submodule "GhostBot/lib/talisman_online_python"]
 	path = GhostBot/lib/talisman_online_python
-	url = git@github.com:chestm007/talisman_online_python.git
+	url = https://github.com/chestm007/talisman_online_python.git
