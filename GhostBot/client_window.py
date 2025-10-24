@@ -4,7 +4,6 @@ import time
 from ctypes import windll
 from ctypes.wintypes import LPARAM
 from operator import mul, add
-from typing import Tuple
 
 import pymem
 import win32api
@@ -14,6 +13,7 @@ import win32ui
 from pymem.exception import MemoryReadError, ProcessError
 
 from GhostBot import logger
+from GhostBot.functions import Buffs
 from GhostBot.lib import vk_codes, win32messages
 from GhostBot.lib.math import position_difference, limit
 from GhostBot.lib.talisman_online_python.pointers import Pointers
@@ -22,6 +22,7 @@ from GhostBot.lib.win32.process import PymemProcess
 
 TARGET_MAX_HP=597
 TARGET_MIN_HP=461
+
 
 def get_pointer(self, base, offsets):
     address = self.read_int(base)
@@ -131,8 +132,12 @@ class ClientWindow:
             im.save("test.png")
 
     def press_key(self, key):
+        """Fetch the keycode for the key from our map, send it to the client window"""
         try:
-            _key = vk_codes[key.lower()] - 0x20 if key.isupper() else vk_codes[key.lower()]
+            if isinstance(key, str) and len(key) == 1:  # if `key` is [a-zA-Z]
+                _key = vk_codes[key.lower()] + 0x20 if key.isupper() else vk_codes[key.lower()]
+            else:
+                _key = vk_codes[key]
         except AttributeError as e:
             logger.exception(f'INTERNAL ERROR: {key} not found in vk_codes')
             return
@@ -140,7 +145,6 @@ class ClientWindow:
         win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, _key, LPARAM(0))
         win32gui.SendMessage(self.window_handle, win32messages.WM_CHAR, _key, LPARAM(0))
         return
-
 
     def type_keys(self, keys):
         for key in keys:
@@ -193,11 +197,11 @@ class ClientWindow:
         self.open_surroundings_ui()
 
     @property
-    def team_size(self):
+    def team_size(self) -> int:
         return self.pointers.get_team_size()
 
     @property
-    def team_members(self):
+    def team_members(self) -> list[str]:  # TODO: this should return a list of references to ClientWindow
         check = [
             self.pointers.team_name_1,
             self.pointers.team_name_2,
@@ -208,72 +212,63 @@ class ClientWindow:
         return [check[m]() for m in range(self.team_size - 1)]
 
     @property
-    def pet_active(self):
-        print(f'{self.pointers.get_hp_buff()} :: {self.pointers.get_mana_buff()}')
-        return bool(self.pointers.get_hp_buff() or self.pointers.get_mana_buff())
+    def inventory_open(self):
+        return self.pointers.is_bag_open()
 
     @property
-    def hp(self):
+    def pet_active(self) -> bool:
+        """:returns: True if pet is active, False otherwise"""
+        return self.pointers.pet_active()
+
+    @property
+    def hp(self) -> int:
+        """Current HP"""
         return self.pointers.get_hp()
 
     @property
-    def max_hp(self):
-        """
-        this is a hack, we should calculate instead
-        """
+    def max_hp(self) -> int:
+        """Maximum mana"""
         return self.pointers.get_max_hp()
 
     @property
-    def max_mana(self):
-        """
-        this reads base mana before pet buffs
-        """
+    def max_mana(self) -> int:
+        """Maximum HP"""
         return self.pointers.get_max_mana()
 
     @property
-    def mana(self):
+    def mana(self) -> int:
         return self.pointers.get_mana()
 
     @property
-    def name(self):
-        """
-        Character name
-        """
+    def name(self) -> str | None:
+        """Character name"""
         if self._name is None:
             try:
-                name = self.proc.read_string(self.char + 0x3C4, byte=16)
-            except UnicodeDecodeError:
                 name = self.pointers.get_char_name()
+            except UnicodeDecodeError:
+                name = self.proc.read_string(self.char + 0x3C4, byte=16)
             except (MemoryReadError, AttributeError):
                 return None
             self._name = name
         return self._name
 
     @property
-    def level(self):
-        """
-        Character Level
-        """
+    def level(self) -> int:
+        """Character Level"""
         return self.pointers.get_level()
 
     @property
-    def sitting(self):
-        """
-        200 if sitting, 100 otherwise
-        :return: `True` if char sitting, `False` if not
-        """
+    def sitting(self) -> bool:
+        """:return: `True` if char sitting, `False` if not"""
         return self.pointers.is_sitting()
 
     @property
-    def in_battle(self):
-        """
-        boolean value, `True` if in battle, `False` otherwise
-        :return:
-        """
-        return self.pointers.is_in_battle() or False
+    def in_battle(self) -> bool:
+        """boolean value, `True` if in battle, `False` otherwise"""
+        return self.pointers.is_in_battle()
 
     @property
-    def location_x(self):
+    def location_x(self) -> int:
         """
         character location * 20, usually also off by .5
         :returns character location as it appears in game
@@ -281,7 +276,7 @@ class ClientWindow:
         return self.pointers.get_x()
 
     @property
-    def location_y(self):
+    def location_y(self) -> int:
         """
         character location * 20, usually also off by .5
         :returns character location as it appears in game
@@ -289,20 +284,20 @@ class ClientWindow:
         return self.pointers.get_y()
 
     @property
-    def location(self) -> Tuple[float, float]:
+    def location(self) -> tuple[int, int]:
         """
         convenience method to return a tuple of our location
         """
         return self.location_x, self.location_y
 
     @property
-    def target_hp(self):
+    def target_hp(self) -> int | None:
         """
-        NOT LINEAR
+        self.pointers.is_target_selected() is NOT LINEAR
         597 when 100%
         461 when 0%
         0 when dead
-        :returns target HP 0-100
+        :returns target HP 0-100, -1 if target dead, None if no target
         """
         try:
             if self.pointers.is_target_selected():
@@ -314,7 +309,8 @@ class ClientWindow:
             logger.error(e)
 
     @property
-    def target_name(self):
+    def target_name(self) -> str | None:
+        """:return: target name if target selected, `None` if no target"""
         if self.pointers.is_target_selected():
             return self.pointers.get_target_name()
         else:
@@ -340,38 +336,23 @@ class ClientWindow:
 
 
 def main():
+    from GhostBot.bot_controller import ExtendedClient
+
     logger.setLevel(logging.DEBUG)
     for proc in PymemProcess.list_clients():
-            client = ClientWindow(proc)
+            client = ExtendedClient(proc)
             if client.name in ('Ch35TY16', 'Ch35TY17', 'Ch35TY18', 'Ch35TY19', 'WhoYouPay3'):
                 print(client.name)
                 print(client.team_members)
-                print('hp_buff')
-                print(client.pointers.get_hp_buff())
-                print(client.pointers.get_dc())
+                continue
                 from GhostBot.functions import Petfood
                 from GhostBot.bot_controller import Config
                 client.config = Config(client)
                 pf = Petfood(client)
-                pf._respawn_pet()
+                pf._despawn_pet()
+                buff = Buffs(client)
+                buff.run()
                 continue
-
-                client.open_surroundings_ui()
-                client.search_surroundings('Kitchener')
-                client.goto_first_surrounding_result()
-            continue
-
-
-
-            print(f'-- {client.name} | {client.level} --  {client.proc.process_id}')
-            print(f'HP: {client.hp}')
-            print(f'MP: {client.mana}/{client.max_mana}')
-            print(f'XY: {client.location_x}/{client.location_y}')
-            print(f'THP: {client.target_hp}')
-            print(f'Sit: {client.sitting}')
-            print(f'Bat: {client.in_battle}')
-            print(f'Target_name: {client.target_name}')
-
 
 if __name__ == "__main__":
     main()

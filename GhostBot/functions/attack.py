@@ -5,6 +5,7 @@ import time
 from typing import TYPE_CHECKING
 
 from GhostBot import logger
+from GhostBot.config import AttackConfig
 from GhostBot.functions.runner import Locational
 from GhostBot.lib.math import linear_distance
 
@@ -19,11 +20,12 @@ class AttackContext:
     If it detects a change, it will return true, then set the current values to what it read, and return
     false until they change again
     """
-    def __init__(self, client: ExtendedClient):
+    def __init__(self, client: ExtendedClient, stuck_interval: int) -> None:
         self._client = client
         self._location = self._location = tuple(self._client.location)
         self._target_hp = self._client.target_hp
         self._last_changed_time = time.time()
+        self._stuck_interval = stuck_interval
         #self._check_stuck = self._client.config.unstuck
 
     @property
@@ -52,7 +54,7 @@ class AttackContext:
             return False
 
         # if target hp and our position haven't changed in `stuck_interval` we're stuck
-        if time.time() - self._last_changed_time > self._client.config.stuck_interval:
+        if time.time() - self._last_changed_time > self._stuck_interval:
             self._last_changed_time = time.time()
             return True
 
@@ -67,18 +69,25 @@ class Attack(Locational):
     otherwise returns Falsey
     """
     _cur_attack_queue = []
-
-    def run(self) -> bool:
-        self._cur_attack_queue: list[str] = list(self._client.config.attacks)
-        return self._run()
+    def __init__(self, client: ExtendedClient):
+        super().__init__(client)
+        self.config: AttackConfig = client.config.attack
+        try:
+            self._stuck_interval = self.config.stuck_interval or 10
+            self.roam_distance = self.config.roam_distance or 40
+        except AttributeError as e:
+            logger.error(f"{self._client.name} error {e}")
+            self._stuck_interval = 10
 
     def _run(self) -> bool:
-        context = AttackContext(self._client)
+        self._cur_attack_queue: list[list[int | str]] = list(self.config.attacks)
+
+        context = AttackContext(self._client, self._stuck_interval)
         if self._client.target_hp is None or self._client.target_name == self._client.name or self._client.target_hp < 0:
             logger.debug(f'{self._client.name}: New target')
             self._client.new_target()
 
-        while self._client.target_hp and int(self._client.target_hp) >= 0 and self._client.running:
+        while (self._client.target_hp is not None) and int(self._client.target_hp) >= 0 and self._client.running:
             if self._client.target_name == self._client.name:  # if were targeting ourselves, get a new target
                 return True
 
@@ -93,12 +102,12 @@ class Attack(Locational):
             self._battle_pots()
 
             if not self._cur_attack_queue:
-                self._cur_attack_queue = list(self._client.config.attacks)
+                self._cur_attack_queue = list(self.config.attacks)
 
-            key, interval = self._cur_attack_queue.pop()
+            key, interval = self._cur_attack_queue.pop(0)
             logger.debug(f'{self._client.name}: ATTACK! {key}  -- {interval}s')
             self._client.press_key(key)
-            time.sleep(interval)
+            time.sleep(int(interval) / 1000)
 
             if context.stuck:  # if we're stuck, get a new target and rerun.
                 self._client.new_target()
@@ -106,10 +115,11 @@ class Attack(Locational):
         return False
 
     def _battle_pots(self):
-        if self._client.config.bindings.get('battle_hp_pot') is not None:
-            if self._client.mana_percent < self._client.config.battle_mana_threshold:
-                self._client.press_key(self._client.config.bindings.get('battle_mana_pot'))
+        if self.config.bindings is not None:
+            if self.config.bindings.get('battle_hp_pot') is not None and self.config.battle_mana_threshold is not None:
+                if self._client.mana_percent < self.config.battle_mana_threshold:
+                    self._client.press_key(self.config.bindings.get('battle_mana_pot'))
 
-        if self._client.config.bindings.get('battle_mana_pot') is not None:
-            if self._client.hp_percent < self._client.config.battle_hp_threshold:
-                self._client.press_key(self._client.config.bindings.get('battle_hp_pot'))
+            if self.config.bindings.get('battle_mana_pot') is not None and self.config.battle_hp_threshold is not None:
+                if self._client.hp_percent < self.config.battle_hp_threshold:
+                    self._client.press_key(self.config.bindings.get('battle_hp_pot'))

@@ -1,6 +1,4 @@
-from distutils.core import setup
-
-from setuptools import find_packages
+from setuptools import find_packages, setup
 
 setup(
     name='GhostBot',
@@ -21,7 +19,13 @@ setup(
         'pywin32',
         'attrdict',
         'pyyaml',
+        'pillow',
     ],
     extras_require={},
-    entry_points='ghost-bot:Ghostbot.UX.main.py',
+    entry_points={
+        'console_scripts': [
+            'ghost-bot-client = GhostBot.UX.main:main',
+            'ghost-bot-server = GhostBot.bot_controller:main',
+        ]
+    }
 )
