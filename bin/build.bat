@@ -1,0 +1,2 @@
+..\.venv\Scripts\activate pyinstaller.exe --windowed ..\GhostBot\UX\main.py --collect-all GhostBot --hidden-import=yaml --hidden-import=yaml.loader --paths=..\.venv\Lib\site-packages\ --hidden-import=attrdict
+..\.venv\Scripts\activate pyinstaller.exe --windowed ..\GhostBot\bot_controller.py --collect-all GhostBot --hidden-import=yaml --hidden-import=yaml.loader --paths=..\.venv\Lib\site-packages\ --hidden-import=attrdict

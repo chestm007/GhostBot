@@ -5,6 +5,7 @@ import time
 from typing import TYPE_CHECKING
 
 from GhostBot import logger
+from GhostBot.config import BuffConfig
 from GhostBot.functions.runner import Runner
 from GhostBot.lib.math import seconds
 
@@ -16,12 +17,13 @@ class Buffs(Runner):
 
     def __init__(self, client: ExtendedClient):
         super().__init__(client)
+        self.config: BuffConfig = client.config.buff
         self._last_time_used_buffs = 0
 
-    def run(self) -> None:
-        if time.time() - self._last_time_used_buffs > seconds(minutes=self._client.config.buff_interval):
+    def _run(self) -> None:
+        if time.time() - self._last_time_used_buffs > seconds(minutes=int(self.config.interval)):
             logger.info(f'{self._client.name}: Buffing.')
-            for buff in self._client.config.bindings.get('buffs'):
-                self._client.press_key(buff)
+            for _key, _sleep in self.config.buffs:
+                self._client.press_key(_key)
                 self._last_time_used_buffs = time.time()
-                time.sleep(2)
+                time.sleep(int(_sleep) / 1000)

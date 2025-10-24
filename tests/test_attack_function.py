@@ -1,21 +1,26 @@
 import time
 
+from GhostBot.config import Config, AttackConfig
 from GhostBot.functions.attack import AttackContext
 from mocks.mock_client import MockClient
 
+config = Config(
+    attack=AttackConfig(attacks=None)
+)
+
+client = MockClient()
+client.config = config
 
 def test_attack_context_stuck():
-    client = MockClient()
-    context = AttackContext(client)
+    context = AttackContext(client, 2)
 
     assert not context.stuck
-    client.config.stuck_interval = 2
-    print(context._client.config.stuck_interval)
+    context._stuck_interval = 2
     time.sleep(2.1)
     assert context.stuck  # check that doing nothing for 2.1 secs registers as stuck with an interval of 2 sec
 
     assert not context.stuck
-    client.config.stuck_interval = 1
+    context._stuck_interval = 1
     client._target_hp = 597
     assert client.target_hp == 100
     time.sleep(1)
@@ -33,7 +38,7 @@ def test_attack_context_stuck():
 
 def test_attack_context_location_check():
     client = MockClient()
-    context = AttackContext(client)
+    context = AttackContext(client, 2)
 
     assert not context.location_changed
 

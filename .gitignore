@@ -4,9 +4,11 @@
 /GhostBot.egg-info/SOURCES.txt
 /GhostBot.egg-info/top_level.txt
 /log/update.log
-
 .idea/
 
 GhostBot/__pycache__/
 
 *.pyc
+/bin/build/
+/bin/dist/
+/GhostBot.egg-info/
