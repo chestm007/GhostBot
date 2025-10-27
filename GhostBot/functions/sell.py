@@ -41,6 +41,7 @@ class Sell(Locational):
         self._path_to_attack_spot()
 
     def _go_to_npc(self):
+        self._path_to_npc_search_spot()
         self._client.search_surroundings(self.config.sell_npc_name)
         first_result = self._client.pointers.get_sur_info()
         logger.info(first_result)
@@ -69,21 +70,37 @@ class Sell(Locational):
             time.sleep(0.25)
         self._client.left_click(UI_locations.confirm_sell_button)
 
+    def _path_to_npc_search_spot(self):
+        if self.config.npc_search_spot is not None:
+            self._map_toggle()
+            logger.info(f'pathing to npc search spot: {self.config.npc_search_spot}')
+            self._client.right_click(tuple(map(sub, self.config.npc_search_spot, (50, 50))))
+            self._client.right_click(self.config.npc_search_spot)
+            time.sleep(0.5)
+            self._map_toggle()
+            while self._client.running and linear_distance(self._client.location, self.config.npc_search_spot) > 20:
+                _location = self._client.location
+                time.sleep(3)
+                if linear_distance(self._client.location, _location) < 1:
+                    break
+
     def _path_to_attack_spot(self):
-        self._client.press_key('m')
-        time.sleep(0.5)
         if self.config.return_spot is not None:
+            self._map_toggle()
             logger.info(f'returning to {self._return_spot}')
             self._client.right_click(tuple(map(sub, self.config.return_spot, (50, 50))))
             self._client.right_click(self.config.return_spot)
             time.sleep(0.5)
-            self._client.press_key('m')
-            time.sleep(0.5)
+            self._map_toggle()
             while self._client.running and linear_distance(self._client.location, self.start_location) > 40:
                 time.sleep(1)
 
     def _should_sell(self) -> bool:
         return time.time() - self._last_time_sold > seconds(minutes=self.config.sell_interval_mins)
+
+    def _map_toggle(self):
+        self._client.press_key('m')
+        time.sleep(0.5)
 
 #if __name__ == "__main__":
 #    proc = pymem.Pymem(5732)

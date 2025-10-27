@@ -75,6 +75,7 @@ class SellConfig(FunctionConfig):
     bindings: Bindings = None
     sell_item_pos: int = 1
     sell_interval_mins: int = 60
+    npc_search_spot: list[int] | None = None
     return_spot: list[int] | None = None
     use_mount: bool | None = None
 
