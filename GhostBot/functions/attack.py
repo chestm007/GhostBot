@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from GhostBot import logger
 from GhostBot.config import AttackConfig
 from GhostBot.functions.runner import Locational
-from GhostBot.lib.math import linear_distance
+from GhostBot.lib.math import linear_distance, position_difference
 
 if TYPE_CHECKING:
     from GhostBot.bot_controller import ExtendedClient
@@ -80,19 +80,24 @@ class Attack(Locational):
             self._stuck_interval = 10
 
     def _run(self) -> bool:
-        self._cur_attack_queue: list[list[int | str]] = list(self.config.attacks)
+        #self._cur_attack_queue: list[list[int | str]] = list(self.config.attacks)
 
         context = AttackContext(self._client, self._stuck_interval)
-        if self._client.target_hp is None or self._client.target_name == self._client.name or self._client.target_hp < 0:
+        if (self._client.target_hp is None
+            or self._client.target_name == self._client.name
+            or self._client.target_hp < 0
+            #or (self._distance_to_target() or 0) > self.roam_distance
+        ):
             logger.debug(f'{self._client.name}: New target')
             self._client.new_target()
+            return True
 
         while (self._client.target_hp is not None) and int(self._client.target_hp) >= 0 and self._client.running:
             if self._client.target_name == self._client.name:  # if were targeting ourselves, get a new target
                 return True
 
             # if were too far away from our start location, move back there
-            if linear_distance(self.start_location, self._client.location) > 40:
+            if linear_distance(self.start_location, self._client.location) > self.roam_distance:
                 logger.debug(f'{self._client.name}: too far go back C:{self._client.location} | T:{self.start_location}')
                 self._goto_start_location()
                 self._client.new_target()
@@ -123,3 +128,9 @@ class Attack(Locational):
             if self.config.bindings.get('battle_mana_pot') is not None and self.config.battle_hp_threshold is not None:
                 if self._client.hp_percent < self.config.battle_hp_threshold:
                     self._client.press_key(self.config.bindings.get('battle_hp_pot'))
+
+    def _distance_to_target(self) -> int | None:
+        if self._client.has_target:
+            if (tgt_loc := self._client.target_location) is not None:
+                return linear_distance(self.start_location, tgt_loc)
+        return None

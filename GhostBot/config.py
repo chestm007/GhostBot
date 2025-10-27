@@ -37,6 +37,12 @@ class RegenConfig(FunctionConfig):
     mana_threshold: float | None = None
     spot: list[int] = None
 
+    def __post_init__(self):
+        if self.bindings is None:
+            self.bindings = {'sit': "x"}
+        elif self.bindings['sit'] is None:
+            self.bindings['sit'] = 'x'
+
 @dataclass
 class BuffConfig(FunctionConfig):
     buffs: list[list[str | int]]
@@ -47,7 +53,7 @@ class PetConfig(FunctionConfig):
     class Bindings(TypedDict):
         spawn: NotRequired[int | str]
         food: NotRequired[int | str]
-    bindings: Bindings | None = None
+    bindings: Bindings = None
     spawn_interval_mins: int | None = None
     food_interval_mins: int | None = None
 
@@ -57,9 +63,24 @@ class FairyConfig(FunctionConfig):
         heal: NotRequired[int | str]
         cure: NotRequired[int | str]
         revive: NotRequired[int | str]
-    bindings: Bindings | None = None
+    bindings: Bindings = None
     heal_team_threshold: float | None = None
     heal_self_threshold: float | None = None
+
+@dataclass
+class SellConfig(FunctionConfig):
+    class Bindings(TypedDict):
+        mount: NotRequired[int | str]
+    sell_npc_name: str
+    bindings: Bindings = None
+    sell_item_pos: int = 1
+    sell_interval_mins: int = 60
+    return_spot: list[int] | None = None
+    use_mount: bool | None = None
+
+    def __post_init__(self):
+        if self.bindings is None:
+            self.bindings = {'mount': 0}
 
 @dataclass
 class Config:
@@ -68,6 +89,7 @@ class Config:
     fairy: FairyConfig = None
     pet: PetConfig | None = None
     regen: RegenConfig | None = None
+    sell: SellConfig | None = None
 
     def to_yaml(self) -> dict:
         return {k: v.__dict__ for k, v in self.__dict__.items() if v is not None}
@@ -82,6 +104,7 @@ class Config:
                 case 'pet': _config.pet = PetConfig(**v)
                 case 'fairy': _config.fairy = FairyConfig(**v)
                 case 'regen': _config.regen = RegenConfig(**v)
+                case 'sell': _config.sell = SellConfig(**v)
                 case _: raise AttributeError(f"{k} not a valid config category")
         logger.debug(f"Config loaded: {data.keys()}")
         return _config

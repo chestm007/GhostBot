@@ -59,11 +59,11 @@ class GhostbotIPCServer:
                     case "set":
                         _client = self.bot_controller.get_client(message.target['char'])
                         if _client is not None:
-                            _client.stop_bot()
+                            logger.info(f"Setting config for {_client.name}")
                             conf = Config.load_yaml(message.target.get('config'))
                             logger.debug(f'set config: {conf}')
                             ConfigLoader(_client).save(conf)
-                            self.bot_controller.start_bot(_client)
+                            _client.set_config(conf)
                             return message
                         return False
 

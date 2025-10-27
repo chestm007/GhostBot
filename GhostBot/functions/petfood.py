@@ -43,13 +43,19 @@ class Petfood(Runner):
         while self._client.pet_active and self._client.running:
             logger.info(f'{self._client.name}: Despawning pet')
             self._client.press_key(self._spawn_pet_hotkey)
-            time.sleep(self.command_delay)
+            poll = 0
+            while self._client.pet_active and self._client.running and poll < 10:
+                poll += 1
+                time.sleep(0.5)
 
     def _spawn_pet(self):
         while (not self._client.pet_active) and self._client.running:
             logger.info(f'{self._client.name}: Spawning pet')
             self._client.press_key(self._spawn_pet_hotkey)
-            time.sleep(self.command_delay)
+            poll = 0
+            while (not self._client.pet_active) and self._client.running and poll < 10:
+                poll += 1
+                time.sleep(0.5)
 
     def _respawn_pet(self):
         if time.time() - self._last_time_pet_spawned > seconds(minutes=int(self.config.spawn_interval_mins)):

@@ -1,19 +1,22 @@
+import ctypes.wintypes
 import logging
 import math
 import time
 from ctypes import windll
-from ctypes.wintypes import LPARAM
+from ctypes.wintypes import LPARAM, WPARAM
 from operator import mul, add
+from typing import NamedTuple
 
 import pymem
+import win32.win32api
 import win32api
 import win32gui
 import win32process
 import win32ui
 from pymem.exception import MemoryReadError, ProcessError
+from win32con import SM_CYCAPTION
 
 from GhostBot import logger
-from GhostBot.functions import Buffs
 from GhostBot.lib import vk_codes, win32messages
 from GhostBot.lib.math import position_difference, limit
 from GhostBot.lib.talisman_online_python.pointers import Pointers
@@ -32,11 +35,11 @@ def get_pointer(self, base, offsets):
 
 
 def get_hwnds_for_pid(pid):
-    def callback(hwnd, hwnds):
+    def callback(hwnd, _hwnds):
         if win32gui.IsWindowVisible(hwnd) and win32gui.IsWindowEnabled(hwnd):
             _, found_pid = win32process.GetWindowThreadProcessId(hwnd)
             if found_pid == pid:
-                hwnds.append(hwnd)
+                _hwnds.append(hwnd)
         return True
 
     hwnds = []
@@ -138,7 +141,7 @@ class ClientWindow:
                 _key = vk_codes[key.lower()] + 0x20 if key.isupper() else vk_codes[key.lower()]
             else:
                 _key = vk_codes[key]
-        except AttributeError as e:
+        except AttributeError:
             logger.exception(f'INTERNAL ERROR: {key} not found in vk_codes')
             return
         win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, _key, LPARAM(0))
@@ -146,20 +149,22 @@ class ClientWindow:
         win32gui.SendMessage(self.window_handle, win32messages.WM_CHAR, _key, LPARAM(0))
         return
 
-    def type_keys(self, keys):
-        for key in keys:
+    def type_keys(self, keys: str):
+        for key in keys.swapcase():
             self.press_key(key)
+            time.sleep(0.1)
 
     def left_click(self, pos):
         lparam = win32api.MAKELONG(*pos)
         win32gui.SendMessage(self.window_handle, win32messages.WM_MOUSEMOVE, None, lparam)
-        win32gui.SendMessage(self.window_handle, win32messages.WM_LBUTTONDOWN, None, lparam)
+        win32gui.SendMessage(self.window_handle, win32messages.WM_LBUTTONDOWN, WPARAM(0x0001), lparam)
         win32gui.SendMessage(self.window_handle, win32messages.WM_LBUTTONUP, None, lparam)
 
     def right_click(self, pos):
         lparam = win32api.MAKELONG(*pos)
         win32gui.SendMessage(self.window_handle, win32messages.WM_MOUSEMOVE, None, lparam)
-        win32gui.SendMessage(self.window_handle, win32messages.WM_RBUTTONDOWN, None, lparam)
+        time.sleep(0.1)
+        win32gui.SendMessage(self.window_handle, win32messages.WM_RBUTTONDOWN, WPARAM(0x0002), lparam)
         win32gui.SendMessage(self.window_handle, win32messages.WM_RBUTTONUP, None, lparam)
 
     def move_to_pos(self, target_pos):
@@ -183,18 +188,51 @@ class ClientWindow:
         logger.debug(f'{self.name}: clicking {pos_diff_trimmed}')  # relative to minimap center
         self.right_click(minimap_pos)
 
+    @staticmethod
+    def get_mouse_window_pos(window_pos: tuple[int, int]) -> tuple[int, int] | None:
+        x, y = win32gui.GetCursorPos()
+
+        wx, wy = window_pos
+        cursor_pos = (x - wx, y - wy)
+        if all(a > 0 for a in cursor_pos):
+            return cursor_pos
+        return None
+
+    def get_window_size_pos(self) -> tuple[tuple[int, int], tuple[int, int]] | None:
+        title_bar_height = win32.win32api.GetSystemMetrics(SM_CYCAPTION)
+        border_thickness = 8
+
+        wx, wy, ww, wh = win32gui.GetWindowRect(self._window_handle)
+        wx += border_thickness
+        ww -= border_thickness
+        wy += (title_bar_height + border_thickness)
+        wh -= border_thickness
+        return tuple(((wx, wy), (ww, wh)))
+
+    def get_window_pos(self) -> tuple[int, int]:
+        return self.get_window_size_pos()[0]
+
+    def get_window_size(self) -> tuple[int, int]:
+        return self.get_window_size_pos()[1]
+
     def open_surroundings_ui(self):
         self.left_click(UI_locations.minimap_surroundings)
 
     def search_surroundings(self, val):
         self.open_surroundings_ui()
         self.left_click(UI_locations.surroundings_search)
-        time.sleep(0.2)
+        time.sleep(0.5)
         self.type_keys(val)
 
     def goto_first_surrounding_result(self):
         self.left_click(UI_locations.surroundings_firstitem)
         self.open_surroundings_ui()
+
+    def click_npc(self):
+        self.right_click(UI_locations.npc_location)
+
+    def reset_camera(self):
+        self.left_click(UI_locations.view_reset)
 
     @property
     def team_size(self) -> int:
@@ -291,6 +329,34 @@ class ClientWindow:
         return self.location_x, self.location_y
 
     @property
+    def location_name(self) -> str:
+        return self.pointers.get_location() or self.pointers.get_location_2() or None
+
+    @property
+    def on_mount(self) -> bool:
+        return self.pointers.mount()
+
+    @property
+    def target_location(self) -> tuple[int, int] | None:
+        if self.has_target:
+            x, y, pointer = self.pointers.search_id()
+            if x and y:
+                return x, y
+        return None
+
+    @property
+    def target_id(self) -> str:
+        return self.pointers.get_target_id()
+
+    @property
+    def notification(self) -> bool:
+        return self.pointers.get_notification()
+
+    @property
+    def has_target(self):
+        return self.pointers.is_target_selected()
+
+    @property
     def target_hp(self) -> int | None:
         """
         self.pointers.is_target_selected() is NOT LINEAR
@@ -341,7 +407,9 @@ def main():
     logger.setLevel(logging.DEBUG)
     for proc in PymemProcess.list_clients():
             client = ExtendedClient(proc)
-            if client.name in ('Ch35TY16', 'Ch35TY17', 'Ch35TY18', 'Ch35TY19', 'WhoYouPay3'):
+            if client.name in ('LongJohnson'):
+                time.sleep(3)
+                print(client.get_mouse_window_pos())
                 print(client.name)
                 print(client.team_members)
                 continue

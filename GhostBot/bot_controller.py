@@ -5,7 +5,7 @@ from GhostBot import logger
 from GhostBot.client_window import ClientWindow
 from GhostBot.config import Config, ConfigLoader
 from GhostBot.enums.bot_status import BotStatus
-from GhostBot.functions import Attack, Buffs, Fairy, Petfood, Regen, Runner
+from GhostBot.functions import Attack, Buffs, Fairy, Petfood, Regen, Runner, Sell
 from GhostBot.lib.win32.process import PymemProcess
 from GhostBot.server import GhostbotIPCServer
 
@@ -33,14 +33,22 @@ class ExtendedClient(ClientWindow):
             target_hp=self.target_hp,
             location_x=self.location_x,
             location_y=self.location_y,
+            location_name=self.location_name,
             pet_active=self.pet_active,
             sitting=self.sitting,
             in_battle=self.in_battle,
             inventory_open=self.inventory_open,
+            #target_location=self.target_location,
+            mounted=self.on_mount,
+            window_pos=self.get_window_pos(),
+            window_size=self.get_window_size(),
         )
 
     def load_config(self):
-        self.config = ConfigLoader(self).load()
+        self.set_config(ConfigLoader(self).load())
+
+    def set_config(self, config: Config):
+        self.config = config
 
     @property
     def bot_status_string(self) -> str:
@@ -130,6 +138,8 @@ class BotController:
         client.bot_status = BotStatus.stopped
 
     def _get_functions_for_client(self, client: ExtendedClient) -> Generator[Runner, None, None]:
+        if client.config.sell is not None:
+            yield Sell(client)
         if client.config.pet is not None:
             yield Petfood(client)
         if client.config.regen is not None:

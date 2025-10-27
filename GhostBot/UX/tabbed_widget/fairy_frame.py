@@ -7,7 +7,7 @@ from GhostBot.lib.var_or_none import _float
 
 
 class FairyFrame(TabFrame):
-    def _init(self):
+    def _init(self, *args, **kwargs) -> None:
         self._vars = dict(
             heal_team=tk.StringVar(master=self, name="bot_config.fairy.heal_team", value=""),
             heal_self=tk.StringVar(master=self, name="bot_config.fairy.heal_self", value=""),

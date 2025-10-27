@@ -7,7 +7,7 @@ from GhostBot.lib.var_or_none import _int
 
 
 class PetFrame(TabFrame):
-    def _init(self):
+    def _init(self, *args, **kwargs) -> None:
         self._vars = dict(
             spawn_interval=tk.StringVar(master=self, name="bot_config.pet.spawn_interval", value=""),
             spawn_key=tk.StringVar(master=self, name="bot_config.pet.spawn_key", value=""),

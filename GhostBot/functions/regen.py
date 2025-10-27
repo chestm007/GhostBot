@@ -29,11 +29,10 @@ class Regen(Locational):
             if not self._client.in_battle:
                 logger.info(f'{self._client.name}: low hp/mana, starting Regen')
 
-                # mana/hp pots\
-                if self.config.bindings.get('hp_pot') is not None:
+                if self.config.bindings:
+                    # mana/hp pots\
                     if self._client.hp_percent < self._hp_threshold:
                         self._use_hp_pot()
-                if self.config.bindings.get('mana_pot') is not None:
                     if self._client.mana_percent < self._mana_threshold:
                         self._use_mana_pot()
 
@@ -56,12 +55,14 @@ class Regen(Locational):
         return self._client.hp_percent < self._hp_threshold
 
     def _use_hp_pot(self) -> None:
-        self._goto_spot_and_sit()
-        self._client.press_key(self.config.bindings.get('hp_pot'))
+        if self.config.bindings.get('hp_pot') is not None:
+            self._goto_spot_and_sit()
+            self._client.press_key(self.config.bindings.get('hp_pot'))
 
     def _use_mana_pot(self) -> None:
-        self._goto_spot_and_sit()
-        self._client.press_key(self.config.bindings.get('mana_pot'))
+        if self.config.bindings.get('mana_pot') is not None:
+            self._goto_spot_and_sit()
+            self._client.press_key(self.config.bindings.get('mana_pot'))
 
     def _goto_spot_and_sit(self) -> None:
         self._goto_start_location()

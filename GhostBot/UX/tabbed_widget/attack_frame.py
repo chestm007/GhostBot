@@ -7,7 +7,7 @@ from GhostBot.lib.var_or_none import _int, _float
 
 
 class AttackFrame(TabFrame):
-    def _init(self):
+    def _init(self, *args, **kwargs) -> None:
         self._vars = dict(
             hp_low=tk.StringVar(master=self, name="bot_config.attack.battle_hp_low", value=""),
             hp_key=tk.StringVar(master=self, name="bot_config.attack.battle_hp_key", value=""),
@@ -37,10 +37,16 @@ class AttackFrame(TabFrame):
 
     def display_config(self, config: Config):
         if config.attack:
+            hp_key = ''
+            mp_key = ''
+            if config.attack.bindings:
+                hp_key = str(config.attack.bindings.get('battle_hp_pot', ''))
+                mp_key = str(config.attack.bindings.get('battle_mana_pot', ''))
+            self.setvar('bot_config.attack.battle_hp_key', hp_key)
+            self.setvar('bot_config.attack.battle_mp_key', mp_key)
+
             self.setvar('bot_config.attack.battle_hp_low', str(config.attack.battle_hp_threshold or ''))
-            self.setvar('bot_config.attack.battle_hp_key', str((config.attack.bindings or {}).get('battle_hp_pot', '') or ''))
             self.setvar('bot_config.attack.battle_mp_low', str(config.attack.battle_mana_threshold or ''))
-            self.setvar('bot_config.attack.battle_mp_key', str((config.attack.bindings or {}).get('battle_mana_pot', '') or ''))
             self.setvar('bot.config.attack.battle_stuck', str(config.attack.stuck_interval or ''))
             self.setvar('bot_config.attack.battle_roam', str(config.attack.roam_distance or ''))
             self.attacks.delete(1.0, tk.END)

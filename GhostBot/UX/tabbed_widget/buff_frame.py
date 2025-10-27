@@ -7,7 +7,7 @@ from GhostBot.lib.var_or_none import _int
 
 
 class BuffFrame(TabFrame):
-    def _init(self):
+    def _init(self, *args, **kwargs) -> None:
         self._vars = dict(
             interval=tk.StringVar(master=self, name="bot_config.buff.interval", value=""),
         )

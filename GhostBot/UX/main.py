@@ -2,6 +2,7 @@ import os
 import tkinter as tk
 from tkinter import ttk
 
+from GhostBot.UX.tabbed_widget.sell_frame import SellFrame
 from GhostBot.server import IPCClient
 
 from GhostBot.UX.pyuiWidgets.logWindow import LogWindow
@@ -78,6 +79,7 @@ def main():
     _fairy_frame = FairyFrame(master=tabbed_widget)
     _pet_frame = PetFrame(master=tabbed_widget)
     _regen_frame = RegenFrame(master=tabbed_widget, client=ghost_bot.client)
+    _sell_frame = SellFrame(master=tabbed_widget)
 
     tabbed_widget.add(_functions_frame, text="Functions")
     tabbed_widget.add(_attack_frame, text="Attack")
@@ -85,6 +87,7 @@ def main():
     tabbed_widget.add(_buff_frame, text="Buff")
     tabbed_widget.add(_regen_frame, text="Regen")
     tabbed_widget.add(_pet_frame, text="Pet")
+    tabbed_widget.add(_sell_frame, text="Sell")
 
     log = LogWindow(master=ghost_bot)
     log.config(bg="#fff", fg="#000")
@@ -111,30 +114,36 @@ def main():
 
         tabbed_widget.setvar("char_info.name", response.get("name", 'loading.'))
         tabbed_widget.setvar("char_info.level", response.get("level", 'loading.'))
+        tabbed_widget.setvar("char_info.location_name", response.get("location_name", 'loading.'))
         tabbed_widget.setvar("char_info.hp", f"{response.get("hp")}/{response.get("max_hp")}")
         tabbed_widget.setvar("char_info.mana", f"{response.get("mana")}/{response.get("max_mana")}")
         tabbed_widget.setvar("char_info.target_name", response.get("target_name", 'loading.'))
         tabbed_widget.setvar("char_info.target_hp", response.get("target_hp", 'loading.'))
         tabbed_widget.setvar("char_info.position", f"({response.get("location_x")}, {response.get("location_y")})")
         tabbed_widget.setvar("char_info.status", response.get("status", 'loading.'))
+        tabbed_widget.setvar("window_info.pos", response.get("window_pos", ''))
+        tabbed_widget.setvar("window_info.size", response.get("window_size", ''))
 
 
     def on_char_change():
         update_char_info_display()
         if selected_char():
             bot_config = ghost_bot.client.get_config(selected_char())
+            print(bot_config)
 
             tabbed_widget.setvar("bot_config.attack.enabled", bool(bot_config.attack))
             tabbed_widget.setvar("bot_config.pet.enabled", bool(bot_config.pet))
             tabbed_widget.setvar("bot_config.buff.enabled", bool(bot_config.buff))
             tabbed_widget.setvar("bot_config.regen.enabled", bool(bot_config.regen))
             tabbed_widget.setvar("bot_config.fairy.enabled", bool(bot_config.fairy))
+            tabbed_widget.setvar('bot_config.sell.enabled', bool(bot_config.sell))
 
             _attack_frame.display_config(bot_config)
             _buff_frame.display_config(bot_config)
             _fairy_frame.display_config(bot_config)
             _pet_frame.display_config(bot_config)
             _regen_frame.display_config(bot_config)
+            _sell_frame.display_config(bot_config)
 
 
     list_box.on_list_select(lambda _: on_char_change())

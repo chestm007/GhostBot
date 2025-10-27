@@ -8,7 +8,7 @@ from GhostBot.lib.var_or_none import _float, _tuple
 
 
 class RegenFrame(TabFrame):
-    def _init(self, client: ExtendedClient):
+    def _init(self, client: ExtendedClient, *args, **kwargs) -> None:
         self.client = client
 
         self._vars = dict(
@@ -48,12 +48,20 @@ class RegenFrame(TabFrame):
                 return f"{' '.join(map(str, _spot))}"
             return ''
 
-        if config.attack:
+        if config.regen:
+            hp_key = ''
+            mp_key = ''
+            sit_key = ''
+            if config.regen.bindings:
+                hp_key = str(config.regen.bindings.get('hp_pot'))
+                mp_key = str(config.regen.bindings.get('mana_pot'))
+                sit_key = str(config.regen.bindings.get('sit'))
+            self.setvar('bot_config.regen.hp_key', hp_key)
+            self.setvar('bot_config.regen.mp_key', mp_key)
+            self.setvar('bot_config.regen.sit_key', sit_key)
+
             self.setvar('bot_config.regen.hp_low', str(config.regen.hp_threshold or ''))
-            self.setvar('bot_config.regen.hp_key', str((config.regen.bindings or {}).get('hp_pot')) or '')
             self.setvar('bot_config.regen.mp_low', str(config.regen.mana_threshold or ''))
-            self.setvar('bot_config.regen.mp_key', str((config.regen.bindings or {}).get('mana_pot')) or '')
-            self.setvar('bot_config.regen.sit_key', str((config.regen.bindings or {}).get('sit')) or '')
             self.setvar('bot_config.regen.spot', _format_spot(config.regen.spot))
 
         else:

@@ -19,6 +19,7 @@ seems to have crazy UO scripts or their favourite closed source bot app.
 - Scheduled pet re-spawning / feeding
 - Fairy logic to heal the team
 - Scheduled Buff's
+- Automatic sell to NPC
 
 ### How do i use this thing???
 

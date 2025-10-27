@@ -1,5 +1,6 @@
 import math
-from operator import sub
+from _operator import add
+from operator import sub, mul
 
 __all__ = ['linear_distance', 'position_difference', 'limit', 'seconds']
 
@@ -36,3 +37,12 @@ def limit(number, _limit):
 
 def seconds(hours=0, minutes=0, seconds=0, tenths=0):
     return (((hours * 60) + minutes) * 60) + seconds + (tenths / 10)
+
+def item_coordinates_from_pos(pos: int, base_pos: tuple[int, int] = None) -> tuple[int, int]:
+    multiplier = 35
+    _pos = tuple(map(mul, (math.floor(pos/6) , (pos % 6)), (multiplier, multiplier)))
+    if base_pos is None:
+        return _pos
+    else:
+        return tuple(map(add, base_pos, _pos))
+
