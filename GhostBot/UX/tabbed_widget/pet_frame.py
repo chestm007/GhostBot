@@ -22,10 +22,9 @@ class PetFrame(TabFrame):
             self.clear()
 
     def extract_config(self) -> PetConfig:
-        _nullable_string = lambda x: x if x and x != 'None' else None
         bindings = dict(
-            spawn=_nullable_string(self.getvar('bot_config.pet.spawn_key')),
-            food=_nullable_string(self.getvar('bot_config.pet.food_key')),
+            spawn=self._nullable_string(self.getvar('bot_config.pet.spawn_key')),
+            food=self._nullable_string(self.getvar('bot_config.pet.food_key')),
         )
         return PetConfig(
             bindings=self._populate_bindings(bindings),

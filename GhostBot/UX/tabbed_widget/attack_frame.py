@@ -43,10 +43,9 @@ class AttackFrame(TabFrame):
 
     def extract_config(self) -> AttackConfig:
         _san = lambda x: [x[0], int(x[1])]
-        _nullable_string = lambda x: x if x and x != 'None' else None
         bindings = dict(
-            battle_hp_pot=_nullable_string(self.getvar('bot_config.attack.battle_hp_key')),
-            battle_mana_pot=_nullable_string(self.getvar('bot_config.attack.battle_mp_key')),
+            battle_hp_pot=self._nullable_string(self.getvar('bot_config.attack.battle_hp_key')),
+            battle_mana_pot=self._nullable_string(self.getvar('bot_config.attack.battle_mp_key')),
         )
         return AttackConfig(
             bindings=self._populate_bindings(bindings),

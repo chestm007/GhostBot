@@ -24,11 +24,10 @@ class FairyFrame(TabFrame):
             self.clear()
 
     def extract_config(self) -> FairyConfig:
-        _nullable_string = lambda x: x if x and x != 'None' else None
         bindings = dict(
-            heal=_nullable_string(self.getvar('bot_config.fairy.heal')),
-            cure=_nullable_string(self.getvar('bot_config.fairy.cure')),
-            revive=_nullable_string(self.getvar('bot_config.fairy.revive')),
+            heal=self._nullable_string(self.getvar('bot_config.fairy.heal')),
+            cure=self._nullable_string(self.getvar('bot_config.fairy.cure')),
+            revive=self._nullable_string(self.getvar('bot_config.fairy.revive')),
         )
         return FairyConfig(
             bindings=self._populate_bindings(bindings),

@@ -12,6 +12,8 @@ class TabFrame(tk.Frame, ABC):
 
     _vars: dict
 
+    _nullable_string = lambda x: x if x and x != 'None' else None
+
     def __init__(self, master, *args, **kwargs):
         super().__init__(master)
         self.config(bg="#EDECEC", width=650, height=459)

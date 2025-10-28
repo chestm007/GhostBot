@@ -52,11 +52,10 @@ class RegenFrame(TabFrame):
             self.clear()
 
     def extract_config(self) -> RegenConfig:
-        _nullable_string = lambda x: x if x and x != 'None' else None
         bindings = dict(
-            hp_pot=_nullable_string(self.getvar('bot_config.regen.hp_key')),
-            mana_pot=_nullable_string(self.getvar('bot_config.regen.mp_key')),
-            sit=_nullable_string(self.getvar('bot_config.regen.sit_key')),
+            hp_pot=self._nullable_string(self.getvar('bot_config.regen.hp_key')),
+            mana_pot=self._nullable_string(self.getvar('bot_config.regen.mp_key')),
+            sit=self._nullable_string(self.getvar('bot_config.regen.sit_key')),
         )
         return RegenConfig(
             bindings=self._populate_bindings(bindings),
