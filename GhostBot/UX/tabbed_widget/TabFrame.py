@@ -1,12 +1,12 @@
 import tkinter as tk
 from abc import ABC, abstractmethod
 from tkinter import ttk
-from typing import final, Callable
+from typing import final
 
 from GhostBot.config import Config, FunctionConfig
 
 
-VarConfig = tuple[str, type]
+VarConfig = tuple[str, str | bool]
 
 class TabFrame(tk.Frame, ABC):
 
@@ -26,7 +26,6 @@ class TabFrame(tk.Frame, ABC):
             row: int,
             column: int,
             var_config: VarConfig = None,
-            command: Callable[[], None] = None
     ) -> tk.Variable | None:
 
         v_name, v_type = var_config
