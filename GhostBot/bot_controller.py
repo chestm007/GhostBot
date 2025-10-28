@@ -17,7 +17,6 @@ class ExtendedClient(ClientWindow):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        print(self.name)
         self.load_config()
 
     def to_json(self) -> dict:
