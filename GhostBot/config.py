@@ -4,7 +4,7 @@ import os
 import pprint
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import TypedDict, NotRequired
+from typing import TypedDict, NotRequired, Any
 
 import yaml
 
@@ -84,6 +84,10 @@ class SellConfig(FunctionConfig):
             self.bindings = {'mount': 0}
 
 @dataclass
+class DeleteConfig(FunctionConfig):
+    delete_trash: bool = False
+
+@dataclass
 class Config:
     attack: AttackConfig | None = None
     buff: BuffConfig | None = None
@@ -91,22 +95,33 @@ class Config:
     pet: PetConfig | None = None
     regen: RegenConfig | None = None
     sell: SellConfig | None = None
+    delete: DeleteConfig | None = None
 
     def to_yaml(self) -> dict:
         return {k: v.__dict__ for k, v in self.__dict__.items() if v is not None}
 
+    @staticmethod
+    def _sub_configs_by_name() -> dict[str, type[FunctionConfig]]:
+        """
+        returns a dict of {config_name: FunctionConfig}
+
+        :return: {'attack': <class 'GhostBot.config.AttackConfig'>, ... }
+        """
+        return {
+            clazz.__name__.lower().replace('config', ''): clazz
+            for clazz in FunctionConfig.__subclasses__()
+        }
+
     @classmethod
-    def load_yaml(cls, data: dict) -> Config:
+    def load_yaml(cls, data: dict[str, Any]) -> Config:
         _config = cls()
+        _confs = cls._sub_configs_by_name()
         for k, v in data.items():
-            match k:
-                case 'attack': _config.attack = AttackConfig(**v)
-                case 'buff': _config.buff = BuffConfig(**v)
-                case 'pet': _config.pet = PetConfig(**v)
-                case 'fairy': _config.fairy = FairyConfig(**v)
-                case 'regen': _config.regen = RegenConfig(**v)
-                case 'sell': _config.sell = SellConfig(**v)
-                case _: raise AttributeError(f"{k} not a valid config category")
+            if (_clazz := _confs.get(k)) is not None:
+                setattr(_config, k, _clazz(**v))
+            else:
+                raise AttributeError(f"{k} not a valid config category")
+
         logger.debug(f"Config loaded: {data.keys()}")
         return _config
 
