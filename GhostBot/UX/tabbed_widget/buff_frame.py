@@ -9,11 +9,8 @@ from GhostBot.lib.var_or_none import _int
 class BuffFrame(TabFrame):
     def _init(self, *args, **kwargs) -> None:
         self._vars = dict(
-            interval=tk.StringVar(master=self, name="bot_config.buff.interval", value=""),
+            interval=self._create_entry("Interval:", 0, 0, ("bot_config.buff.interval", str)),
         )
-
-        ttk.Label(master=self, text="Interval:", width=15).grid(row=0, column=0)
-        tk.Entry(master=self, width=15, textvariable=self._vars['interval'], takefocus=False).grid(row=0, column=1)
 
         ttk.Label(master=self, text="Buffs:", width=15).grid(row=4, column=0)
         self.buffs = tk.Text(master=self, width=11, height=5, takefocus=False)

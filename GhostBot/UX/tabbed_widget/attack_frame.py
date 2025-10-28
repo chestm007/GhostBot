@@ -9,27 +9,13 @@ from GhostBot.lib.var_or_none import _int, _float
 class AttackFrame(TabFrame):
     def _init(self, *args, **kwargs) -> None:
         self._vars = dict(
-            hp_low=tk.StringVar(master=self, name="bot_config.attack.battle_hp_low", value=""),
-            hp_key=tk.StringVar(master=self, name="bot_config.attack.battle_hp_key", value=""),
-            mp_low=tk.StringVar(master=self, name="bot_config.attack.battle_mp_low", value=""),
-            mp_key=tk.StringVar(master=self, name="bot_config.attack.battle_mp_key", value=""),
-            stuck=tk.StringVar(master=self, name="bot_config.attack.battle_stuck", value=""),
-            roam=tk.StringVar(master=self, name="bot_config.attack.battle_roam", value="")
+            hp_low=self._create_entry("BattleHP Low:", 0, 0, ("bot_config.attack.battle_hp_low", str)),
+            hp_key=self._create_entry("BattleHP Key:", 0, 2, ("bot_config.attack.battle_hp_key", str)),
+            mp_low=self._create_entry("BattleMP Low:", 1, 0, ("bot_config.attack.battle_mp_low", str)),
+            mp_key=self._create_entry("BattleMP Key:", 1, 2, ("bot_config.attack.battle_mp_key", str)),
+            stuck=self._create_entry("Stuck Sec:", 2, 0, ("bot_config.attack.battle_stuck", str)),
+            roam=self._create_entry("Roam Distance:", 3, 0, ("bot_config.attack.battle_roam", str))
         )
-
-        ttk.Label(master=self, text="BattleHP Low:", width=15).grid(row=0, column=0)
-        ttk.Label(master=self, text="BattleHP Key:", width=15).grid(row=0, column=2)
-        ttk.Label(master=self, text="BattleMP Low:", width=15).grid(row=1, column=0)
-        ttk.Label(master=self, text="BattleMP Key:", width=15).grid(row=1, column=2)
-        ttk.Label(master=self, text="Stuck Sec:", width=15).grid(row=2, column=0)
-        ttk.Label(master=self, text="Roam Distance:", width=15).grid(row=3, column=0)
-
-        tk.Entry(master=self, width=15, textvariable=self._vars['hp_low'], takefocus=False).grid(row=0, column=1)
-        tk.Entry(master=self, width=15, textvariable=self._vars['hp_key'], takefocus=False).grid(row=0, column=3)
-        tk.Entry(master=self, width=15, textvariable=self._vars['mp_low'], takefocus=False).grid(row=1, column=1)
-        tk.Entry(master=self, width=15, textvariable=self._vars['mp_key'], takefocus=False).grid(row=1, column=3)
-        tk.Entry(master=self, width=15, textvariable=self._vars['stuck'], takefocus=False).grid(row=2, column=1)
-        tk.Entry(master=self, width=15, textvariable=self._vars['roam'], takefocus=False).grid(row=3, column=1)
 
         ttk.Label(master=self, text="Attacks:", width=15).grid(row=4, column=0)
         self.attacks = tk.Text(master=self, width=11, height=5, takefocus=False)

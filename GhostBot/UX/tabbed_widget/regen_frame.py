@@ -1,4 +1,3 @@
-import tkinter as tk
 from tkinter import ttk
 
 from GhostBot.UX.tabbed_widget.TabFrame import TabFrame
@@ -10,29 +9,14 @@ from GhostBot.lib.var_or_none import _float, _tuple
 class RegenFrame(TabFrame):
     def _init(self, client: ExtendedClient, *args, **kwargs) -> None:
         self.client = client
-
         self._vars = dict(
-            hp_low=tk.StringVar(master=self, name="bot_config.regen.hp_low", value=""),
-            hp_key=tk.StringVar(master=self, name="bot_config.regen.hp_key", value=""),
-            mp_low=tk.StringVar(master=self, name="bot_config.regen.mp_low", value=""),
-            mp_key=tk.StringVar(master=self, name="bot_config.regen.mp_key", value=""),
-            sit_key=tk.StringVar(master=self, name="bot_config.regen.sit_key", value=""),
-            spot=tk.StringVar(master=self, name="bot_config.regen.spot", value=""),
+            hp_low=self._create_entry("HP Low:", 0, 0, ("bot_config.regen.hp_low", str)),
+            hp_key=self._create_entry("HP Key:", 0, 2, ("bot_config.rege.hp_key", str)),
+            mp_low=self._create_entry("MP Low:", 1, 0, ("bot_config.regen.mp_low", str)),
+            mp_key=self._create_entry("MP Key:", 1, 2, ("bot_config.regen.mp_key", str)),
+            sit_key=self._create_entry("Sit Key:", 2, 0, ("bot_config.regen.sit_key", str)),
+            spot=self._create_entry("Spot:", 3, 0, ("bot_config.regen.spot", str)),
         )
-
-        ttk.Label(master=self, text="HP Low:", width=15).grid(row=0, column=0)
-        ttk.Label(master=self, text="HP Key:", width=15).grid(row=0, column=2)
-        ttk.Label(master=self, text="MP Low:", width=15).grid(row=1, column=0)
-        ttk.Label(master=self, text="MP Key:", width=15).grid(row=1, column=2)
-        ttk.Label(master=self, text="Sit Key:", width=15).grid(row=2, column=0)
-        ttk.Label(master=self, text="Spot:", width=15).grid(row=3, column=0)
-
-        tk.Entry(master=self, width=15, textvariable=self._vars['hp_low'], takefocus=False).grid(row=0, column=1)
-        tk.Entry(master=self, width=15, textvariable=self._vars['hp_key'], takefocus=False).grid(row=0, column=3)
-        tk.Entry(master=self, width=15, textvariable=self._vars['mp_low'], takefocus=False).grid(row=1, column=1)
-        tk.Entry(master=self, width=15, textvariable=self._vars['mp_key'], takefocus=False).grid(row=1, column=3)
-        tk.Entry(master=self, width=15, textvariable=self._vars['sit_key'], takefocus=False).grid(row=2, column=1)
-        tk.Entry(master=self, width=15, textvariable=self._vars['spot'], takefocus=False).grid(row=3, column=1)
 
         ttk.Button(
             master=self, text="Current", command=lambda: self._set_spot_as_current()

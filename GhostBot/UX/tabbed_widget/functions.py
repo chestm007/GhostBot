@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
 
-from GhostBot.UX.tabbed_widget.TabFrame import TabFrame
 from GhostBot.UX.tabbed_widget.attack_frame import AttackFrame
 from GhostBot.UX.tabbed_widget.buff_frame import BuffFrame
 from GhostBot.UX.tabbed_widget.fairy_frame import FairyFrame

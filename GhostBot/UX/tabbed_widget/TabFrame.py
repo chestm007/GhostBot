@@ -1,9 +1,12 @@
 import tkinter as tk
 from abc import ABC, abstractmethod
-from typing import final
+from tkinter import ttk
+from typing import final, Callable
 
 from GhostBot.config import Config, FunctionConfig
 
+
+VarConfig = tuple[str, type]
 
 class TabFrame(tk.Frame, ABC):
 
@@ -14,6 +17,31 @@ class TabFrame(tk.Frame, ABC):
         self.config(bg="#EDECEC", width=650, height=459)
 
         self._init(*args, **kwargs)
+
+    def _create_entry(
+            self,
+            label: str,
+            row: int,
+            column: int,
+            var_config: VarConfig = None,
+            command: Callable[[], None] = None
+    ) -> tk.Variable | None:
+
+        v_name, v_type = var_config
+        if v_type is str:  # Entry
+            var = tk.StringVar(master=self, name=v_name, value="")
+            ttk.Label(master=self, text=label, width=15).grid(row=row, column=column)
+            tk.Entry(master=self, textvariable=var).grid(row=row, column=column + 1)
+
+        elif v_type is bool:  # Checkbutton
+            var = tk.BooleanVar(master=self, name=v_name, value=False)
+            ttk.Checkbutton(master=self, text=label, variable=var, width=13).grid(row=row, column=column)
+
+        else:
+            raise TypeError(f"v_type must be str or bool, not {type(v_type)}")
+
+        return var
+
 
     @abstractmethod
     def _init(self, *args, **kwargs) -> None: ...
