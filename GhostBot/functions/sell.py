@@ -23,8 +23,8 @@ class Sell(Locational):
             _return_spot = self.determine_start_location()
         self._return_spot = _return_spot
 
-        #self._last_time_sold = time.time()
-        self._last_time_sold = 0
+        self._last_time_sold = time.time()
+        #self._last_time_sold = 0
 
     def _run(self):
         if not self._should_sell():
@@ -39,6 +39,7 @@ class Sell(Locational):
 
         time.sleep(2)
         self._path_to_attack_spot()
+        return True
 
     def _go_to_npc(self):
         self._path_to_npc_search_spot()
