@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from GhostBot import logger
 from GhostBot.config import AttackConfig
 from GhostBot.functions.runner import Locational
-from GhostBot.lib.math import linear_distance, position_difference
+from GhostBot.lib.math import linear_distance
 
 if TYPE_CHECKING:
     from GhostBot.bot_controller import ExtendedClient

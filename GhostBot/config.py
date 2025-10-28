@@ -86,6 +86,7 @@ class SellConfig(FunctionConfig):
 @dataclass
 class DeleteConfig(FunctionConfig):
     delete_trash: bool = False
+    interval: int | None = None
 
 @dataclass
 class Config:

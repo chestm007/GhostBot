@@ -2,6 +2,7 @@ import os
 import time
 
 import win32api
+import yaml
 
 from GhostBot.client_window import ClientWindow
 from GhostBot.lib.win32.process import PymemProcess
@@ -57,25 +58,29 @@ def main(username, password):
     c.left_click((480, 455))  # Enter Game
     time.sleep(6)
 
-    for cl, p in list_clients().items():
-        if cl not in seen_clients.keys():
-            print(c, p)
+    for proc_id, proc in list_clients().items():
+        if proc_id not in seen_clients.keys():
+            print(c, proc)
             try:
                 print('attempting to get window')
-                c = ClientWindow(p)
+                c = ClientWindow(proc)
                 time.sleep(5)
-            except Exception:
+            except Exception as e:
+                print(e)
                 time.sleep(2)
                 try:
                     print('attempting to get window')
-                    c = ClientWindow(p)
+                    c = ClientWindow(proc)
                     time.sleep(3)
-                except Exception:
+                except Exception as e:
+                    raise e
                     print('failed')
                     return
                 print('entering username')
             c.type_keys(username)
             c.press_key('tab')
+            time.sleep(1)
+            c.left_click((480, 335))
             print('entering password')
             c.type_keys(password)
             c.press_key('enter')
@@ -84,11 +89,10 @@ def main(username, password):
             c.press_key('enter')
             time.sleep(5)
 
-            c.capture_screen()
-
 
 if __name__ == "__main__":
-    main()
-    for user, _pass in bots.items():
+    with open('login_conf.yml') as f:
+        bots = yaml.safe_load(f)
+    for user, _conf in bots.items():
         input(f'{user}: Starting')
-        main(user, _pass)
+        main(user, _conf['password'])

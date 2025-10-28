@@ -6,15 +6,18 @@ from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
+import pathlib
 
 if TYPE_CHECKING:
     from GhostBot.client_window import ClientWindow
 
 
 class ImageFinder:
-    image_folder = os.path.join(os.path.curdir, "Images", "SELL")
-    misc_folder = os.path.join(os.path.curdir, "Images", "misc")
+    _path_base = pathlib.Path(__file__).parent.resolve()
+    image_folder = os.path.join(_path_base, "Images", "SELL")
+    misc_folder = os.path.join(_path_base, "Images", "misc")
     items = {}
+    print(image_folder)
 
     for filename in os.listdir(image_folder):
         fullpath = os.path.join(image_folder, filename)

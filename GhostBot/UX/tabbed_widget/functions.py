@@ -3,6 +3,7 @@ from tkinter import ttk
 
 from GhostBot.UX.tabbed_widget.attack_frame import AttackFrame
 from GhostBot.UX.tabbed_widget.buff_frame import BuffFrame
+from GhostBot.UX.tabbed_widget.delete_frame import DeleteFrame
 from GhostBot.UX.tabbed_widget.fairy_frame import FairyFrame
 from GhostBot.UX.tabbed_widget.pet_frame import PetFrame
 from GhostBot.UX.tabbed_widget.regen_frame import RegenFrame
@@ -22,6 +23,7 @@ class FunctionsFrame(tk.Frame):
             regen_enabled=tk.BooleanVar(master=self, name="bot_config.regen.enabled", value=False),
             pet_enabled=tk.BooleanVar(master=self, name="bot_config.pet.enabled", value=False),
             sell_enabled=tk.BooleanVar(master=self, name="bot_config.sell.enabled", value=False),
+            delete_enabled=tk.BooleanVar(master=self, name="bot_config.delete.enabled", value=False),
 
             name=tk.StringVar(master=self, name="char_info.name", value="loading."),
             lvl=tk.StringVar(master=self, name="char_info.level", value="loading."),
@@ -40,6 +42,7 @@ class FunctionsFrame(tk.Frame):
         ttk.Checkbutton(master=self, text="Regen", style="TCheckbutton", width=13, variable=self._vars['regen_enabled']).grid(row=3, column=0)
         ttk.Checkbutton(master=self, text="Pet", style="TCheckbutton", width=13, variable=self._vars['pet_enabled']).grid(row=4, column=0)
         ttk.Checkbutton(master=self, text="Sell", style="TCheckbutton", width=13, variable=self._vars['sell_enabled']).grid(row=5, column=0)
+        ttk.Checkbutton(master=self, text="Delete", style="TCheckbutton", width=13, variable=self._vars['delete_enabled']).grid(row=6, column=0)
 
         char_info_frame = tk.Frame(master=self)
         char_info_frame.grid(row=0, column=1, rowspan=5)
@@ -65,8 +68,6 @@ class FunctionsFrame(tk.Frame):
         ttk.Label(master=char_info_frame, text="Status:", width=10).grid(row=0, column=2)
         ttk.Label(master=char_info_frame, textvariable=self._vars['status'], width=10).grid(row=0, column=3)
 
-        ttk.Button(master=self, text="Save", width=10, command=self.save_config).grid(row=6, column=0)
-
     def save_config(self):
         _config = Config()
 
@@ -83,7 +84,6 @@ class FunctionsFrame(tk.Frame):
                 _config.fairy = child.extract_config()
             elif isinstance(child, SellFrame) and self.getvar('bot_config.sell.enabled'):
                 _config.sell = child.extract_config()
-        self.master.master.client.set_config(  # FIXME: double master hackery...
-            target=self.getvar('char_info.name'),
-            config=_config
-        )
+            elif isinstance(child, DeleteFrame) and self.getvar('bot_config.delete.enabled'):
+                _config.delete = child.extract_config()
+        return _config

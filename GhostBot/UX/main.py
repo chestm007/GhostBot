@@ -2,6 +2,7 @@ import os
 import tkinter as tk
 from tkinter import ttk
 
+from GhostBot.UX.tabbed_widget.delete_frame import DeleteFrame
 from GhostBot.UX.tabbed_widget.sell_frame import SellFrame
 from GhostBot.server import IPCClient
 
@@ -80,6 +81,7 @@ def main():
     _pet_frame = PetFrame(master=tabbed_widget)
     _regen_frame = RegenFrame(master=tabbed_widget, client=ghost_bot.client)
     _sell_frame = SellFrame(master=tabbed_widget)
+    _delete_frame = DeleteFrame(master=tabbed_widget)
 
     tabbed_widget.add(_functions_frame, text="Functions")
     tabbed_widget.add(_attack_frame, text="Attack")
@@ -88,6 +90,7 @@ def main():
     tabbed_widget.add(_regen_frame, text="Regen")
     tabbed_widget.add(_pet_frame, text="Pet")
     tabbed_widget.add(_sell_frame, text="Sell")
+    tabbed_widget.add(_delete_frame, text="Delete")
 
     log = LogWindow(master=ghost_bot)
     log.config(bg="#fff", fg="#000")
@@ -100,6 +103,14 @@ def main():
     ttk.Button(
         master=ghost_bot, text="Stop", command=lambda: ghost_bot.client.stop_bot(selected_char())
     ).place(x=500, y=450)
+
+    def save_config():
+        ghost_bot.client.set_config(
+            target=_functions_frame.getvar('char_info.name'),
+            config=_functions_frame.save_config()
+        )
+
+    ttk.Button(master=ghost_bot, text="Save", width=10, command=save_config).place(x=590, y=450)
 
     def update_char_info_display(trigger=False):
         if trigger:
@@ -144,6 +155,7 @@ def main():
             _pet_frame.display_config(bot_config)
             _regen_frame.display_config(bot_config)
             _sell_frame.display_config(bot_config)
+            _delete_frame.display_config(bot_config)
 
 
     list_box.on_list_select(lambda _: on_char_change())

@@ -12,3 +12,5 @@ GhostBot/__pycache__/
 /bin/build/
 /bin/dist/
 /GhostBot.egg-info/
+
+login_conf.yml

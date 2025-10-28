@@ -1,6 +1,6 @@
 import tkinter as tk
 from abc import ABC, abstractmethod
-from tkinter import ttk
+from tkinter import ttk, Variable, StringVar, BooleanVar
 from typing import final
 
 from GhostBot.config import Config, FunctionConfig
@@ -10,9 +10,11 @@ VarConfig = tuple[str, str | bool]
 
 class TabFrame(tk.Frame, ABC):
 
-    _vars: dict
+    _vars: dict[str, Variable]
 
-    _nullable_string = lambda x: x if x and x != 'None' else None
+    @staticmethod
+    def _nullable_string(x):
+        return x if x and x != 'None' else None
 
     def __init__(self, master, *args, **kwargs):
         super().__init__(master)
@@ -32,7 +34,7 @@ class TabFrame(tk.Frame, ABC):
         if v_type is str:  # Entry
             var = tk.StringVar(master=self, name=v_name, value="")
             ttk.Label(master=self, text=label, width=15).grid(row=row, column=column)
-            tk.Entry(master=self, textvariable=var).grid(row=row, column=column + 1)
+            tk.Entry(master=self, textvariable=var, takefocus=False).grid(row=row, column=column + 1)
 
         elif v_type is bool:  # Checkbutton
             var = tk.BooleanVar(master=self, name=v_name, value=False)
@@ -66,4 +68,7 @@ class TabFrame(tk.Frame, ABC):
         """Override ``self._clear()`` instead."""
         self._clear()
         for var in self._vars.values():
-            var.set('')
+            if isinstance(var, StringVar):
+                var.set('')
+            elif isinstance(var, BooleanVar):
+                var.set(False)

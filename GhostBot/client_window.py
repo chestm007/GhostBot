@@ -67,8 +67,11 @@ class ClientWindow:
         self._name = None
         self._active = False
         self._window_handle = None
-        self._set_window_name()
         self._target_name_offsets = None
+        try:
+            self._set_window_name()
+        except TypeError:
+            pass
 
     @property
     def window_handle(self):
