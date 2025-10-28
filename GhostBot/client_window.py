@@ -98,6 +98,16 @@ class ClientWindow:
         self.press_key('x')
         return self
 
+    def mount(self, _key):
+        while not self.on_mount:
+            self.press_key(_key)
+            time.sleep(4)
+
+    def dismount(self, _key):
+        while self.on_mount:
+            self.press_key(_key)
+            time.sleep(4)
+
     def capture_window(self, color=False):
 
         try:
@@ -227,6 +237,7 @@ class ClientWindow:
         self.left_click(UI_locations.surroundings_search)
         time.sleep(0.5)
         self.type_keys(val)
+        time.sleep(0.3)
 
     def goto_first_surrounding_result(self):
         self.left_click(UI_locations.surroundings_firstitem)
@@ -411,22 +422,8 @@ def main():
     logger.setLevel(logging.DEBUG)
     for proc in PymemProcess.list_clients():
             client = ExtendedClient(proc)
-            if client.name == '':
-                time.sleep(3)
-                imgfdr = ImageFinder(client)
-                client.open_inventory()
-                for item_pos in imgfdr.find_items_in_window(imgfdr.items):
-                    time.sleep(1)
-                    print(item_pos)
-                    client.left_click(item_pos)
-                    client.left_click(imgfdr.destroy_item_location)
-                    time.sleep(0.3)
-                    ok_pos = imgfdr._get_dialog_ok_location(client)
-                    print(ok_pos)
-                    if ok_pos:
-                        time.sleep(0.3)
-                        client.left_click(ok_pos)
-                client.close_inventory()
+            if client.name == 'FukMeWithNoLube':
+                print(client.pointers.get_sur_info())
 
                 print(client.name)
                 continue

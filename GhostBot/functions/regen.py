@@ -3,7 +3,6 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from GhostBot import logger
 from GhostBot.config import RegenConfig
 from GhostBot.functions.runner import Locational
 
@@ -27,7 +26,7 @@ class Regen(Locational):
             self._goto_start_location()
 
             if not self._client.in_battle:
-                logger.info(f'{self._client.name}: low hp/mana, starting Regen')
+                self._log_info(f'low hp/mana, starting Regen')
 
                 if self.config.bindings:
                     # mana/hp pots\
@@ -38,10 +37,10 @@ class Regen(Locational):
 
                 hp = int(self._client.hp)
                 while (self._client.hp < self._client.max_hp or self._client.mana < self._client.max_mana) and self._client.running:
-                    logger.debug(f'{self._client.name}: healing')
+                    self._log_debug(f'healing')
                     time.sleep(2)
                     if self._client.in_battle or self._client.hp < hp:
-                        logger.debug(f'{self._client.name}: Ouch, attacking')
+                        self._log_debug(f'Ouch, attacking')
                         return False
                     self._goto_spot_and_sit()
                     hp = int(self._client.hp)
@@ -70,5 +69,5 @@ class Regen(Locational):
 
     def _sit(self):
         if not self._client.sitting:
-            logger.debug(f'{self._client.name}: sitting')
+            self._log_debug(f'sitting')
             self._client.press_key(self.config.bindings.get('sit'))

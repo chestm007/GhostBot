@@ -2,7 +2,7 @@ import math
 from _operator import add
 from operator import sub, mul
 
-__all__ = ['linear_distance', 'position_difference', 'limit', 'seconds']
+__all__ = ['linear_distance', 'position_difference', 'limit', 'seconds', 'item_coordinates_from_pos']
 
 # rounds up the position to what the TO client does (its dumb, and wrong, but the games chinese, what do you expect?
 pos = lambda a: a*-1 if a < 0 else a

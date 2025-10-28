@@ -4,7 +4,6 @@ import time
 
 from typing import TYPE_CHECKING
 
-from GhostBot import logger
 from GhostBot.config import AttackConfig
 from GhostBot.functions.runner import Locational
 from GhostBot.lib.math import linear_distance
@@ -76,31 +75,32 @@ class Attack(Locational):
             self._stuck_interval = self.config.stuck_interval or 10
             self.roam_distance = self.config.roam_distance or 40
         except AttributeError as e:
-            logger.error(f"{self._client.name} error {e}")
+            self._log_err(f"{self._client.name} error {e}")
             self._stuck_interval = 10
 
     def _run(self) -> bool:
         #self._cur_attack_queue: list[list[int | str]] = list(self.config.attacks)
 
         context = AttackContext(self._client, self._stuck_interval)
+
+        # if were too far away from our start location, move back there
+        if linear_distance(self.start_location, self._client.location) > self.roam_distance:
+            self._log_debug(f'too far go back C:{self._client.location} | T:{self.start_location}')
+            self._goto_start_location()
+            self._client.new_target()
+            return True
+
         if (self._client.target_hp is None
             or self._client.target_name == self._client.name
             or self._client.target_hp < 0
             #or (self._distance_to_target() or 0) > self.roam_distance
         ):
-            logger.debug(f'{self._client.name}: New target')
+            self._log_debug(f'New target')
             self._client.new_target()
             return True
 
         while (self._client.target_hp is not None) and int(self._client.target_hp) >= 0 and self._client.running:
             if self._client.target_name == self._client.name:  # if were targeting ourselves, get a new target
-                return True
-
-            # if were too far away from our start location, move back there
-            if linear_distance(self.start_location, self._client.location) > self.roam_distance:
-                logger.debug(f'{self._client.name}: too far go back C:{self._client.location} | T:{self.start_location}')
-                self._goto_start_location()
-                self._client.new_target()
                 return True
 
             # battle pot logic
@@ -110,7 +110,7 @@ class Attack(Locational):
                 self._cur_attack_queue = list(self.config.attacks)
 
             key, interval = self._cur_attack_queue.pop(0)
-            logger.debug(f'{self._client.name}: ATTACK! {key}  -- {interval}s')
+            self._log_debug(f'ATTACK! {key}  -- {interval}s')
             self._client.press_key(key)
             time.sleep(int(interval) / 1000)
 

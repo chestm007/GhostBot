@@ -1,4 +1,3 @@
-import os
 import tkinter as tk
 from tkinter import ttk
 
@@ -50,8 +49,6 @@ class GhostBotMenu (tk.Menu):
         self.add_cascade(label="Help", menu=menu_1)
 
 def main():
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
     ghost_bot = GhostBot()
 
 
@@ -148,6 +145,7 @@ def main():
             tabbed_widget.setvar("bot_config.regen.enabled", bool(bot_config.regen))
             tabbed_widget.setvar("bot_config.fairy.enabled", bool(bot_config.fairy))
             tabbed_widget.setvar('bot_config.sell.enabled', bool(bot_config.sell))
+            tabbed_widget.setvar('bot_config.delete.enabled', bool(bot_config.delete))
 
             _attack_frame.display_config(bot_config)
             _buff_frame.display_config(bot_config)

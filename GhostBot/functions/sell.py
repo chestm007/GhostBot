@@ -3,7 +3,6 @@ import time
 from _operator import sub
 from typing import TYPE_CHECKING
 
-from GhostBot import logger
 from GhostBot.config import SellConfig
 from GhostBot.functions import Locational
 from GhostBot.lib.math import seconds, item_coordinates_from_pos, linear_distance
@@ -23,13 +22,22 @@ class Sell(Locational):
             _return_spot = self.determine_start_location()
         self._return_spot = _return_spot
 
-        self._last_time_sold = time.time()
-        #self._last_time_sold = 0
+        try:
+            self._use_mount = client.config.sell.use_mount
+            self._mount_key = client.config.sell.bindings.get('mount')
+        except (AttributeError, KeyError):
+            self._use_mount = False
+
+        #self._last_time_sold = time.time()
+        self._last_time_sold = 0
 
     def _run(self):
         if not self._should_sell():
             return
         self._last_time_sold = time.time()
+
+        if self._use_mount:
+            self._client.mount(self._mount_key)
 
         if not self._go_to_npc():
             return False
@@ -39,20 +47,27 @@ class Sell(Locational):
 
         time.sleep(2)
         self._path_to_attack_spot()
+
+        if self._use_mount:
+            self._client.dismount(self._mount_key)
         return True
 
     def _go_to_npc(self):
         self._path_to_npc_search_spot()
         self._client.search_surroundings(self.config.sell_npc_name)
-        first_result = self._client.pointers.get_sur_info()
-        logger.info(first_result)
-        if self.config.sell_npc_name in first_result.get('name'):
-            npc_location = tuple(map(int, first_result.get('coords').split(',')))
+        try:
+            first_result = self._client.pointers.get_sur_info()
+            if self.config.sell_npc_name in first_result.get('name'):
+                npc_location  = tuple(map(float, first_result.get('coords').split(',')))
+                self._client.goto_first_surrounding_result()
+                while (linear_distance(self._client.location, npc_location)) > 2 and self._client.running:
+                    time.sleep(0.5)
+        except AttributeError:
+            self._log_info("Memory access failed to get npc location, falling back to movement detection :(")
             self._client.goto_first_surrounding_result()
-            while (dist := linear_distance(self._client.location, npc_location)) > 2 and self._client.running:
-                time.sleep(0.5)
-            return True
-        return False
+            time.sleep(5)
+            self._block_while_moving()
+        return True
 
     def _sell_items(self):
         self._client.reset_camera()
@@ -74,27 +89,25 @@ class Sell(Locational):
     def _path_to_npc_search_spot(self):
         if self.config.npc_search_spot is not None:
             self._map_toggle()
-            logger.info(f'pathing to npc search spot: {self.config.npc_search_spot}')
+            self._log_info(f'pathing to npc search spot: {self.config.npc_search_spot}')
             self._client.right_click(tuple(map(sub, self.config.npc_search_spot, (50, 50))))
             self._client.right_click(self.config.npc_search_spot)
             time.sleep(0.5)
             self._map_toggle()
-            while self._client.running and linear_distance(self._client.location, self.config.npc_search_spot) > 20:
-                _location = self._client.location
-                time.sleep(3)
-                if linear_distance(self._client.location, _location) < 1:
-                    break
+            self._block_while_moving()
 
     def _path_to_attack_spot(self):
         if self.config.return_spot is not None:
             self._map_toggle()
-            logger.info(f'returning to {self._return_spot}')
+            self._log_info(f'returning to {self._return_spot}')
+            # TODO: loop trying to move via map until the char moves.
             self._client.right_click(tuple(map(sub, self.config.return_spot, (50, 50))))
             self._client.right_click(self.config.return_spot)
             time.sleep(0.5)
             self._map_toggle()
-            while self._client.running and linear_distance(self._client.location, self.start_location) > 40:
+            while self._client.running and linear_distance(self._client.location, self.start_location) > 100:
                 time.sleep(1)
+            self._goto_start_location()
 
     def _should_sell(self) -> bool:
         return time.time() - self._last_time_sold > seconds(minutes=self.config.sell_interval_mins)
@@ -102,20 +115,3 @@ class Sell(Locational):
     def _map_toggle(self):
         self._client.press_key('m')
         time.sleep(0.5)
-
-#if __name__ == "__main__":
-#    proc = pymem.Pymem(5732)
-#    client = ExtendedClient(proc)
-#
-#    config = Config(sell=SellConfig(
-#        sell_npc_name="Blacksmith",
-#        sell_item_pos=1,
-#        sell_npc_pos=(0, 0)
-#
-#    ))
-#
-#    client.config= config
-#
-#    client.running = True
-#    sell = Sell(client)
-#    sell._run()

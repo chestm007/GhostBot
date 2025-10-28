@@ -9,7 +9,7 @@ class ScrollableListbox(tk.Frame):
         super().__init__(parent)
 
         # Create the listbox itself
-        self.listbox = tk.Listbox(self, **kwargs)
+        self.listbox = tk.Listbox(self, exportselection=False, **kwargs)
         self.listbox.grid(row=0, column=0, sticky="nsew")
 
         # Configure grid to allow stretching

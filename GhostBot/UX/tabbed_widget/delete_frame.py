@@ -22,7 +22,7 @@ class DeleteFrame(TabFrame):
     def display_config(self, config: Config):
         if config.delete:
             self.setvar('bot_config.delete.delete_trash', bool(config.delete.delete_trash))
-            self.setvar('bot_config.delete.interval', str(config.delete.delete_trash) or '')
+            self.setvar('bot_config.delete.interval', str(config.delete.interval) or '')
             pass
         else:
             self.clear()

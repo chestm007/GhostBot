@@ -6,6 +6,7 @@ from GhostBot.client_window import ClientWindow
 from GhostBot.config import Config, ConfigLoader
 from GhostBot.enums.bot_status import BotStatus
 from GhostBot.functions import Attack, Buffs, Fairy, Petfood, Regen, Runner, Sell
+from GhostBot.functions.delete import Delete
 from GhostBot.lib.win32.process import PymemProcess
 from GhostBot.server import GhostbotIPCServer
 
@@ -135,8 +136,11 @@ class BotController:
             except Exception as e:
                 logger.exception(e)
         client.bot_status = BotStatus.stopped
+        logger.info(f"{client.name}: Stopped.")
 
     def _get_functions_for_client(self, client: ExtendedClient) -> Generator[Runner, None, None]:
+        if client.config.delete is not None:
+            yield Delete(client)
         if client.config.sell is not None:
             yield Sell(client)
         if client.config.pet is not None:

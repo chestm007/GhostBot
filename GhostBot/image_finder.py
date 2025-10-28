@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import time
+from _operator import add
+from os import PathLike
 from typing import TYPE_CHECKING
 
 import cv2
@@ -43,8 +45,8 @@ class ImageFinder:
 
         return None
 
-    def find_items_in_window(self, item_images):
-        to_delete = []
+    def find_items_in_window(self, item_images) -> list[tuple[int, int]]:
+        to_delete: list[tuple[int, int]] = []
 
         tolerance = 3  # Tolerância em pixels para coordenadas duplicadas
 
@@ -74,22 +76,22 @@ class ImageFinder:
 
     @classmethod
     def _get_destroy_item_location(cls, client: ClientWindow) -> tuple[int, int] | None:
-        destroy_path = "Images/misc/destroy-item.bmp"
-        destroy_image = cv2.imread(destroy_path, cv2.IMREAD_GRAYSCALE)
-        try:
-            coordinates = cls.find_image_in_window(destroy_image, client)
-        except cv2.error as e:
-            print(e)
-            coordinates = None
-
-        return coordinates or None
+        return cls._find_ui_element(client, "Images/misc/destroy-item.bmp")
 
     @classmethod
     def _get_dialog_ok_location(cls, client: ClientWindow) -> tuple[int, int] | None:
-        _path = "Images/misc/dialog_ok.bmp"
-        _image = cv2.imread(_path, cv2.IMREAD_GRAYSCALE)
+        return cls._find_ui_element(client, "Images/misc/dialog_ok.bmp", threshold=0.6)
+
+    @classmethod
+    def _sell_item_npc_location(cls, client: ClientWindow, stage=0) -> tuple[int, int] | None:
+        stage_path = ['npc_sell', 'item_sell_window_header', 'item_sell']
+        return cls._find_ui_element(client, f"Images/misc/{stage_path[stage - 1]}.bmp", threshold=0.62)
+
+    @classmethod
+    def _find_ui_element(cls, client: ClientWindow, bitmap_path: str, threshold=0.8) -> tuple[int, int] | None:
+        _image = cv2.imread(bitmap_path, cv2.IMREAD_GRAYSCALE)
         try:
-            coordinates = cls.find_image_in_window(_image, client, threshold=0.6)
+            coordinates = cls.find_image_in_window(_image, client, threshold=threshold)
         except cv2.error as e:
             print(e)
             coordinates = None

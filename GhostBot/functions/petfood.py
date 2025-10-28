@@ -4,7 +4,6 @@ import time
 
 from typing import TYPE_CHECKING
 
-from GhostBot import logger
 from GhostBot.config import PetConfig
 from GhostBot.functions.runner import Runner
 from GhostBot.lib.math import seconds
@@ -25,7 +24,7 @@ class Petfood(Runner):
 
     @property
     def _spawn_pet_hotkey(self):
-        logger.debug(f"spawn_pet_hotkey: {self.config.bindings.get('spawn')}")
+        self._log_debug(f"spawn_pet_hotkey: {self.config.bindings.get('spawn')}")
         return self.config.bindings.get('spawn')
 
     def _run(self) -> None:
@@ -34,14 +33,14 @@ class Petfood(Runner):
 
     def _feed_pet(self):
         if time.time() - self._last_time_used_petfood > seconds(minutes=int(self.config.food_interval_mins)):
-            logger.info(f'{self._client.name}: Feeding pet')
+            self._log_info(f'Feeding pet')
             self._client.press_key(self.config.bindings.get('food'))
             self._last_time_used_petfood = time.time()
             time.sleep(self.command_delay)
 
     def _despawn_pet(self):
         while self._client.pet_active and self._client.running:
-            logger.info(f'{self._client.name}: Despawning pet')
+            self._log_info(f'Despawning pet')
             self._client.press_key(self._spawn_pet_hotkey)
             poll = 0
             while self._client.pet_active and self._client.running and poll < 10:
@@ -50,7 +49,7 @@ class Petfood(Runner):
 
     def _spawn_pet(self):
         while (not self._client.pet_active) and self._client.running:
-            logger.info(f'{self._client.name}: Spawning pet')
+            self._log_info(f'Spawning pet')
             self._client.press_key(self._spawn_pet_hotkey)
             poll = 0
             while (not self._client.pet_active) and self._client.running and poll < 10:

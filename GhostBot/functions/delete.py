@@ -1,10 +1,15 @@
+from __future__ import annotations
+
 import time
 
-from GhostBot import logger
-from GhostBot.bot_controller import ExtendedClient
+from typing import TYPE_CHECKING
+
 from GhostBot.functions import Runner
 from GhostBot.image_finder import ImageFinder
 from GhostBot.lib.math import seconds
+
+if TYPE_CHECKING:
+    from GhostBot.bot_controller import ExtendedClient
 
 
 class Delete(Runner):
@@ -19,11 +24,11 @@ class Delete(Runner):
     def _run(self):
         if not self._should_delete():
             return
-        logger.info("running delete function")
+        self._log_info("running delete function")
         self._last_time_ran = time.time()
 
         if self._delete_trash:
-            logger.info("Deleting trash")
+            self._log_info("Deleting trash")
             self._run_delete_trash()
 
     def _run_delete_trash(self):

@@ -20,14 +20,26 @@ class Runner(ABC):
     """
     def __init__(self, client: ExtendedClient):
         self._client = client
+        self._log_debug(f"initializing {self.__class__.__name__}...")
 
     def run(self):
         if self._client.bot_status == BotStatus.running:
-            self._run()
+            return self._run()
+        self._log_debug("not running as client not in running status.")
+        return None
 
     @abstractmethod
     def _run(self) -> bool:
         pass
+
+    def _log_err(self, msg: str) -> None:
+        logger.error(f"{self._client.name}: {msg}")
+
+    def _log_info(self, msg: str) -> None:
+        logger.info(f"{self._client.name}: {msg}")
+
+    def _log_debug(self, msg: str) -> None:
+        logger.debug(f"{self._client.name}: {msg}")
 
 
 class Locational(Runner, ABC):
@@ -43,10 +55,10 @@ class Locational(Runner, ABC):
 
     def determine_start_location(self):
         """Returns either the config stored attack_spot, or the current location of the char as the `start_location`"""
-        if hasattr(self._client.config.attack, 'attack_spot'):
-            return tuple(self._client.config.attack.attack_spot)
-        else:
-            return self._client.location
+        if (regen := self._client.config.regen) is not None:
+            if regen.spot is not None:
+                return regen.spot
+        return self._client.location
 
     def _goto_start_location(self):
         """Moves the char to the saved `start_location`"""
@@ -55,3 +67,9 @@ class Locational(Runner, ABC):
             self._client.move_to_pos(self.start_location)
             time.sleep(2)
 
+    def _block_while_moving(self):
+        while self._client.running:
+            _location = self._client.location
+            time.sleep(3)
+            if linear_distance(self._client.location, _location) < 1:
+                break

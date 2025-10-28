@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from GhostBot import logger
 from GhostBot.config import FairyConfig
 from GhostBot.functions.runner import Locational
 from GhostBot.lib.talisman_ui_locations import TeamLocations
@@ -28,16 +27,16 @@ class Fairy(Locational):
 
         for i, member in self._team_members.items():
             if member.hp_percent < self.config.heal_team_threshold:
-                logger.debug(f'{self._client.name}: Weak member {member.name} {member.hp_percent}')
+                self._log_debug(f'Weak member {member.name} {member.hp_percent}')
                 while member.hp_percent < 0.9 and self._client.running:
                     self._client.left_click(TeamLocations[i+1])
                     self._client.press_key(self.config.bindings.get('heal'))
-                logger.debug(f'{self._client.name}:  {member.name}: healed')
+                self._log_debug(f'{member.name}: healed')
 
         if self._client.hp_percent < self.config.heal_self_threshold:
             self._client.left_click(TeamLocations[0])
             self._client.press_key(self.config.bindings.get('heal'))
-            logger.debug(f'{self._client.name}: heal self')
+            self._log_debug(f'heal self')
         self._goto_start_location()
         return True
 

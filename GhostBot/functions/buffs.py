@@ -4,7 +4,6 @@ import time
 
 from typing import TYPE_CHECKING
 
-from GhostBot import logger
 from GhostBot.config import BuffConfig
 from GhostBot.functions.runner import Runner
 from GhostBot.lib.math import seconds
@@ -22,7 +21,7 @@ class Buffs(Runner):
 
     def _run(self) -> None:
         if time.time() - self._last_time_used_buffs > seconds(minutes=int(self.config.interval)):
-            logger.info(f'{self._client.name}: Buffing.')
+            self._log_info(f'Buffing.')
             for _key, _sleep in self.config.buffs:
                 self._client.press_key(_key)
                 self._last_time_used_buffs = time.time()

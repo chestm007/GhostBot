@@ -20,6 +20,7 @@ def test_regen_trigger_when_hp_50_pct():
     client._hp = 0.1
     client.config.hp_threshold = 0.75
     client.config.mana_threshold = 0.75
+    client.config.bindings = dict(hp_pot=4)
 
     regen = Regen(client)
     Regen._use_hp_pot = lambda self: setattr(client, '_hp', 100)
