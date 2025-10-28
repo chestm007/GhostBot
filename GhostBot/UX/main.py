@@ -1,4 +1,5 @@
 import npyscreen
+from GhostBot import logger
 
 from GhostBot.UX.forms.main_window import MainWindowForm, BoxedMainWindow
 from GhostBot.bot_controller import BotController
@@ -16,4 +17,11 @@ class BotApplication(npyscreen.NPSAppManaged):
 
 
 if __name__ == '__main__':
-    app = BotApplication().run()
+    logger.debug('starting')
+    print(1)
+    app = BotApplication()
+    logger.debug('bot backend loaded')
+    print(2)
+    app.run()
+    print(3)
+    logger.debug('bot backend loaded-ed')

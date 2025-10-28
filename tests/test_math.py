@@ -1,4 +1,4 @@
-from GhostBot.lib.math import limit, position_difference
+from GhostBot.lib.math import limit, position_difference, seconds
 
 
 def test_limit_0():
@@ -49,3 +49,9 @@ def test_position_difference_negative():
     assert tuple(position_difference((-10, -10), (0, 0))) == (-10, -10)
     assert tuple(position_difference((-10, -10), (10, 10))) == (-20, -20)
 
+
+def test_seconds_function():
+    assert seconds(hours=1) == 3600
+    assert seconds(minutes=1) == 60
+    assert seconds(seconds=10) == 10
+    assert seconds(tenths=2) == 0.2

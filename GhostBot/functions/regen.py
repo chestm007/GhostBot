@@ -2,7 +2,6 @@ import time
 
 from GhostBot import logger
 from GhostBot.functions.runner import Locational
-from GhostBot.lib import vk_codes
 
 
 class Regen(Locational):
@@ -43,14 +42,14 @@ class Regen(Locational):
 
     def _use_hp_pot(self) -> None:
         self._goto_spot_and_sit()
-        self._client.press_key(vk_codes[self._client.config.bindings.get('hp_pot')])
+        self._client.press_key(self._client.config.bindings.get('hp_pot'))
 
     def _use_mana_pot(self) -> None:
         self._goto_spot_and_sit()
-        self._client.press_key(vk_codes[self._client.config.bindings.get('mana_pot')])
+        self._client.press_key(self._client.config.bindings.get('mana_pot'))
 
     def _goto_spot_and_sit(self) -> None:
         self._goto_start_location()
         if not self._client.sitting:
             logger.debug(f'{self._client.name}: sitting')
-            self._client.press_key(vk_codes[self._client.config.bindings.get('sit')])
+            self._client.press_key(self._client.config.bindings.get('sit'))
