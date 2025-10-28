@@ -1,0 +1,5 @@
+Folder DELETE = Auto Sell OFF, delete all items inside.
+
+Folder SELL = Auto Sell ON, delete all items inside.
+
+Folder BC_DELETE = Items to delete if (Pick Up Treasure Box) inside BC is enabled.

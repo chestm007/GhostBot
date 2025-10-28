@@ -1,15 +1,15 @@
-import ctypes.wintypes
 import logging
 import math
 import time
-from ctypes import windll
 from ctypes.wintypes import LPARAM, WPARAM
 from operator import mul, add
-from typing import NamedTuple
 
+import cv2
+import numpy as np
 import pymem
 import win32.win32api
 import win32api
+import win32con
 import win32gui
 import win32process
 import win32ui
@@ -17,6 +17,7 @@ from pymem.exception import MemoryReadError, ProcessError
 from win32con import SM_CYCAPTION
 
 from GhostBot import logger
+from GhostBot.image_finder import ImageFinder
 from GhostBot.lib import vk_codes, win32messages
 from GhostBot.lib.math import position_difference, limit
 from GhostBot.lib.talisman_online_python.pointers import Pointers
@@ -94,45 +95,37 @@ class ClientWindow:
         self.press_key('x')
         return self
 
-    def capture_screen(self):
+    def capture_window(self, color=False):
 
-        left, top, right, bot = win32gui.GetWindowRect(self._window_handle)
-        w = right - left
-        h = bot - top
+        try:
+            w, h = self.get_window_size()
 
-        handle_dc = win32gui.GetWindowDC(self._window_handle)
-        mfc_dc = win32ui.CreateDCFromHandle(handle_dc)
-        save_dc = mfc_dc.CreateCompatibleDC()
+            handle_dc = win32gui.GetWindowDC(self._window_handle)
+            mfc_dc = win32ui.CreateDCFromHandle(handle_dc)
+            save_dc = mfc_dc.CreateCompatibleDC()
+            save_bitmap = win32ui.CreateBitmap()
+            save_bitmap.CreateCompatibleBitmap(mfc_dc, w, h)
+            save_dc.SelectObject(save_bitmap)
 
-        save_bit_map = win32ui.CreateBitmap()
-        save_bit_map.CreateCompatibleBitmap(mfc_dc, w, h)
+            save_dc.BitBlt((0, 0), (w, h), mfc_dc, (0, 0), win32con.SRCCOPY)
 
-        save_dc.SelectObject(save_bit_map)
+            bmpinfo = save_bitmap.GetInfo()
+            bmpstr = save_bitmap.GetBitmapBits(True)
+            img = np.frombuffer(bmpstr, dtype=np.uint8)
+            img.shape = (bmpinfo['bmHeight'], bmpinfo['bmWidth'], 4)
 
-        # Change the line below depending on whether you want the whole window
-        # or just the client area.
-        # result = windll.user32.PrintWindow(hwnd, save_dc.GetSafeHdc(), 1)
-        result = windll.user32.PrintWindow(self._window_handle, save_dc.GetSafeHdc(), 1)
-        print(result)
+            save_dc.DeleteDC()
+            mfc_dc.DeleteDC()
+            win32gui.ReleaseDC(self._window_handle, handle_dc)
+            win32gui.DeleteObject(save_bitmap.GetHandle())
+            if color:
+                return img[..., :3]
+            else:
+                return cv2.cvtColor(img[..., :3], cv2.COLOR_BGR2GRAY)
 
-        bmpinfo = save_bit_map.GetInfo()
-        bmpstr = save_bit_map.GetBitmapBits(True)
-
-        from PIL import Image
-
-        im = Image.frombuffer(
-                'RGB',
-                (bmpinfo['bmWidth'], bmpinfo['bmHeight']),
-                bmpstr, 'raw', 'BGRX', 0, 1)
-
-        win32gui.DeleteObject(save_bit_map.GetHandle())
-        save_dc.DeleteDC()
-        mfc_dc.DeleteDC()
-        win32gui.ReleaseDC(self._window_handle, handle_dc)
-
-        if result == 1:
-            # PrintWindow Succeeded
-            im.save("test.png")
+        except Exception as e:
+            print(e)
+            return None
 
     def press_key(self, key):
         """Fetch the keycode for the key from our map, send it to the client window"""
@@ -204,9 +197,9 @@ class ClientWindow:
 
         wx, wy, ww, wh = win32gui.GetWindowRect(self._window_handle)
         wx += border_thickness
-        ww -= border_thickness
+        ww -= border_thickness + wx
         wy += (title_bar_height + border_thickness)
-        wh -= border_thickness
+        wh -= border_thickness + wy
         return tuple(((wx, wy), (ww, wh)))
 
     def get_window_pos(self) -> tuple[int, int]:
@@ -217,6 +210,14 @@ class ClientWindow:
 
     def open_surroundings_ui(self):
         self.left_click(UI_locations.minimap_surroundings)
+
+    def open_inventory(self):
+        if not self.inventory_open:
+            self.press_key('i')
+
+    def close_inventory(self):
+        if self.inventory_open:
+            self.press_key('i')
 
     def search_surroundings(self, val):
         self.open_surroundings_ui()
@@ -407,11 +408,24 @@ def main():
     logger.setLevel(logging.DEBUG)
     for proc in PymemProcess.list_clients():
             client = ExtendedClient(proc)
-            if client.name in ('LongJohnson'):
+            if client.name == '':
                 time.sleep(3)
-                print(client.get_mouse_window_pos())
+                imgfdr = ImageFinder(client)
+                client.open_inventory()
+                for item_pos in imgfdr.find_items_in_window(imgfdr.items):
+                    time.sleep(1)
+                    print(item_pos)
+                    client.left_click(item_pos)
+                    client.left_click(imgfdr.destroy_item_location)
+                    time.sleep(0.3)
+                    ok_pos = imgfdr._get_dialog_ok_location(client)
+                    print(ok_pos)
+                    if ok_pos:
+                        time.sleep(0.3)
+                        client.left_click(ok_pos)
+                client.close_inventory()
+
                 print(client.name)
-                print(client.team_members)
                 continue
                 from GhostBot.functions import Petfood
                 from GhostBot.bot_controller import Config
