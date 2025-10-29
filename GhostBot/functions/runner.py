@@ -10,11 +10,11 @@ from GhostBot.lib.math import linear_distance
 if TYPE_CHECKING:
     from GhostBot.bot_controller import ExtendedClient
 
-def run_at_interval():
+def run_at_interval(run_on_start: bool = False):
     def inner(_clazz):
         _init = _clazz.__init__
         def init(self, *args, **kwargs):
-            self._last_time_ran = time.time()
+            self._last_time_ran = 0 if run_on_start else time.time()
             ret = _init(self, *args, **kwargs)
             if not hasattr(self, '_interval'):
                 raise AttributeError(f"Abstract property _interval not defined for {self.__class__.__name__}")

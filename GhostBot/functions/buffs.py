@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from GhostBot.bot_controller import ExtendedClient
 
 
-@run_at_interval()
+@run_at_interval(run_on_start=True)
 class Buffs(Runner):
 
     def __init__(self, client: ExtendedClient):
