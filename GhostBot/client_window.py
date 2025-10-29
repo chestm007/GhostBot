@@ -179,7 +179,7 @@ class ClientWindow:
 
     def move_to_pos(self, target_pos):
         """
-        moves to `target_pos`
+        moves to `target_pos`, will invoke map based pathing if distance is too far.
         :param target_pos: `tuple(x, y)` coordinates to move too
         :return:
         """
@@ -209,6 +209,8 @@ class ClientWindow:
             zones[zone],
             target_pos
         )
+        # Open the map, and try a list of position offsets, starting at the exact point we want to go to
+        # this avoids movement being blocked when team members are already where we want to be
         offsets = ((0, 0), (20, 0), (-20, 0), (20, 20), (-20, 20), (-20, -20), (0, -20), (-20, 20), (0, 20))
         self.press_key('m')
         time.sleep(1)
@@ -218,6 +220,7 @@ class ClientWindow:
             self.right_click(path_tgt)
             time.sleep(2)
             if linear_distance(_loc, self.location) > 2:
+                # If we've started moving, we can stop trying offsets
                 break
         else:
             logger.info(f'{self.name}: failed pathing via map')
@@ -228,6 +231,8 @@ class ClientWindow:
         self.press_key('m')
         self._block_while_moving()
         if target_pos != path_tgt:
+            # If we moved to a non-zero offset location, we will need to use the minimap to move to the right spot
+            # we're close enough now that it'll work.
             self.move_to_pos(target_pos)
             self._block_while_moving()
         return True
@@ -242,6 +247,7 @@ class ClientWindow:
 
     @staticmethod
     def get_mouse_window_pos(window_pos: tuple[int, int]) -> tuple[int, int] | None:
+        """Get cursor position relative to window position"""
         x, y = win32gui.GetCursorPos()
 
         wx, wy = window_pos
