@@ -12,11 +12,13 @@ if TYPE_CHECKING:
 
 def run_at_interval():
     def inner(_clazz):
-        _clazz._interval = abstractproperty
         _init = _clazz.__init__
         def init(self, *args, **kwargs):
             self._last_time_ran = time.time()
-            return _init(self, *args, **kwargs)
+            ret = _init(self, *args, **kwargs)
+            if not hasattr(self, '_interval'):
+                raise AttributeError(f"Abstract property _interval not defined for {self.__class__.__name__}")
+            return ret
 
         _run = _clazz.run
         def run(self, *args, **kwargs):

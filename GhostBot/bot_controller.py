@@ -5,8 +5,7 @@ from GhostBot import logger
 from GhostBot.client_window import ClientWindow
 from GhostBot.config import Config, ConfigLoader
 from GhostBot.enums.bot_status import BotStatus
-from GhostBot.functions import Attack, Buffs, Fairy, Petfood, Regen, Runner, Sell
-from GhostBot.functions.delete import Delete
+from GhostBot.functions import Attack, Buffs, Fairy, Petfood, Regen, Runner, Sell, Delete
 from GhostBot.lib.win32.process import PymemProcess
 from GhostBot.server import GhostbotIPCServer
 

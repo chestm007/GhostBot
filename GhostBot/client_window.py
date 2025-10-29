@@ -272,7 +272,7 @@ class ClientWindow:
         time.sleep(0.5)
 
     def open_inventory(self):
-        while self.inventory_open:
+        while not self.inventory_open:
             self.press_key('i')
             time.sleep(1)
 

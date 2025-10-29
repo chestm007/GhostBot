@@ -1,6 +1,5 @@
 from __future__ import annotations
 import time
-from _operator import sub
 from typing import TYPE_CHECKING
 
 from GhostBot.config import SellConfig

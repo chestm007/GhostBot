@@ -38,6 +38,7 @@ def limit(number, _limit):
 
 def coords_to_map_screen_pos(zone: Zone, target_coords: tuple[int, int]) -> tuple[int, int]:
     _diff_x, _diff_y = position_difference(zone.centre, target_coords)
+    # FIXME: hardcoded screen size below should be replaced with ClientWindow.get_window_size()
     return int((1024/2) + (_diff_x / zone.scale[0])), int((768 / 2) + (_diff_y / zone.scale[1]))
 
 def seconds(hours=0, minutes=0, seconds=0, tenths=0):
