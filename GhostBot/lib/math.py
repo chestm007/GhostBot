@@ -2,7 +2,14 @@ import math
 from _operator import add
 from operator import sub, mul
 
-__all__ = ['linear_distance', 'position_difference', 'limit', 'seconds', 'item_coordinates_from_pos']
+__all__ = [
+    'linear_distance',
+    'position_difference',
+    'limit',
+    'seconds',
+    'item_coordinates_from_pos',
+    'coords_to_map_screen_pos'
+]
 
 from GhostBot.map_navigation import Zone
 
@@ -52,4 +59,3 @@ def item_coordinates_from_pos(pos: int, base_pos: tuple[int, int] = None) -> tup
         return _pos
     else:
         return tuple(map(add, base_pos, _pos))
-

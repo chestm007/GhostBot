@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 class Sell(Locational):
     def __init__(self, client: ExtendedClient):
         super().__init__(client)
-        self._client = client
         self.config: SellConfig = self._client.config.sell
         self._interval = seconds(minutes=self._client.config.sell.sell_interval_mins)
 
@@ -64,7 +63,7 @@ class Sell(Locational):
             self._log_info("Memory access failed to get npc location, falling back to movement detection :(")
             self._client.goto_first_surrounding_result()
             time.sleep(5)
-            self._block_while_moving()
+            self._client.block_while_moving()
         return True
 
     def _sell_items(self):
@@ -81,7 +80,6 @@ class Sell(Locational):
                     UI_locations.sell_item_slot_1
                 )
             )
-            time.sleep(0.25)
         self._client.left_click(UI_locations.confirm_sell_button)
 
     def _path_to_npc_search_spot(self):

@@ -17,7 +17,6 @@ from pymem.exception import MemoryReadError, ProcessError
 from win32con import SM_CYCAPTION
 
 from GhostBot import logger
-from GhostBot.image_finder import ImageFinder
 from GhostBot.lib import vk_codes, win32messages
 from GhostBot.lib.math import position_difference, limit, coords_to_map_screen_pos, linear_distance
 from GhostBot.lib.talisman_online_python.pointers import Pointers
@@ -98,6 +97,10 @@ class ClientWindow:
     def sit(self):
         self.press_key('x')
         return self
+
+    @property
+    def on_mount(self) -> bool:
+        return self.pointers.mount()
 
     def mount(self, _key):
         while not self.on_mount:
@@ -201,7 +204,7 @@ class ClientWindow:
 
         logger.debug(f'{self.name}: clicking {pos_diff_trimmed}')  # relative to minimap center
         self.right_click(minimap_pos)
-        self._block_while_moving()
+        self.block_while_moving()
 
     def _move_to_pos_via_map(self, target_pos: tuple[int, int]):
         zone = location_to_zone_map[self.location_name]
@@ -229,21 +232,20 @@ class ClientWindow:
 
         time.sleep(1)
         self.press_key('m')
-        self._block_while_moving()
+        self.block_while_moving()
         if target_pos != path_tgt:
             # If we moved to a non-zero offset location, we will need to use the minimap to move to the right spot
             # we're close enough now that it'll work.
             self.move_to_pos(target_pos)
-            self._block_while_moving()
+            self.block_while_moving()
         return True
 
-    def _block_while_moving(self):
+    def block_while_moving(self):
         while self.running:
             _location = self.location
             time.sleep(1)
             if linear_distance(self.location, _location) < 1:
                 break
-
 
     @staticmethod
     def get_mouse_window_pos(window_pos: tuple[int, int]) -> tuple[int, int] | None:
@@ -276,6 +278,10 @@ class ClientWindow:
     def open_surroundings_ui(self):
         self.left_click(UI_locations.minimap_surroundings)
         time.sleep(0.5)
+
+    @property
+    def inventory_open(self):
+        return self.pointers.is_bag_open()
 
     def open_inventory(self):
         while not self.inventory_open:
@@ -318,10 +324,6 @@ class ClientWindow:
         ]
 
         return [check[m]() for m in range(self.team_size - 1)]
-
-    @property
-    def inventory_open(self):
-        return self.pointers.is_bag_open()
 
     @property
     def pet_active(self) -> bool:
@@ -403,10 +405,6 @@ class ClientWindow:
         return self.pointers.get_location() or self.pointers.get_location_2() or None
 
     @property
-    def on_mount(self) -> bool:
-        return self.pointers.mount()
-
-    @property
     def target_location(self) -> tuple[int, int] | None:
         if self.has_target:
             x, y, pointer = self.pointers.search_id()
@@ -474,22 +472,16 @@ class ClientWindow:
 def main():
     from GhostBot.bot_controller import ExtendedClient
 
-    logger.setLevel(logging.DEBUG)
+    #logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     for proc in PymemProcess.list_clients():
-            client = ExtendedClient(proc)
-            if client.name == 'FukMeWithNoLube':
-                print(client.pointers.get_sur_info())
+        client = ExtendedClient(proc)
+        #if client.name == 'LongJohnson':
+        if client.has_target:
+            print(client.name, client.target_name, client.target_id)
+            if client.has_target:
+                print(client.target_location)
 
-                print(client.name)
-                continue
-                from GhostBot.functions import Petfood
-                from GhostBot.bot_controller import Config
-                client.config = Config(client)
-                pf = Petfood(client)
-                pf._despawn_pet()
-                buff = Buffs(client)
-                buff.run()
-                continue
 
 if __name__ == "__main__":
     main()
