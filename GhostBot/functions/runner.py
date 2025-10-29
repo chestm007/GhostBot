@@ -10,7 +10,7 @@ from GhostBot.lib.math import linear_distance
 if TYPE_CHECKING:
     from GhostBot.bot_controller import ExtendedClient
 
-def run_at_interval(run_on_start: bool = False):
+def run_at_interval(run_on_start: bool = False, run_in_battle: bool = False):
     def inner(_clazz):
         _init = _clazz.__init__
         def init(self, *args, **kwargs):
@@ -27,6 +27,8 @@ def run_at_interval(run_on_start: bool = False):
                 _run(self, *args, **kwargs)
 
         def should_run(self):
+            if not run_in_battle and self._client.in_battle:
+                return False
             return time.time() - self._last_time_ran > self._interval
 
         _clazz.__init__ = init
