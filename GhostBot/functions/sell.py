@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from GhostBot.config import SellConfig
 from GhostBot.functions import Locational
+from GhostBot.functions.runner import run_at_interval
 from GhostBot.lib.math import seconds, item_coordinates_from_pos, linear_distance
 from GhostBot.lib.talisman_ui_locations import UI_locations
 
@@ -12,11 +13,13 @@ if TYPE_CHECKING:
     from GhostBot.bot_controller import ExtendedClient
 
 
+@run_at_interval()
 class Sell(Locational):
     def __init__(self, client: ExtendedClient):
         super().__init__(client)
         self._client = client
-        self.config: SellConfig = client.config.sell
+        self.config: SellConfig = self._client.config.sell
+        self._interval = seconds(minutes=self._client.config.sell.sell_interval_mins)
 
         if (_return_spot := self.config.return_spot) is None:
             _return_spot = self.determine_start_location()
@@ -32,10 +35,6 @@ class Sell(Locational):
         self._last_time_sold = 0
 
     def _run(self):
-        if not self._should_sell():
-            return
-        self._last_time_sold = time.time()
-
         if self._use_mount:
             self._client.mount(self._mount_key)
 
@@ -88,30 +87,11 @@ class Sell(Locational):
 
     def _path_to_npc_search_spot(self):
         if self.config.npc_search_spot is not None:
-            self._map_toggle()
-            self._log_info(f'pathing to npc search spot: {self.config.npc_search_spot}')
-            self._client.right_click(tuple(map(sub, self.config.npc_search_spot, (50, 50))))
-            self._client.right_click(self.config.npc_search_spot)
-            time.sleep(0.5)
-            self._map_toggle()
-            self._block_while_moving()
+            self._client.move_to_pos(self.config.npc_search_spot)
 
     def _path_to_attack_spot(self):
         if self.config.return_spot is not None:
-            self._map_toggle()
             self._log_info(f'returning to {self._return_spot}')
             # TODO: loop trying to move via map until the char moves.
-            self._client.right_click(tuple(map(sub, self.config.return_spot, (50, 50))))
-            self._client.right_click(self.config.return_spot)
-            time.sleep(0.5)
-            self._map_toggle()
-            while self._client.running and linear_distance(self._client.location, self.start_location) > 100:
-                time.sleep(1)
+            self._client.move_to_pos(self._return_spot)
             self._goto_start_location()
-
-    def _should_sell(self) -> bool:
-        return time.time() - self._last_time_sold > seconds(minutes=self.config.sell_interval_mins)
-
-    def _map_toggle(self):
-        self._client.press_key('m')
-        time.sleep(0.5)

@@ -19,10 +19,11 @@ from win32con import SM_CYCAPTION
 from GhostBot import logger
 from GhostBot.image_finder import ImageFinder
 from GhostBot.lib import vk_codes, win32messages
-from GhostBot.lib.math import position_difference, limit
+from GhostBot.lib.math import position_difference, limit, coords_to_map_screen_pos, linear_distance
 from GhostBot.lib.talisman_online_python.pointers import Pointers
 from GhostBot.lib.talisman_ui_locations import UI_locations
 from GhostBot.lib.win32.process import PymemProcess
+from GhostBot.map_navigation import location_to_zone_map, zones
 
 TARGET_MAX_HP=597
 TARGET_MIN_HP=461
@@ -163,8 +164,10 @@ class ClientWindow:
     def left_click(self, pos):
         lparam = win32api.MAKELONG(*pos)
         win32gui.SendMessage(self.window_handle, win32messages.WM_MOUSEMOVE, None, lparam)
+        time.sleep(0.1)
         win32gui.SendMessage(self.window_handle, win32messages.WM_LBUTTONDOWN, WPARAM(0x0001), lparam)
         win32gui.SendMessage(self.window_handle, win32messages.WM_LBUTTONUP, None, lparam)
+        time.sleep(0.1)
 
     def right_click(self, pos):
         lparam = win32api.MAKELONG(*pos)
@@ -172,6 +175,7 @@ class ClientWindow:
         time.sleep(0.1)
         win32gui.SendMessage(self.window_handle, win32messages.WM_RBUTTONDOWN, WPARAM(0x0002), lparam)
         win32gui.SendMessage(self.window_handle, win32messages.WM_RBUTTONUP, None, lparam)
+        time.sleep(0.1)
 
     def move_to_pos(self, target_pos):
         """
@@ -179,8 +183,12 @@ class ClientWindow:
         :param target_pos: `tuple(x, y)` coordinates to move too
         :return:
         """
-        xy = (self.location_x, self.location_y)
-        pos_diff = position_difference(xy, target_pos)
+        if linear_distance(self.location, target_pos) > 50:
+            logger.debug(f"{self.name} moving via map")
+            return self._move_to_pos_via_map(target_pos)
+
+        pos_diff = position_difference(self.location, target_pos)
+
         pos_diff_mm_pix = tuple(map(mul, pos_diff, (-1.6, 1.6)))  # corrected to represent 1 pixel per meter
 
         # if diff > 20, we wont have enough pixels
@@ -193,6 +201,44 @@ class ClientWindow:
 
         logger.debug(f'{self.name}: clicking {pos_diff_trimmed}')  # relative to minimap center
         self.right_click(minimap_pos)
+        self._block_while_moving()
+
+    def _move_to_pos_via_map(self, target_pos: tuple[int, int]):
+        zone = location_to_zone_map[self.location_name]
+        screen_coords = coords_to_map_screen_pos(
+            zones[zone],
+            target_pos
+        )
+        offsets = ((0, 0), (20, 0), (-20, 0), (20, 20), (-20, 20), (-20, -20), (0, -20), (-20, 20), (0, 20))
+        self.press_key('m')
+        time.sleep(1)
+        _loc = self.location
+        for offset in offsets:
+            path_tgt = tuple(map(add, screen_coords, offset))
+            self.right_click(path_tgt)
+            time.sleep(2)
+            if linear_distance(_loc, self.location) > 2:
+                break
+        else:
+            logger.info(f'{self.name}: failed pathing via map')
+            self.press_key('m')
+            return False
+
+        time.sleep(1)
+        self.press_key('m')
+        self._block_while_moving()
+        if target_pos != path_tgt:
+            self.move_to_pos(target_pos)
+            self._block_while_moving()
+        return True
+
+    def _block_while_moving(self):
+        while self.running:
+            _location = self.location
+            time.sleep(1)
+            if linear_distance(self.location, _location) < 1:
+                break
+
 
     @staticmethod
     def get_mouse_window_pos(window_pos: tuple[int, int]) -> tuple[int, int] | None:
@@ -223,14 +269,17 @@ class ClientWindow:
 
     def open_surroundings_ui(self):
         self.left_click(UI_locations.minimap_surroundings)
+        time.sleep(0.5)
 
     def open_inventory(self):
-        if not self.inventory_open:
+        while self.inventory_open:
             self.press_key('i')
+            time.sleep(1)
 
     def close_inventory(self):
-        if self.inventory_open:
+        while self.inventory_open:
             self.press_key('i')
+            time.sleep(1)
 
     def search_surroundings(self, val):
         self.open_surroundings_ui()

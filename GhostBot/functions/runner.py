@@ -10,9 +10,29 @@ from GhostBot.lib.math import linear_distance
 if TYPE_CHECKING:
     from GhostBot.bot_controller import ExtendedClient
 
+def run_at_interval():
+    def inner(_clazz):
+        _clazz._interval = abstractproperty
+        _init = _clazz.__init__
+        def init(self, *args, **kwargs):
+            self._last_time_ran = time.time()
+            return _init(self, *args, **kwargs)
+
+        _run = _clazz.run
+        def run(self, *args, **kwargs):
+            if should_run(self):
+                self._last_time_ran = time.time()
+                _run(self, *args, **kwargs)
+
+        def should_run(self):
+            return time.time() - self._last_time_ran > self._interval
+
+        _clazz.__init__ = init
+        _clazz.run = run
+        return _clazz
+    return inner
 
 # TODO: class that interacts with NPC's, probably extend Locational
-
 
 class Runner(ABC):
     """

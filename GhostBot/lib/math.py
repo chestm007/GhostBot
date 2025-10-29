@@ -4,6 +4,8 @@ from operator import sub, mul
 
 __all__ = ['linear_distance', 'position_difference', 'limit', 'seconds', 'item_coordinates_from_pos']
 
+from GhostBot.map_navigation import Zone
+
 # rounds up the position to what the TO client does (its dumb, and wrong, but the games chinese, what do you expect?
 pos = lambda a: a*-1 if a < 0 else a
 
@@ -34,9 +36,13 @@ def limit(number, _limit):
     else:
         return _limit if number > _limit else number
 
+def coords_to_map_screen_pos(zone: Zone, target_coords: tuple[int, int]) -> tuple[int, int]:
+    _diff_x, _diff_y = position_difference(zone.centre, target_coords)
+    return int((1024/2) + (_diff_x / zone.scale[0])), int((768 / 2) + (_diff_y / zone.scale[1]))
 
 def seconds(hours=0, minutes=0, seconds=0, tenths=0):
     return (((hours * 60) + minutes) * 60) + seconds + (tenths / 10)
+
 
 def item_coordinates_from_pos(pos: int, base_pos: tuple[int, int] = None) -> tuple[int, int]:
     multiplier = 35
