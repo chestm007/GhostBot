@@ -21,6 +21,7 @@ seems to have crazy UO scripts or their favourite closed source bot app.
 - Scheduled Buff's
 - Automatic sell to NPC
 - Item deletion
+- Map based pathing in MDV (other areas coming as i personally find the need)
 
 ### How do i use this thing???
 
