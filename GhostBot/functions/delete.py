@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from GhostBot.bot_controller import ExtendedClient
 
 
-@run_at_interval()
+@run_at_interval(run_on_start=True)
 class Delete(Runner):
     def __init__(self, client: ExtendedClient):
         super().__init__(client)
@@ -35,7 +35,7 @@ class Delete(Runner):
             self._client.left_click(item_pos)
             self._client.left_click(self._image_finder.destroy_item_location)
             time.sleep(0.3)
-            ok_pos = self._image_finder._get_dialog_ok_location(self._client)
+            ok_pos = self._image_finder._get_dialog_ok_location()
             if ok_pos:
                 self._client.left_click(ok_pos)
         self._client.close_inventory()

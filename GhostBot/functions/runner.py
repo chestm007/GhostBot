@@ -73,8 +73,6 @@ class Locational(Runner, ABC):
         super().__init__(client)
         self.start_location: tuple[int, int] = self.determine_start_location()
 
-    # TODO: implement map navigation when X distance away
-
     def determine_start_location(self):
         """Returns either the config stored attack_spot, or the current location of the char as the `start_location`"""
         if (regen := self._client.config.regen) is not None:

@@ -24,4 +24,4 @@ class Buffs(Runner):
         self._log_info(f'Buffing.')
         for _key, _sleep in self.config.buffs:
             self._client.press_key(_key)
-            time.sleep(seconds(seconds=_sleep))
+            time.sleep(_sleep/1000)
