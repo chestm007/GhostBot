@@ -1,6 +1,7 @@
 import logging
 import math
 import time
+from contextlib import contextmanager
 from ctypes.wintypes import LPARAM, WPARAM
 from operator import mul, add
 
@@ -102,12 +103,12 @@ class ClientWindow:
     def on_mount(self) -> bool:
         return self.pointers.mount()
 
-    def mount(self, _key):
+    def mount(self, _key=0):
         while not self.on_mount:
             self.press_key(_key)
             time.sleep(4)
 
-    def dismount(self, _key):
+    def dismount(self, _key=0):
         while self.on_mount:
             self.press_key(_key)
             time.sleep(4)
@@ -144,7 +145,7 @@ class ClientWindow:
             print(e)
             return None
 
-    def press_key(self, key):
+    def press_key(self, key: int | str):
         """Fetch the keycode for the key from our map, send it to the client window"""
         try:
             if isinstance(key, str) and len(key) == 1:  # if `key` is [a-zA-Z]
@@ -186,7 +187,7 @@ class ClientWindow:
         :param target_pos: `tuple(x, y)` coordinates to move too
         :return:
         """
-        if linear_distance(self.location, target_pos) > 50:
+        while linear_distance(self.location, target_pos) > 50:
             logger.debug(f"{self.name} moving via map")
             return self._move_to_pos_via_map(target_pos)
 
@@ -282,6 +283,11 @@ class ClientWindow:
     @property
     def inventory_open(self):
         return self.pointers.is_bag_open()
+
+    @contextmanager
+    def inventory(self):
+        yield self.open_inventory()
+        self.close_inventory()
 
     def open_inventory(self):
         while not self.inventory_open:

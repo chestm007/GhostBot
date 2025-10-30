@@ -79,7 +79,8 @@ class Attack(Locational):
             self._stuck_interval = 10
 
     def _run(self) -> bool:
-        #self._cur_attack_queue: list[list[int | str]] = list(self.config.attacks)
+        self._client.close_inventory()
+        self._client.dismount()
 
         context = AttackContext(self._client, self._stuck_interval)
 
