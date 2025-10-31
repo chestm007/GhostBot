@@ -20,6 +20,8 @@ setup(
         'attrdict',
         'pyyaml',
         'pillow',
+        'numpy',
+        'opencv-python'
     ],
     extras_require={},
     entry_points={
