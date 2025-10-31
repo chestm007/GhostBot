@@ -16,6 +16,10 @@ def run_at_interval(run_on_start: bool = False, run_in_battle: bool = False):
         def init(self, *args, **kwargs):
             self._last_time_ran = 0 if run_on_start else time.time()
             ret = _init(self, *args, **kwargs)
+
+            if hasattr(_clazz, '_setup'):
+                _clazz._setup(self)
+
             if not hasattr(self, '_interval'):
                 raise AttributeError(f"Abstract property _interval not defined for {self.__class__.__name__}")
             return ret

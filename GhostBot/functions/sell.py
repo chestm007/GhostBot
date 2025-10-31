@@ -33,21 +33,18 @@ class Sell(Locational):
         self._last_time_sold = 0
 
     def _run(self):
-        if self._use_mount:
-            self._client.mount(self._mount_key)
+        with self._client.mounted(self._mount_key):
 
-        if not self._go_to_npc():
-            return False
+            if not self._go_to_npc():
+                return False
 
-        time.sleep(2)
-        self._sell_items()
+            time.sleep(2)
+            self._sell_items()
 
-        time.sleep(2)
-        self._path_to_attack_spot()
+            time.sleep(2)
+            self._path_to_attack_spot()
 
-        if self._use_mount:
-            self._client.dismount(self._mount_key)
-        return True
+            return True
 
     def _go_to_npc(self):
         self._path_to_npc_search_spot()

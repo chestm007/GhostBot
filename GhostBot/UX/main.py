@@ -54,7 +54,7 @@ def main():
 
 
 
-    _char_list = tk.StringVar(master=ghost_bot)
+    _char_list = tk.Variable(master=ghost_bot)
     _char_list.set(ghost_bot.client.list_chars())
     list_box = ScrollableListbox(parent=ghost_bot, scrollx=False, scrolly=True, listvariable=_char_list)
 

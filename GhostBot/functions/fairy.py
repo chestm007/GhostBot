@@ -29,7 +29,10 @@ class Fairy(Locational):
             if member.hp_percent < self.config.heal_team_threshold:
                 self._log_debug(f'Weak member {member.name} {member.hp_percent}')
                 while member.hp_percent < 0.9 and self._client.running:
-                    self._client.left_click(TeamLocations[i+1])
+                    self._client.dismount()
+                    self._client.close_inventory()
+                    if self._client.target_name and self._client.target_name != member.name:
+                        self._client.left_click(TeamLocations[i+1])
                     self._client.press_key(self.config.bindings.get('heal'))
                 self._log_debug(f'{member.name}: healed')
 

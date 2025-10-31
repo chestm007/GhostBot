@@ -23,6 +23,9 @@ class Petfood(Runner):
         self._interval = seconds(minutes=int(self.config.food_interval_mins))
         self._last_time_pet_spawned = 0
 
+    def _setup(self):
+        self._spawn_pet()
+
     @property
     def _spawn_pet_hotkey(self):
         self._log_debug(f"spawn_pet_hotkey: {self.config.bindings.get('spawn')}")

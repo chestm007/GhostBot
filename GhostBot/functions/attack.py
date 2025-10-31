@@ -87,7 +87,8 @@ class Attack(Locational):
         # if were too far away from our start location, move back there
         if linear_distance(self.start_location, self._client.location) > self.roam_distance:
             self._log_debug(f'too far go back C:{self._client.location} | T:{self.start_location}')
-            self._goto_start_location()
+            with self._client.mounted():
+                self._goto_start_location()
             self._client.new_target()
             return True
 

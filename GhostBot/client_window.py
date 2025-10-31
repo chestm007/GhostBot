@@ -73,6 +73,7 @@ class ClientWindow:
             self._set_window_name()
         except TypeError:
             pass
+        # FIXME: wrap all getters in a retry DC check loop
 
     @property
     def window_handle(self):
@@ -102,6 +103,11 @@ class ClientWindow:
     @property
     def on_mount(self) -> bool:
         return self.pointers.mount()
+
+    @contextmanager
+    def mounted(self, _key=0):
+        yield self.mount(_key)
+        self.dismount(_key)
 
     def mount(self, _key=0):
         while not self.on_mount:
@@ -304,7 +310,7 @@ class ClientWindow:
         self.left_click(UI_locations.surroundings_search)
         time.sleep(0.5)
         self.type_keys(val)
-        time.sleep(0.3)
+        time.sleep(0.5)
 
     def goto_first_surrounding_result(self):
         self.left_click(UI_locations.surroundings_firstitem)

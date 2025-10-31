@@ -30,12 +30,11 @@ class Delete(Runner):
             self._run_delete_trash()
 
     def _run_delete_trash(self):
-        self._client.open_inventory()
-        for item_pos in self._image_finder.find_items_in_window(self._image_finder.items):
-            self._client.left_click(item_pos)
-            self._client.left_click(self._image_finder.destroy_item_location)
-            time.sleep(0.3)
-            ok_pos = self._image_finder._get_dialog_ok_location()
-            if ok_pos:
-                self._client.left_click(ok_pos)
-        self._client.close_inventory()
+        with self._client.inventory():
+            for item_pos in self._image_finder.find_items_in_window(self._image_finder.items):
+                self._client.left_click(item_pos)
+                self._client.left_click(self._image_finder.destroy_item_location)
+                time.sleep(0.3)
+                ok_pos = self._image_finder._get_dialog_ok_location()
+                if ok_pos:
+                    self._client.left_click(ok_pos)
