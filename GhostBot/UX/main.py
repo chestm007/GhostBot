@@ -137,7 +137,6 @@ def main():
         update_char_info_display()
         if selected_char():
             bot_config = ghost_bot.client.get_config(selected_char())
-            print(bot_config)
 
             tabbed_widget.setvar("bot_config.attack.enabled", bool(bot_config.attack))
             tabbed_widget.setvar("bot_config.pet.enabled", bool(bot_config.pet))

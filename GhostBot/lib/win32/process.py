@@ -1,3 +1,4 @@
+import logging
 from typing import List
 
 import pymem
@@ -5,6 +6,7 @@ import pymem
 class PymemProcess:
     @staticmethod
     def list_clients() -> List[pymem.Pymem]:
+        pymem.logger.setLevel(logging.INFO)
         return [pymem.Pymem(p.th32ProcessID) for p in pymem.process.list_processes() if p.szExeFile == b'client.exe']
 
 

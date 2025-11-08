@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from GhostBot.config import RegenConfig
 from GhostBot.functions.runner import Locational
+from GhostBot.lib.math import seconds
 
 if TYPE_CHECKING:
     from GhostBot.bot_controller import ExtendedClient
@@ -25,26 +26,32 @@ class Regen(Locational):
         if self._mana_low() or self._hp_low():
             self._goto_start_location()
 
-            if not self._client.in_battle:
-                self._log_info(f'low hp/mana, starting Regen')
+            start_wait = time.time()
+            while self._client.in_battle and time.time() - start_wait < seconds(seconds=3):
+                time.sleep(0.5)
+                if not self._client.in_battle:
+                    break
+            else:
+                return False
+            self._log_info(f'low hp/mana, starting Regen')
 
-                if self.config.bindings:
-                    # mana/hp pots\
-                    if self._client.hp_percent < self._hp_threshold:
-                        self._use_hp_pot()
-                    if self._client.mana_percent < self._mana_threshold:
-                        self._use_mana_pot()
+            if self.config.bindings:
+                # mana/hp pots\
+                if self._client.hp_percent < self._hp_threshold:
+                    self._use_hp_pot()
+                if self._client.mana_percent < self._mana_threshold:
+                    self._use_mana_pot()
 
+            hp = int(self._client.hp)
+            while (self._client.hp < self._client.max_hp or self._client.mana < self._client.max_mana) and self._client.running:
+                self._log_debug(f'healing')
+                time.sleep(2)
+                if self._client.in_battle or self._client.hp < hp:
+                    self._log_debug(f'Ouch, attacking')
+                    return False
+                self._goto_spot_and_sit()
                 hp = int(self._client.hp)
-                while (self._client.hp < self._client.max_hp or self._client.mana < self._client.max_mana) and self._client.running:
-                    self._log_debug(f'healing')
-                    time.sleep(2)
-                    if self._client.in_battle or self._client.hp < hp:
-                        self._log_debug(f'Ouch, attacking')
-                        return False
-                    self._goto_spot_and_sit()
-                    hp = int(self._client.hp)
-                return True
+            return True
         return False
 
     def _mana_low(self) -> int:

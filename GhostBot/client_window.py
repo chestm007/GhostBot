@@ -101,6 +101,10 @@ class ClientWindow:
         return self
 
     @property
+    def disconnected(self):
+        return bool(self.pointers.get_dc())
+
+    @property
     def on_mount(self) -> bool:
         return self.pointers.mount()
 
@@ -214,7 +218,7 @@ class ClientWindow:
         self.block_while_moving()
 
     def _move_to_pos_via_map(self, target_pos: tuple[int, int]):
-        zone = location_to_zone_map[self.location_name]
+        zone = location_to_zone_map[self.location_name.strip()]
         screen_coords = coords_to_map_screen_pos(
             zones[zone],
             target_pos
@@ -247,10 +251,13 @@ class ClientWindow:
             self.block_while_moving()
         return True
 
-    def block_while_moving(self):
+    def block_while_moving(self, destination=None):
         while self.running:
             _location = self.location
             time.sleep(1)
+            if destination is not None:
+                if linear_distance(destination, self.location) < 40:  # if we're close enough, no point overshooting.
+                    break
             if linear_distance(self.location, _location) < 1:
                 break
 
@@ -413,8 +420,14 @@ class ClientWindow:
         return self.location_x, self.location_y
 
     @property
-    def location_name(self) -> str:
-        return self.pointers.get_location() or self.pointers.get_location_2() or None
+    def location_name(self) -> str | None:
+        loc = None
+        for loc_pointer in (self.pointers.get_location, self.pointers.get_location_2):
+            if loc_pointer().replace(' ','').isalpha():
+                if (loc := loc_pointer().strip()) in location_to_zone_map.keys():
+                    if loc in location_to_zone_map.keys():
+                        return loc
+        return loc
 
     @property
     def target_location(self) -> tuple[int, int] | None:
@@ -457,10 +470,7 @@ class ClientWindow:
     @property
     def target_name(self) -> str | None:
         """:return: target name if target selected, `None` if no target"""
-        if self.pointers.is_target_selected():
-            return self.pointers.get_target_name()
-        else:
-            return None
+        return self.pointers.get_target_name()
 
     def _read_with_offsets(self, in_offsets, get_func, **kwargs):
         """

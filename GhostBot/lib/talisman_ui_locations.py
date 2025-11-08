@@ -12,8 +12,9 @@ UI_locations = AttrDict(
     surroundings_firstitem=(290, 262),
     view_reset=(867, 57),
     stall=(920, 190),
-    sell_item_button=(275, 420),
-    npc_location=(500, 405),
+    #sell_item_button=(275, 440),  # snow village BS link
+    #sell_item_button=(275, 400),  # laurel mtn BS link
+    npc_location=(500, 395),
     sell_item_slot_1=(455, 270),
     confirm_sell_button=(475, 713),
 )

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from GhostBot.bot_controller import ExtendedClient
 
 
-@run_at_interval()
+@run_at_interval(run_on_start=True)
 class Sell(Locational):
     def __init__(self, client: ExtendedClient):
         super().__init__(client)
@@ -28,6 +28,9 @@ class Sell(Locational):
             self._mount_key = client.config.sell.bindings.get('mount')
         except (AttributeError, KeyError):
             self._use_mount = False
+
+        if self.config.npc_sell_click_spot is None:
+            self._log_err('NPC sell click spot not set')
 
         #self._last_time_sold = time.time()
         self._last_time_sold = 0
@@ -68,7 +71,7 @@ class Sell(Locational):
         time.sleep(2)
         self._client.click_npc()
         time.sleep(1)
-        self._client.left_click(UI_locations.sell_item_button)
+        self._client.left_click(self.config.npc_sell_click_spot)
         time.sleep(1)
         for i in range(24):
             self._client.left_click(

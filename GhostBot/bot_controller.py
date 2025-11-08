@@ -139,9 +139,11 @@ class BotController:
 
         while client.running:
             client.bot_status = BotStatus.running
+            if client.disconnected:
+                logger.info(f"{client.name}: disconnected.")
+                break
             try:
                 for function in functions:
-                    logger.debug(f'{client.name}: Running function {function}')
                     function.run()
 
             except Exception as e:

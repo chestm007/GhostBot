@@ -78,6 +78,7 @@ class SellConfig(FunctionConfig):
     npc_search_spot: list[int] | None = None
     return_spot: list[int] | None = None
     use_mount: bool | None = None
+    npc_sell_click_spot: list[int] | None = None
 
     def __post_init__(self):
         if self.bindings is None:

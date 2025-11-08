@@ -53,6 +53,10 @@ def seconds(hours=0, minutes=0, seconds=0, tenths=0):
 
 
 def item_coordinates_from_pos(pos: int, base_pos: tuple[int, int] = None) -> tuple[int, int]:
+    """
+    get screen location for inventory/sale item based on sequence number of item,
+    and relative position of top left item
+    """
     multiplier = 35
     _pos = tuple(map(mul, (math.floor(pos/6) , (pos % 6)), (multiplier, multiplier)))
     if base_pos is None:

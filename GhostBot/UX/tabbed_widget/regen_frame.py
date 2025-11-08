@@ -19,12 +19,11 @@ class RegenFrame(TabFrame):
         )
 
         ttk.Button(
-            master=self, text="Current", command=lambda: self._set_spot_as_current()
+            master=self, text="Current", command=lambda: self._set_spot_as_current('spot')
         ).grid(row=3, column=2)
 
-    def _set_spot_as_current(self):
-        self._vars['spot'].set(eval(self.master.getvar('char_info.position')))
-        print(self.extract_config())
+    def _set_spot_as_current(self, field: str):
+        self._vars[field].set(eval(self.master.getvar('char_info.position')))
 
     def display_config(self, config: Config):
         def _format_spot(_spot):

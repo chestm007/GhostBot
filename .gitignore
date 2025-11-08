@@ -11,6 +11,11 @@ GhostBot/__pycache__/
 *.pyc
 /bin/build/
 /bin/dist/
+/bin/bot_controller.build/
+/bin/bot_controller.dist/
+/bin/main.build/
+/bin/main.dist/
+/bin/nuitka-crash-report.xml
 /GhostBot.egg-info/
 
 login_conf.yml
