@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='GhostBot',
-    version='0.0.1-dev',
+    version='0.0.1',
     packages=find_packages(),
     url='https://github.com/chestm007/GhostBot',
     license='GPL-2.0',
