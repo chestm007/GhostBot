@@ -91,4 +91,3 @@ class Locational(Runner, ABC):
         while linear_distance(self.start_location, self._client.location) > 2 and self._client.running:
             logger.debug(f'{self._client.name}: go to saved spot: {self.start_location}')
             self._client.move_to_pos(self.start_location)
-            time.sleep(2)

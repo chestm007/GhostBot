@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from GhostBot.bot_controller import ExtendedClient
 
 
-@run_at_interval(run_on_start=True)
+@run_at_interval()
 class Sell(Locational):
     def __init__(self, client: ExtendedClient):
         super().__init__(client)
@@ -59,7 +59,7 @@ class Sell(Locational):
                 self._client.goto_first_surrounding_result()
                 while (linear_distance(self._client.location, npc_location)) > 2 and self._client.running:
                     time.sleep(0.5)
-        except AttributeError:
+        except (AttributeError, TypeError):
             self._log_info("Memory access failed to get npc location, falling back to movement detection :(")
             self._client.goto_first_surrounding_result()
             time.sleep(5)

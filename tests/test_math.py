@@ -1,4 +1,4 @@
-from GhostBot.lib.math import limit, position_difference, seconds
+from GhostBot.lib.math import limit, position_difference, seconds, scale_minimap_move_distance
 
 
 def test_limit_0():
@@ -55,3 +55,12 @@ def test_seconds_function():
     assert seconds(minutes=1) == 60
     assert seconds(seconds=10) == 10
     assert seconds(tenths=2) == 0.2
+
+def test_scale_minimap_move_distance():
+    assert scale_minimap_move_distance((10, 10)) == (10, 10)
+    assert scale_minimap_move_distance((-10, 10)) == (-10, 10)
+    assert scale_minimap_move_distance((70, 70)) == (35, 35)
+    assert scale_minimap_move_distance((-70, -70)) == (-35, -35)
+    assert scale_minimap_move_distance((-70, 70)) == (-35, 35)
+    assert scale_minimap_move_distance((70, -70)) == (35, -35)
+    assert scale_minimap_move_distance((35, -70)) == (17.5, -35)

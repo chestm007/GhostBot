@@ -2,6 +2,7 @@ import time
 
 from GhostBot.functions.runner import run_at_interval
 from GhostBot.lib.math import seconds
+from mocks.mock_client import MockClient
 
 
 def test_mock_runner_run_at_interval():
@@ -10,6 +11,7 @@ def test_mock_runner_run_at_interval():
         def __init__(self):
             self.should_exist = True
             self._interval = seconds(seconds=1)
+            self._client = MockClient()
 
         def run(self):
             self.should_exist = not self.should_exist

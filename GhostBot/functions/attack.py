@@ -85,10 +85,7 @@ class Attack(Locational):
         context = AttackContext(self._client, self._stuck_interval)
 
         # if were too far away from our start location, move back there
-        if (
-            (dist_to_target := linear_distance(self.start_location, self._client.location)) > self.roam_distance
-            and not self._client.in_battle
-        ):
+        if (dist_to_target := linear_distance(self.start_location, self._client.location)) > self.roam_distance:
             self._log_debug(f'too far go back C:{self._client.location} | T:{self.start_location}')
             if dist_to_target < 100:
                 self._goto_start_location()

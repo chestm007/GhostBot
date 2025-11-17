@@ -19,4 +19,4 @@ class MockClientWindow(ClientWindow):
 
 def test_image_finder_get_destroy_item_location():
     image_finder = ImageFinder(MockClientWindow())
-    assert image_finder._get_destroy_item_location(image_finder._client)
+    assert image_finder._get_destroy_item_location()

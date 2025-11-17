@@ -1,6 +1,6 @@
 import math
 from _operator import add
-from operator import sub, mul
+from operator import sub, mul, truediv
 
 __all__ = [
     'linear_distance',
@@ -11,6 +11,7 @@ __all__ = [
     'coords_to_map_screen_pos'
 ]
 
+from GhostBot import logger
 from GhostBot.map_navigation import Zone
 
 # rounds up the position to what the TO client does (its dumb, and wrong, but the games chinese, what do you expect?
@@ -63,3 +64,18 @@ def item_coordinates_from_pos(pos: int, base_pos: tuple[int, int] = None) -> tup
         return _pos
     else:
         return tuple(map(add, base_pos, _pos))
+
+max_minimap_move = 35
+def scale_minimap_move_distance(_pos: tuple[int, int]) -> tuple[int, int]:
+    if linear_distance(_pos, (0, 0)) <= max_minimap_move:
+        return _pos
+    def calculate_ratio():
+        make_positive = lambda x: x if x >= 0 else x * -1
+        mp = max(tuple(map(make_positive, _pos)))
+        return mp / max_minimap_move
+    print(_pos)
+    #ratio = (mp if (mp := max(_pos)) >= 0 else mp * -1) / max_minimap_move
+    print(ratio := calculate_ratio())
+    scaled_pos = tuple(map(truediv, _pos, (ratio, ratio)))
+    logger.debug(f'raw: {_pos} | capped: {scaled_pos}')
+    return scaled_pos

@@ -18,8 +18,10 @@ from pymem.exception import MemoryReadError, ProcessError
 from win32con import SM_CYCAPTION
 
 from GhostBot import logger
+from GhostBot.enums.bot_status import BotStatus
 from GhostBot.lib import vk_codes, win32messages
-from GhostBot.lib.math import position_difference, limit, coords_to_map_screen_pos, linear_distance
+from GhostBot.lib.math import position_difference, limit, coords_to_map_screen_pos, linear_distance, \
+    scale_minimap_move_distance
 from GhostBot.lib.talisman_online_python.pointers import Pointers
 from GhostBot.lib.talisman_ui_locations import UI_locations
 from GhostBot.lib.win32.process import PymemProcess
@@ -114,14 +116,22 @@ class ClientWindow:
         self.dismount(_key)
 
     def mount(self, _key=0):
-        while not self.on_mount:
+        attempts = 0
+        while not self.on_mount and attempts < 3:
+            attempts += 1
             self.press_key(_key)
             time.sleep(4)
+        if attempts == 3:
+            logger.error("Failed to mount up")
 
     def dismount(self, _key=0):
-        while self.on_mount:
+        attempts = 0
+        while self.on_mount and attempts < 3:
+            attempts += 1
             self.press_key(_key)
             time.sleep(4)
+        if attempts == 3:
+            logger.error("Failed to dismount")
 
     def capture_window(self, color=False):
 
@@ -195,25 +205,19 @@ class ClientWindow:
         """
         moves to `target_pos`, will invoke map based pathing if distance is too far.
         :param target_pos: `tuple(x, y)` coordinates to move too
-        :return:
         """
-        while linear_distance(self.location, target_pos) > 50:
+        while linear_distance(self.location, target_pos) > 50 and self.running:
             logger.debug(f"{self.name} moving via map")
             return self._move_to_pos_via_map(target_pos)
 
         pos_diff = position_difference(self.location, target_pos)
 
-        pos_diff_mm_pix = tuple(map(mul, pos_diff, (-1.6, 1.6)))  # corrected to represent 1 pixel per meter
+        pos_diff_mm_pix = tuple(map(mul, pos_diff, (-1.7, 1.7)))  # corrected to represent 1 pixel per meter
 
-        # if diff > 20, we wont have enough pixels
-        pos_diff_trimmed = tuple(map(lambda p: limit(p, 20), pos_diff_mm_pix))
-        logger.debug(f'raw: {pos_diff_mm_pix} | capped: {pos_diff_trimmed}')
-        minimap_pos = tuple(map(math.ceil, map(add, UI_locations.minimap_centre, pos_diff_trimmed)))  # mouse position
-        if any(map(lambda p: p > 20, pos_diff_trimmed)):
-            logger.error(f'{self.name}: minimap pos too big {pos_diff_trimmed}')
-            return
+        minimap_relative_pos = scale_minimap_move_distance(pos_diff_mm_pix)
+        minimap_pos = tuple(map(math.ceil, map(add, UI_locations.minimap_centre, minimap_relative_pos)))  # mouse position
 
-        logger.debug(f'{self.name}: clicking {pos_diff_trimmed}')  # relative to minimap center
+        logger.debug(f'{self.name}: clicking {minimap_relative_pos}')  # relative to minimap center
         self.right_click(minimap_pos)
         self.block_while_moving()
 
@@ -229,11 +233,12 @@ class ClientWindow:
         self.press_key('m')
         time.sleep(1)
         _loc = self.location
+        self.right_click(tuple(map(add, screen_coords, (-30, -30)))) # Click away from tgt to clear possible existing tgt
         for offset in offsets:
             path_tgt = tuple(map(add, screen_coords, offset))
             self.right_click(path_tgt)
             time.sleep(2)
-            if linear_distance(_loc, self.location) > 2:
+            if linear_distance(_loc, self.location) > 1:
                 # If we've started moving, we can stop trying offsets
                 break
         else:
@@ -423,10 +428,13 @@ class ClientWindow:
     def location_name(self) -> str | None:
         loc = None
         for loc_pointer in (self.pointers.get_location, self.pointers.get_location_2):
-            if loc_pointer().replace(' ','').isalpha():
-                if (loc := loc_pointer().strip()) in location_to_zone_map.keys():
-                    if loc in location_to_zone_map.keys():
-                        return loc
+            try:
+                if loc_pointer().replace(' ','').replace("'", '').isalpha():
+                    if (loc := loc_pointer().strip()) in location_to_zone_map.keys():
+                        if loc in location_to_zone_map.keys():
+                            return loc
+            except AttributeError:
+                continue
         return loc
 
     @property
