@@ -248,7 +248,7 @@ class ClientWindow:
 
         time.sleep(1)
         self.press_key('m')
-        self.block_while_moving()
+        self.block_while_moving(path_tgt)
         if target_pos != path_tgt:
             # If we moved to a non-zero offset location, we will need to use the minimap to move to the right spot
             # we're close enough now that it'll work.
@@ -259,7 +259,7 @@ class ClientWindow:
     def block_while_moving(self, destination=None):
         while self.running:
             _location = self.location
-            time.sleep(1)
+            time.sleep(3)
             if destination is not None:
                 if linear_distance(destination, self.location) < 40:  # if we're close enough, no point overshooting.
                     break
