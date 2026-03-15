@@ -1,5 +1,6 @@
 import pickle
 
+from GhostBot import logger
 from GhostBot.config import AttackConfig, RegenConfig, BuffConfig, PetConfig, FairyConfig, Config
 from GhostBot.rpc.message import Message
 from GhostBot.server import IPCClient, GhostbotIPCServer
@@ -99,6 +100,6 @@ def test_config_none_not_stringified():
         attack=AttackConfig(attacks=[[1, 1000]], bindings=dict(battle_hp_pot="F1", battle_mp_pot="F2"))
     ).to_yaml()
     for _name, _conf in config.items():
-        print(_conf)
+        logger.debug(_conf)
         assert all(b != 'None' for b in _conf.get('bindings').values() if _conf.get('bindings') is not None)
 

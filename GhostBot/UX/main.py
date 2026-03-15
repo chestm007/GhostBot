@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 
+from GhostBot import logger
 from GhostBot.UX.tabbed_widget.delete_frame import DeleteFrame
 from GhostBot.UX.tabbed_widget.sell_frame import SellFrame
 from GhostBot.server import IPCClient
@@ -38,8 +39,8 @@ class GhostBotMenu (tk.Menu):
         super().__init__(master)
 
         menu_0 = tk.Menu(self, tearoff=0)
-        menu_0.add_command(label="New", command=lambda: print("New clicked"))
-        menu_0.add_command(label="Open", command=lambda: print("Open clicked"))
+        menu_0.add_command(label="New", command=lambda: logger.debug("New clicked"))
+        menu_0.add_command(label="Open", command=lambda: logger.debug("Open clicked"))
         menu_0.add_command(label="Shutdown Server", command=self.master.client.shutdown_server)
         menu_0.add_command(label="Exit", command=self.master.destroy)
         self.add_cascade(label="File", menu=menu_0)

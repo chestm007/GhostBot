@@ -2,6 +2,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
+from GhostBot import logger
 from GhostBot.config import SellConfig
 from GhostBot.functions import Locational
 from GhostBot.functions.runner import run_at_interval
@@ -27,6 +28,7 @@ class Sell(Locational):
             self._use_mount = client.config.sell.use_mount
             self._mount_key = client.config.sell.bindings.get('mount')
         except (AttributeError, KeyError):
+            self._log_debug('No mount key set, self._use_mount = False')
             self._use_mount = False
 
         if self.config.npc_sell_click_spot is None:

@@ -1,7 +1,7 @@
+from GhostBot import logger
 from GhostBot.UX.tabbed_widget.TabFrame import TabFrame
-from GhostBot.bot_controller import ExtendedClient
 from GhostBot.config import Config, DeleteConfig
-from GhostBot.lib.var_or_none import _int, _bool
+from GhostBot.lib.var_or_none import var_or_none
 
 
 class DeleteFrame(TabFrame):
@@ -11,13 +11,9 @@ class DeleteFrame(TabFrame):
             interval=self._create_entry("Interval:", 0, 2, ("bot_config.delete.interval", str)),
         )
 
-        #ttk.Button(
-        #    master=self, text="Current", command=lambda: self._set_spot_as_current()
-        #).grid(row=3, column=2)
-
     def _set_spot_as_current(self):
         self._vars['spot'].set(eval(self.master.getvar('char_info.position')))
-        print(self.extract_config())
+        logger.debug(self.extract_config())
 
     def display_config(self, config: Config):
         if config.delete:

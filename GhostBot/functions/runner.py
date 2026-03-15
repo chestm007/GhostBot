@@ -67,7 +67,7 @@ class Runner(ABC):
         logger.info(f"{self._client.name}: {msg}")
 
     def _log_debug(self, msg: str) -> None:
-        logger.debug(f"{self._client.name}: {msg}")
+        logger.debug(f"{self._client.name}::{self.__class__.__name__}: {msg}")
 
 
 class Locational(Runner, ABC):

@@ -10,6 +10,8 @@ import cv2
 import numpy as np
 import pathlib
 
+from GhostBot import logger
+
 if TYPE_CHECKING:
     from GhostBot.client_window import ClientWindow
 
@@ -19,7 +21,6 @@ class ImageFinder:
     image_folder = os.path.join(_path_base, "Images", "SELL")
     misc_folder = os.path.join(_path_base, "Images", "misc")
     items = {}
-    print(image_folder)
 
     for filename in os.listdir(image_folder):
         fullpath = os.path.join(image_folder, filename)
@@ -88,7 +89,7 @@ class ImageFinder:
         try:
             coordinates = self.find_image_in_window(_image, threshold=threshold)
         except cv2.error as e:
-            print(e)
+            logger.exception(e)
             coordinates = None
 
         return coordinates or None
