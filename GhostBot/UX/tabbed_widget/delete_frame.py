@@ -29,6 +29,6 @@ class DeleteFrame(TabFrame):
 
     def extract_config(self) -> DeleteConfig:
         return DeleteConfig(
-            delete_trash=_bool(self.getvar('bot_config.delete.delete_trash')),
-            interval=_int(self.getvar('bot_config.delete.interval')),
+            delete_trash=var_or_none(self.getvar('bot_config.delete.delete_trash')),
+            interval=var_or_none(self.getvar('bot_config.delete.interval')),
         )

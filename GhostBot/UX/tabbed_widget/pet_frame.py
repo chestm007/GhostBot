@@ -1,6 +1,6 @@
 from GhostBot.UX.tabbed_widget.TabFrame import TabFrame
 from GhostBot.config import Config, PetConfig
-from GhostBot.lib.var_or_none import _int
+from GhostBot.lib.var_or_none import var_or_none
 
 
 class PetFrame(TabFrame):
@@ -28,6 +28,6 @@ class PetFrame(TabFrame):
         )
         return PetConfig(
             bindings=self._populate_bindings(bindings),
-            spawn_interval_mins=_int(self.getvar('bot_config.pet.spawn_interval')),
-            food_interval_mins=_int(self.getvar('bot_config.pet.food_interval')),
+            spawn_interval_mins=var_or_none(self.getvar('bot_config.pet.spawn_interval')),
+            food_interval_mins=var_or_none(self.getvar('bot_config.pet.food_interval')),
         )

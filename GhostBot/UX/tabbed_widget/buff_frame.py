@@ -3,7 +3,7 @@ from tkinter import ttk
 
 from GhostBot.UX.tabbed_widget.TabFrame import TabFrame
 from GhostBot.config import Config, BuffConfig
-from GhostBot.lib.var_or_none import _int
+from GhostBot.lib.var_or_none import var_or_none
 
 
 class BuffFrame(TabFrame):
@@ -28,7 +28,7 @@ class BuffFrame(TabFrame):
         _san = lambda x: [x[0], int(x[1])]
         return BuffConfig(
             buffs=[_san(v.split()) for v in self.buffs.get(1.0, tk.END).splitlines()] or None,
-            interval=_int(self.getvar('bot_config.buff.interval')),
+            interval=var_or_none(self.getvar('bot_config.buff.interval')),
         )
 
     def _clear(self):

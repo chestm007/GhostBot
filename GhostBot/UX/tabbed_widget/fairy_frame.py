@@ -1,6 +1,6 @@
 from GhostBot.UX.tabbed_widget.TabFrame import TabFrame
 from GhostBot.config import Config, FairyConfig
-from GhostBot.lib.var_or_none import _float
+from GhostBot.lib.var_or_none import var_or_none
 
 
 class FairyFrame(TabFrame):
@@ -31,6 +31,6 @@ class FairyFrame(TabFrame):
         )
         return FairyConfig(
             bindings=self._populate_bindings(bindings),
-            heal_team_threshold=_float(self.getvar('bot_config.fairy.heal_team')),
-            heal_self_threshold=_float(self.getvar('bot_config.fairy.heal_self')),
+            heal_team_threshold=var_or_none(self.getvar('bot_config.fairy.heal_team')),
+            heal_self_threshold=var_or_none(self.getvar('bot_config.fairy.heal_self')),
         )

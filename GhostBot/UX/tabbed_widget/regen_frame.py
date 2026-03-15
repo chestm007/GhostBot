@@ -3,7 +3,7 @@ from tkinter import ttk
 from GhostBot.UX.tabbed_widget.TabFrame import TabFrame
 from GhostBot.bot_controller import ExtendedClient
 from GhostBot.config import Config, RegenConfig
-from GhostBot.lib.var_or_none import _float, _tuple
+from GhostBot.lib.var_or_none import var_or_none
 
 
 class RegenFrame(TabFrame):
@@ -58,7 +58,7 @@ class RegenFrame(TabFrame):
         )
         return RegenConfig(
             bindings=self._populate_bindings(bindings),
-            hp_threshold=_float(self.getvar('bot_config.regen.hp_low')),
-            mana_threshold=_float(self.getvar('bot_config.regen.mp_low')),
-            spot=_tuple(self.getvar('bot_config.regen.spot')),
+            hp_threshold=var_or_none(self.getvar('bot_config.regen.hp_low')),
+            mana_threshold=var_or_none(self.getvar('bot_config.regen.mp_low')),
+            spot=var_or_none(self.getvar('bot_config.regen.spot')),
         )

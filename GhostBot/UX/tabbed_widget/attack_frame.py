@@ -3,7 +3,7 @@ from tkinter import ttk
 
 from GhostBot.UX.tabbed_widget.TabFrame import TabFrame
 from GhostBot.config import Config, AttackConfig
-from GhostBot.lib.var_or_none import _int, _float
+from GhostBot.lib.var_or_none import var_or_none
 
 
 class AttackFrame(TabFrame):
@@ -50,10 +50,10 @@ class AttackFrame(TabFrame):
         return AttackConfig(
             bindings=self._populate_bindings(bindings),
             attacks=[_san(v.split()) for v in self.attacks.get(1.0, tk.END).splitlines()] or None,
-            stuck_interval=_int(self.getvar('bot_config.attack.battle_stuck')),
-            battle_mana_threshold=_float(self.getvar('bot_config.attack.battle_mp_low')),
-            battle_hp_threshold=_float(self.getvar('bot_config.attack.battle_hp_low')),
-            roam_distance=_int(self.getvar('bot_config.attack.battle_roam')),
+            stuck_interval=var_or_none(self.getvar('bot_config.attack.battle_stuck')),
+            battle_mana_threshold=var_or_none(self.getvar('bot_config.attack.battle_mp_low')),
+            battle_hp_threshold=var_or_none(self.getvar('bot_config.attack.battle_hp_low')),
+            roam_distance=var_or_none(self.getvar('bot_config.attack.battle_roam')),
         )
 
     def _clear(self):

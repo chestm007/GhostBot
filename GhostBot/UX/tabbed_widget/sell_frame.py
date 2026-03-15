@@ -4,7 +4,7 @@ from tkinter import ttk
 from GhostBot.UX.tabbed_widget.TabFrame import TabFrame
 from GhostBot.client_window import ClientWindow
 from GhostBot.config import Config, SellConfig
-from GhostBot.lib.var_or_none import _str, _int, _tuple, _bool
+from GhostBot.lib.var_or_none import var_or_none
 
 
 class SellFrame(TabFrame):
@@ -51,7 +51,7 @@ class SellFrame(TabFrame):
         if config.sell:
             mount_key = ''
             if config.sell.bindings:
-                mount_key = _str(config.sell.bindings.get('mount'))
+                mount_key = var_or_none(config.sell.bindings.get('mount'))
             self.setvar('bot_config.sell.item_pos', config.sell.sell_item_pos or '')
             self.setvar('bot_config.sell.npc_name', config.sell.sell_npc_name or '')
             self.setvar('bot_config.sell.interval_mins', config.sell.sell_interval_mins or '')
@@ -70,11 +70,11 @@ class SellFrame(TabFrame):
         )
         return SellConfig(
             bindings=self._populate_bindings(bindings),
-            sell_item_pos=_int(self.getvar('bot_config.sell.item_pos')),
-            sell_npc_name=_str(self.getvar('bot_config.sell.npc_name')),
-            use_mount=_bool(self.getvar('bot_config.sell.use_mount')),
-            sell_interval_mins=_int(self.getvar('bot_config.sell.interval_mins')),
-            npc_search_spot=_tuple(self.getvar('bot_config.sell.npc_search_spot')),
-            npc_sell_click_spot=_tuple(self.getvar('bot_config.sell.npc_sell_click_spot')),
-            return_spot=_tuple(self.getvar('bot_config.sell.return_spot')),
+            sell_item_pos=var_or_none(self.getvar('bot_config.sell.item_pos')),
+            sell_npc_name=var_or_none(self.getvar('bot_config.sell.npc_name')),
+            use_mount=var_or_none(self.getvar('bot_config.sell.use_mount')),
+            sell_interval_mins=var_or_none(self.getvar('bot_config.sell.interval_mins')),
+            npc_search_spot=var_or_none(self.getvar('bot_config.sell.npc_search_spot')),
+            npc_sell_click_spot=var_or_none(self.getvar('bot_config.sell.npc_sell_click_spot')),
+            return_spot=var_or_none(self.getvar('bot_config.sell.return_spot')),
         )
