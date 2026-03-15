@@ -75,7 +75,7 @@ class ImageFinder:
         return to_delete
 
     def _get_destroy_item_location(self) -> tuple[int, int] | None:
-        return self._find_ui_element("Images/misc/destroy-item.bmp", threshold=0.8)
+        return self._find_ui_element(os.path.join(self.misc_folder, "destroy-item.bmp"), threshold=0.8)
 
     def _get_dialog_ok_location(self) -> tuple[int, int] | None:
         return self._find_ui_element("Images/misc/dialog_ok.bmp", threshold=0.6)

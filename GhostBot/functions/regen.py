@@ -27,12 +27,13 @@ class Regen(Locational):
             self._goto_start_location()
 
             start_wait = time.time()
-            while self._client.in_battle and time.time() - start_wait < seconds(seconds=3):
-                time.sleep(0.5)
-                if not self._client.in_battle:
-                    break
-            else:
-                return False
+            if self._client.in_battle:
+                while self._client.in_battle and time.time() - start_wait < seconds(seconds=3):
+                    time.sleep(0.5)
+                    if not self._client.in_battle:
+                        break
+                else:
+                    return False
             self._log_info(f'low hp/mana, starting Regen')
 
             if self.config.bindings:
