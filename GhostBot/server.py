@@ -25,7 +25,12 @@ class GhostbotIPCServer:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     s.bind((self.host, self.port))
                     s.listen(1)
-                    conn, addr = s.accept()
+                    s.settimeout(1)
+                    try:
+                        conn, addr = s.accept()
+                    except TimeoutError:
+                        continue
+
                     with conn:
                         #data = Message.from_json(conn.recv(1024).decode('utf-8'))
                         data = pickle.loads(conn.recv(1024))
@@ -76,18 +81,29 @@ class IPCClient:
         self.port = port
 
     def send(self, data: Message) -> Message:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect((self.host, self.port))
-            #s.sendall(data.encode('utf-8'))
-            s.sendall(pickle.dumps(data))
-            recv = s.recv(1024)
-            return pickle.loads(recv)
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((self.host, self.port))
+                #s.sendall(data.encode('utf-8'))
+                s.sendall(pickle.dumps(data))
+                recv = s.recv(1024)
+
+                try:
+                    return pickle.loads(recv)
+                except EOFError as e:  # Thrown when server crashes, or is shutdown
+                    if data.command != Command.EXIT:
+                        raise e from e
+        except ConnectionRefusedError:
+            logger.debug("Cant connect to Server.")
 
     def shutdown_server(self):
         return self.send(Message(Command.EXIT))
 
     def list_chars(self) -> list[str]:
-        return self.send(Message(Command.INFO)).target.split(' ')
+        response = self.send(Message(Command.INFO))
+        if response:
+            return response.target.split(' ')
+        return []
 
     def start_bot(self, target: str):
         return bool(self.send(Message(Command.START, target)))
@@ -96,7 +112,7 @@ class IPCClient:
         return bool(self.send(Message(Command.STOP, target)))
 
     def char_info(self, target: str):
-        return self.send(Message(Command.INFO, target))
+        return self.send(Message(Command.INFO, target)) or ''
 
     def get_config(self, target: str):
         _config = self.send(Message(Command.CONFIG, dict(action="get", char=target))).target
@@ -108,12 +124,3 @@ class IPCClient:
 
     def set_config(self, target: str, config: Config):
         return self.send(Message(Command.CONFIG, dict(action="set",char=target, config=config.to_yaml())))
-
-
-if __name__ == '__main__':
-    client = IPCClient()
-    client.start_bot("iSuckYouDry")
-    #client.send(Message(Command.START, "FukMeWithNoLube"))
-    #client.send(Message(Command.EXIT))
-    #print(client.send(Message(Command.INFO, 'Ch35TY17')))
-    #client.send(Message(Command.EXIT))
