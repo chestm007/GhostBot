@@ -3,6 +3,7 @@ import math
 import time
 from contextlib import contextmanager
 from ctypes.wintypes import LPARAM, WPARAM
+from dataclasses import dataclass
 from operator import mul, add
 
 import cv2
@@ -90,16 +91,16 @@ class ClientWindow:
             win32gui.SetWindowText(self.window_handle, f'Talisman Online | {self.name}')
         return self
 
-    def new_target(self):
-        self.press_key('tab')
+    def new_target(self, _key='tab'):
+        self.press_key(_key)
         return self
 
-    def target_self(self):
-        self.press_key('F1')
+    def target_self(self, _key='F1'):
+        self.press_key(_key)
         return self
 
-    def sit(self):
-        self.press_key('x')
+    def sit(self, _key='x'):
+        self.press_key(_key)
         return self
 
     @property
@@ -111,11 +112,18 @@ class ClientWindow:
         return self.pointers.mount()
 
     @contextmanager
-    def mounted(self, _key=0):
+    def mounted(self, _key=None):
+        if _key is None:
+            yield
+            return
+
         yield self.mount(_key)
         self.dismount(_key)
 
-    def mount(self, _key=0):
+    def mount(self, _key=None):
+        if _key is None:
+            return
+
         attempts = 0
         while not self.on_mount and attempts < 3:
             attempts += 1
@@ -124,7 +132,10 @@ class ClientWindow:
         if attempts == 3:
             logger.error("Failed to mount up")
 
-    def dismount(self, _key=0):
+    def dismount(self, _key=None):
+        if _key is None:
+            return
+
         attempts = 0
         while self.on_mount and attempts < 3:
             attempts += 1
@@ -502,15 +513,24 @@ class ClientWindow:
 def main():
     from GhostBot.bot_controller import ExtendedClient
 
-    #logger.setLevel(logging.DEBUG)
-    logger.setLevel(logging.INFO)
+
+    logger.setLevel(logging.DEBUG)
+    #logger.setLevel(logging.INFO)
     for proc in PymemProcess.list_clients():
         client = ExtendedClient(proc)
-        #if client.name == 'LongJohnson':
-        if client.has_target:
-            print(client.name, client.target_name, client.target_id)
-            if client.has_target:
-                print(client.target_location)
+        if client.name == "LilithIsGorgeous":
+            time.sleep(2)
+            client.running = True
+            client.move_to_pos((1400, 1400))
+            return
+
+            #print(client.pointers.get_system_menu())
+            #print(client.pointers.get_dialog())
+            #print(client.pointers.confirm_box())
+            #print(client.pointers.get_notification())
+            # delete: confirm
+            # team: confirm, notification:1
+            # trade: confirm
 
 
 if __name__ == "__main__":
