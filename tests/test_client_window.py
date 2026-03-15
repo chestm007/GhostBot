@@ -8,7 +8,7 @@ from GhostBot.image_finder import ImageFinder
 
 
 class MockClientWindow(ClientWindow):
-    _path_base = pathlib.Path(__file__).resolve()
+    _path_base = pathlib.Path(__file__).resolve().parent
     _image = os.path.join(_path_base, "images", 'inventory.bmp')
 
     def __init__(self, *args, **kwargs):

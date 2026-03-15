@@ -135,8 +135,8 @@ def _goto_centre_of_map():
     logger.setLevel(logging.INFO)
     for proc in PymemProcess.list_clients():
         client = ExtendedClient(proc)
-        if client.name == 'iLoveLiIith':
-            client.press_key('m')
+        if client.name == "FkYouUp1":
+            #client.press_key('m')
             client.right_click((int(1024/2), int(768/2)))
 
 if __name__ == '__main__':

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import pprint
 from abc import ABC
 from dataclasses import dataclass, field
 from typing import TypedDict, NotRequired, Any
@@ -170,6 +169,8 @@ class ConfigLoader:
 
 
 if __name__ == "__main__":
+    import pprint
+
     attack_bindings: AttackConfig.Bindings = {'battle_hp_pot': 'F1'}
     fairy_bindings: FairyConfig.Bindings = {'heal': 6}
     pet_bindings: PetConfig.Bindings = {'spawn': 'E', 'food': 9}

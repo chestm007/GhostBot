@@ -73,9 +73,8 @@ def scale_minimap_move_distance(_pos: tuple[int, int]) -> tuple[int, int]:
         make_positive = lambda x: x if x >= 0 else x * -1
         mp = max(tuple(map(make_positive, _pos)))
         return mp / max_minimap_move
-    print(_pos)
-    #ratio = (mp if (mp := max(_pos)) >= 0 else mp * -1) / max_minimap_move
-    print(ratio := calculate_ratio())
+
+    ratio = calculate_ratio()
     scaled_pos = tuple(map(truediv, _pos, (ratio, ratio)))
     logger.debug(f'raw: {_pos} | capped: {scaled_pos}')
     return scaled_pos
