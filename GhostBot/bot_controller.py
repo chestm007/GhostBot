@@ -86,12 +86,16 @@ class ExtendedClient(ClientWindow):
 
 class BotController:
 
+    _pymem_process = PymemProcess
+
     def __init__(self):
         self.threads: dict[str, threading.Thread] = dict()
         self.clients: dict[str, ExtendedClient] = dict()
+        self._scan_for_clients()
 
+    def _scan_for_clients(self):
         # TODO: maybe we want to scan this again to refresh the client list?
-        for proc in PymemProcess.list_clients():
+        for proc in self._pymem_process.list_clients():
             client = ExtendedClient(proc)
             try:
                 if client.name is not None and 0 < client.level <= 89:  # and client.name not in self.clients.keys()
