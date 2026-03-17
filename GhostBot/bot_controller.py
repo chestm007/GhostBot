@@ -1,12 +1,20 @@
+import math
 import threading
+import time
 from typing import Generator
+
+from operator import mul, add
 
 from GhostBot import logger
 from GhostBot.client_window import ClientWindow
 from GhostBot.config import Config, ConfigLoader
 from GhostBot.enums.bot_status import BotStatus
 from GhostBot.functions import Attack, Buffs, Fairy, Petfood, Regen, Runner, Sell, Delete
+from GhostBot.lib.math import linear_distance, position_difference, scale_minimap_move_distance, \
+    coords_to_map_screen_pos
+from GhostBot.lib.talisman_ui_locations import UI_locations
 from GhostBot.lib.win32.process import PymemProcess
+from GhostBot.map_navigation import location_to_zone_map, zones
 from GhostBot.server import GhostbotIPCServer
 
 
@@ -83,6 +91,73 @@ class ExtendedClient(ClientWindow):
         logger.info(f'{self.name}: Stopping...')
         self.bot_status = BotStatus.stopping
         self.running = False
+
+    def move_to_pos(self, target_pos):
+        """
+        moves to `target_pos`, will invoke map based pathing if distance is too far.
+        :param target_pos: `tuple(x, y)` coordinates to move too
+        """
+        while linear_distance(self.location, target_pos) > 50 and self.running:
+            logger.debug(f"{self.name} moving via map")
+            return self._move_to_pos_via_map(target_pos)
+
+        pos_diff = position_difference(self.location, target_pos)
+
+        pos_diff_mm_pix = tuple(map(mul, pos_diff, (-1.7, 1.7)))  # corrected to represent 1 pixel per meter
+
+        minimap_relative_pos = scale_minimap_move_distance(pos_diff_mm_pix)
+        minimap_pos = tuple(map(math.ceil, map(add, UI_locations.minimap_centre, minimap_relative_pos)))  # mouse position
+
+        logger.debug(f'{self.name}: clicking {minimap_relative_pos}')  # relative to minimap center
+        self.right_click(minimap_pos)
+        self.block_while_moving()
+
+    def _move_to_pos_via_map(self, target_pos: tuple[int, int]):
+        zone = location_to_zone_map[self.location_name.strip()]
+        screen_coords = coords_to_map_screen_pos(
+            zones[zone],
+            target_pos
+        )
+        # Open the map, and try a list of position offsets, starting at the exact point we want to go to
+        # this avoids movement being blocked when team members are already where we want to be
+        offsets = ((0, 0), (20, 0), (-20, 0), (20, 20), (-20, 20), (-20, -20), (0, -20), (-20, 20), (0, 20))
+        self.press_key('m')
+        time.sleep(1)
+        _loc = self.location
+        self.right_click(tuple(map(add, screen_coords, (-30, -30)))) # Click away from tgt to clear possible existing tgt
+        for offset in offsets:
+            path_tgt = tuple(map(add, screen_coords, offset))
+            self.right_click(path_tgt)
+            time.sleep(2)
+            if linear_distance(_loc, self.location) > 1:
+                # If we've started moving, we can stop trying offsets
+                break
+        else:
+            logger.info(f'{self.name}: failed pathing via map')
+            self.press_key('m')
+            return False
+
+        time.sleep(1)
+        self.press_key('m')
+        self.block_while_moving(path_tgt)
+        if target_pos != path_tgt:
+            # If we moved to a non-zero offset location, we will need to use the minimap to move to the right spot
+            # we're close enough now that it'll work.
+            self.move_to_pos(target_pos)
+            self.block_while_moving()
+        return True
+
+    def block_while_moving(self, destination=None):
+        while self.running:
+            _location = self.location
+            time.sleep(3)
+            if destination is not None:
+                if linear_distance(destination, self.location) < 40:  # if we're close enough, no point overshooting.
+                    break
+            if linear_distance(self.location, _location) < 1:
+                break
+
+
 
 class BotController:
 

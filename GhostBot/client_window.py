@@ -3,8 +3,6 @@ import math
 import time
 from contextlib import contextmanager
 from ctypes.wintypes import LPARAM, WPARAM
-from dataclasses import dataclass
-from operator import mul, add
 
 import cv2
 import numpy as np
@@ -19,14 +17,11 @@ from pymem.exception import MemoryReadError, ProcessError
 from win32con import SM_CYCAPTION
 
 from GhostBot import logger
-from GhostBot.enums.bot_status import BotStatus
 from GhostBot.lib import vk_codes, win32messages
-from GhostBot.lib.math import position_difference, limit, coords_to_map_screen_pos, linear_distance, \
-    scale_minimap_move_distance
 from GhostBot.lib.talisman_online_python.pointers import Pointers
 from GhostBot.lib.talisman_ui_locations import UI_locations
 from GhostBot.lib.win32.process import PymemProcess
-from GhostBot.map_navigation import location_to_zone_map, zones
+from GhostBot.map_navigation import location_to_zone_map
 
 TARGET_MAX_HP=597
 TARGET_MIN_HP=461
@@ -56,6 +51,9 @@ pymem.Pymem.get_pointer = get_pointer
 
 
 class ClientWindow:
+    """
+    Class to interact with the Talisman Online client window.
+    """
     base_addr = 0x400000
     char_addr = base_addr + 0xC20980
 
@@ -212,71 +210,6 @@ class ClientWindow:
         win32gui.SendMessage(self.window_handle, win32messages.WM_RBUTTONUP, None, lparam)
         time.sleep(0.1)
 
-    def move_to_pos(self, target_pos):
-        """
-        moves to `target_pos`, will invoke map based pathing if distance is too far.
-        :param target_pos: `tuple(x, y)` coordinates to move too
-        """
-        while linear_distance(self.location, target_pos) > 50 and self.running:
-            logger.debug(f"{self.name} moving via map")
-            return self._move_to_pos_via_map(target_pos)
-
-        pos_diff = position_difference(self.location, target_pos)
-
-        pos_diff_mm_pix = tuple(map(mul, pos_diff, (-1.7, 1.7)))  # corrected to represent 1 pixel per meter
-
-        minimap_relative_pos = scale_minimap_move_distance(pos_diff_mm_pix)
-        minimap_pos = tuple(map(math.ceil, map(add, UI_locations.minimap_centre, minimap_relative_pos)))  # mouse position
-
-        logger.debug(f'{self.name}: clicking {minimap_relative_pos}')  # relative to minimap center
-        self.right_click(minimap_pos)
-        self.block_while_moving()
-
-    def _move_to_pos_via_map(self, target_pos: tuple[int, int]):
-        zone = location_to_zone_map[self.location_name.strip()]
-        screen_coords = coords_to_map_screen_pos(
-            zones[zone],
-            target_pos
-        )
-        # Open the map, and try a list of position offsets, starting at the exact point we want to go to
-        # this avoids movement being blocked when team members are already where we want to be
-        offsets = ((0, 0), (20, 0), (-20, 0), (20, 20), (-20, 20), (-20, -20), (0, -20), (-20, 20), (0, 20))
-        self.press_key('m')
-        time.sleep(1)
-        _loc = self.location
-        self.right_click(tuple(map(add, screen_coords, (-30, -30)))) # Click away from tgt to clear possible existing tgt
-        for offset in offsets:
-            path_tgt = tuple(map(add, screen_coords, offset))
-            self.right_click(path_tgt)
-            time.sleep(2)
-            if linear_distance(_loc, self.location) > 1:
-                # If we've started moving, we can stop trying offsets
-                break
-        else:
-            logger.info(f'{self.name}: failed pathing via map')
-            self.press_key('m')
-            return False
-
-        time.sleep(1)
-        self.press_key('m')
-        self.block_while_moving(path_tgt)
-        if target_pos != path_tgt:
-            # If we moved to a non-zero offset location, we will need to use the minimap to move to the right spot
-            # we're close enough now that it'll work.
-            self.move_to_pos(target_pos)
-            self.block_while_moving()
-        return True
-
-    def block_while_moving(self, destination=None):
-        while self.running:
-            _location = self.location
-            time.sleep(3)
-            if destination is not None:
-                if linear_distance(destination, self.location) < 40:  # if we're close enough, no point overshooting.
-                    break
-            if linear_distance(self.location, _location) < 1:
-                break
-
     @staticmethod
     def get_mouse_window_pos(window_pos: tuple[int, int]) -> tuple[int, int] | None:
         """Get cursor position relative to window position"""
@@ -404,12 +337,12 @@ class ClientWindow:
 
     @property
     def sitting(self) -> bool:
-        """:return: `True` if char sitting, `False` if not"""
+        """:return: ``True`` if char sitting, ``False`` if not"""
         return self.pointers.is_sitting()
 
     @property
     def in_battle(self) -> bool:
-        """boolean value, `True` if in battle, `False` otherwise"""
+        """:return: ``True`` if in battle, ``False`` otherwise"""
         return self.pointers.is_in_battle()
 
     @property
