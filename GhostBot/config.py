@@ -161,7 +161,6 @@ class ConfigLoader:
             _config = Config()
             return self.save(_config)
 
-
     def save(self, _config: Config) -> Config:
         with open(self.config_filepath, 'w') as c:
             c.write(yaml.safe_dump(_config.to_yaml()))
@@ -199,4 +198,3 @@ if __name__ == "__main__":
     yaml_config = yaml.safe_dump(config.to_yaml())
     assert (processed_config := Config.load_yaml(yaml.safe_load(yaml_config)) == config)
     pprint.pprint(config)
-

@@ -4,11 +4,11 @@ import time
 import win32api
 import yaml
 
-from GhostBot.client_window import ClientWindow
+from GhostBot.client_window import Win32ClientWindow
 from GhostBot.lib.win32.process import PymemProcess
 
 
-class ClientLauncher(ClientWindow):
+class ClientLauncher(Win32ClientWindow):
     path = 'E:\\TalismanOnline'
     path = 'C:\Program Files (x86)\TalismanOnline'
     exe = 'game.exe'
@@ -63,14 +63,14 @@ def main(username, password):
             print(c, proc)
             try:
                 print('attempting to get window')
-                c = ClientWindow(proc)
+                c = Win32ClientWindow(proc)
                 time.sleep(5)
             except Exception as e:
                 print(e)
                 time.sleep(2)
                 try:
                     print('attempting to get window')
-                    c = ClientWindow(proc)
+                    c = Win32ClientWindow(proc)
                     time.sleep(3)
                 except Exception as e:
                     raise e
