@@ -1,12 +1,12 @@
+import asyncio
 import math
-import threading
-import time
-from typing import Generator
+from abc import abstractmethod, ABC
+from typing import Generator, Any
 
 from operator import mul, add
 
 from GhostBot import logger
-from GhostBot.client_window import ClientWindow
+from GhostBot.client_window import Win32ClientWindow
 from GhostBot.config import Config, ConfigLoader
 from GhostBot.enums.bot_status import BotStatus
 from GhostBot.functions import Attack, Buffs, Fairy, Petfood, Regen, Runner, Sell, Delete
@@ -18,13 +18,15 @@ from GhostBot.map_navigation import location_to_zone_map, zones
 from GhostBot.server import GhostbotIPCServer
 
 
-class ExtendedClient(ClientWindow):
+class BotClientWindow(Win32ClientWindow):
     running: bool = False
     bot_status: BotStatus = BotStatus.created
     config: Config = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if self.disconnected:
+            self.bot_status = BotStatus.disconnected
         self.load_config()
 
     def to_json(self) -> dict:
@@ -52,15 +54,11 @@ class ExtendedClient(ClientWindow):
         )
 
     def mount(self, _key=0):
-        if (self.config.sell is not None
-            and self.config.sell.use_mount
-        ):
+        if self.config.sell is not None and self.config.sell.use_mount:
             super().mount(_key)
 
     def unmount(self, _key=0):
-        if (self.config.sell is not None
-            and self.config.sell.use_mount
-        ):
+        if self.config.sell is not None and self.config.sell.use_mount:
             super().dismount(_key)
 
     def load_config(self):
@@ -83,6 +81,9 @@ class ExtendedClient(ClientWindow):
 
     def start_bot(self):
         logger.info(f'{self.name}: Starting...')
+        if self.disconnected:
+            self.bot_status = BotStatus.disconnected
+            logger.info(f'{self.name}: Client disconnected.')
         self.bot_status = BotStatus.starting
         self.running = True
         self.load_config()
@@ -92,27 +93,27 @@ class ExtendedClient(ClientWindow):
         self.bot_status = BotStatus.stopping
         self.running = False
 
-    def move_to_pos(self, target_pos):
+    async def move_to_pos(self, target_pos):
         """
         moves to `target_pos`, will invoke map based pathing if distance is too far.
         :param target_pos: `tuple(x, y)` coordinates to move too
         """
         while linear_distance(self.location, target_pos) > 50 and self.running:
             logger.debug(f"{self.name} moving via map")
-            return self._move_to_pos_via_map(target_pos)
+            return await self._move_to_pos_via_map(target_pos)
 
         pos_diff = position_difference(self.location, target_pos)
 
         pos_diff_mm_pix = tuple(map(mul, pos_diff, (-1.7, 1.7)))  # corrected to represent 1 pixel per meter
 
         minimap_relative_pos = scale_minimap_move_distance(pos_diff_mm_pix)
-        minimap_pos = tuple(map(math.ceil, map(add, UI_locations.minimap_centre, minimap_relative_pos)))  # mouse position
+        minimap_pos: tuple[float, float] = tuple(map(math.ceil, map(add, UI_locations.minimap_centre, minimap_relative_pos)))  # mouse position
 
         logger.debug(f'{self.name}: clicking {minimap_relative_pos}')  # relative to minimap center
-        self.right_click(minimap_pos)
-        self.block_while_moving()
+        await self.right_click(minimap_pos)
+        await self.block_while_moving()
 
-    def _move_to_pos_via_map(self, target_pos: tuple[int, int]):
+    async def _move_to_pos_via_map(self, target_pos: tuple[int, int]):
         zone = location_to_zone_map[self.location_name.strip()]
         screen_coords = coords_to_map_screen_pos(
             zones[zone],
@@ -122,13 +123,13 @@ class ExtendedClient(ClientWindow):
         # this avoids movement being blocked when team members are already where we want to be
         offsets = ((0, 0), (20, 0), (-20, 0), (20, 20), (-20, 20), (-20, -20), (0, -20), (-20, 20), (0, 20))
         self.press_key('m')
-        time.sleep(1)
+        await asyncio.sleep(1)
         _loc = self.location
-        self.right_click(tuple(map(add, screen_coords, (-30, -30)))) # Click away from tgt to clear possible existing tgt
+        await self.right_click(tuple(map(add, screen_coords, (-30, -30)))) # Click away from tgt to clear possible existing tgt
         for offset in offsets:
             path_tgt = tuple(map(add, screen_coords, offset))
-            self.right_click(path_tgt)
-            time.sleep(2)
+            await self.right_click(path_tgt)
+            await asyncio.sleep(2)
             if linear_distance(_loc, self.location) > 1:
                 # If we've started moving, we can stop trying offsets
                 break
@@ -137,20 +138,20 @@ class ExtendedClient(ClientWindow):
             self.press_key('m')
             return False
 
-        time.sleep(1)
+        await asyncio.sleep(1)
         self.press_key('m')
-        self.block_while_moving(path_tgt)
+        await self.block_while_moving(path_tgt)
         if target_pos != path_tgt:
             # If we moved to a non-zero offset location, we will need to use the minimap to move to the right spot
             # we're close enough now that it'll work.
-            self.move_to_pos(target_pos)
-            self.block_while_moving()
+            await self.move_to_pos(target_pos)
+            await self.block_while_moving()
         return True
 
-    def block_while_moving(self, destination=None):
+    async def block_while_moving(self, destination=None):
         while self.running:
             _location = self.location
-            time.sleep(3)
+            await asyncio.sleep(3)
             if destination is not None:
                 if linear_distance(destination, self.location) < 40:  # if we're close enough, no point overshooting.
                     break
@@ -159,24 +160,24 @@ class ExtendedClient(ClientWindow):
 
 
 
-class BotController:
+class BotController(ABC):
 
     _pymem_process = PymemProcess
+    _tasks: dict[str, Any]
 
     def __init__(self):
-        self.threads: dict[str, threading.Thread] = dict()
-        self.clients: dict[str, ExtendedClient] = dict()
+        self.clients: dict[str, BotClientWindow] = dict()
         self._scan_for_clients()
 
     def _scan_for_clients(self):
         # TODO: maybe we want to scan this again to refresh the client list?
         for proc in self._pymem_process.list_clients():
-            client = ExtendedClient(proc)
+            client = BotClientWindow(proc)
             try:
                 if client.name is not None and 0 < client.level <= 89:  # and client.name not in self.clients.keys()
-                    if client.name not in self.clients.keys():
-                        logger.info(f'adding client {client.name}')
-                        self.add_client(ExtendedClient(proc))
+                    if client.name not in self.client_keys:
+                        logger.info(f'adding client {client.name} {client.disconnected}')
+                        self.add_client(BotClientWindow(proc))
                     else:
                         logger.info(f'client {client.name} already exists, skipping')
             except (TypeError, AttributeError):
@@ -188,49 +189,23 @@ class BotController:
     def client_keys(self) -> list[str]:
         return list(str(k) for k in self.clients.keys())
 
-    def add_client(self, client: ExtendedClient) -> None:
+    def add_client(self, client: BotClientWindow) -> None:
         self.clients[client.name] = client
 
-    def start_bot(self, client: ExtendedClient | str) -> None:
-        if isinstance(client, str):
-            if (client := self.get_client(client)) is None:
-                logger.warning(f'no client {client}')
-                return
-        self.reload_bot_config(client)
-        client.start_bot()
-        self.threads[client.name] = threading.Thread(target=self._run_bot, args=(client, ))
-        self.threads.get(client.name).start()
+    @abstractmethod
+    def start_bot(self, client: BotClientWindow | str) -> None: ...
 
-    def reload_bot_config(self, client: str | ExtendedClient) -> None:
+    def reload_bot_config(self, client: str | BotClientWindow) -> None:
         if isinstance(client, str):
             if (client := self.get_client(client)) is None:
                 logger.warning(f'no client {client}')
                 return
         client.load_config()
 
-    def get_client(self, name) -> ExtendedClient | None:
+    def get_client(self, name) -> BotClientWindow | None:
         return self.clients.get(name)
 
-    def _run_bot(self, client: ExtendedClient) -> None:
-        client.bot_status = BotStatus.started
-
-        functions = list(self._get_functions_for_client(client))
-
-        while client.running:
-            client.bot_status = BotStatus.running
-            if client.disconnected:
-                logger.info(f"{client.name}: disconnected.")
-                break
-            try:
-                for function in functions:
-                    function.run()
-
-            except Exception as e:
-                logger.exception(e)
-        client.bot_status = BotStatus.stopped
-        logger.info(f"{client.name}: Stopped.")
-
-    def _get_functions_for_client(self, client: ExtendedClient) -> Generator[Runner, None, None]:
+    def _get_functions_for_client(self, client: BotClientWindow) -> Generator[Runner, None, None]:
         if client.config.delete is not None:
             yield Delete(client)
         if client.config.sell is not None:
@@ -246,38 +221,12 @@ class BotController:
         if client.config.fairy is not None:
             yield Fairy(self, client)
 
-    def stop_all_bots(self, timeout=30) -> None:
-        logger.info("stopping all bots...")
-        _stopping = []
-        for client in self.clients.values():
-            if client.running:
-                logger.info(f'stopping client {client.name}')
-                client.stop_bot()
-                _stopping.append(client)
-        for client in _stopping:
-            logger.debug(f'joining thread {client.name}')
-            self.threads.get(client.name).join(timeout)
-            client.bot_status = BotStatus.stopped
+    @abstractmethod
+    def stop_all_bots(self, timeout=30) -> None: ...
 
-    def stop_bot(self, client: str | ExtendedClient, timeout=5) -> None:
-        if isinstance(client, str):
-            if (client := self.get_client(client)) is None:
-                logger.warning(f'no client {client}')
-                return
-        if client.running:
-            client.stop_bot()
-            self.threads.get(client.name).join(timeout=timeout)
-            client.bot_status = BotStatus.stopped
+    @abstractmethod
+    def stop_bot(self, client: str | BotClientWindow, timeout=5) -> None: ...
 
     def listen(self, host=None, port=None):
         server = GhostbotIPCServer(bot_controller=self, host=host, port=port)
         server.listen()
-
-if __name__ == '__main__':
-    bot_controller = BotController()
-    try:
-        bot_controller.listen()
-    except KeyboardInterrupt as e:
-        logger.info('received signal, exiting')
-    finally:
-        bot_controller.stop_all_bots()

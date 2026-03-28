@@ -1,7 +1,7 @@
+import asyncio
 import logging
 import math
 import time
-from contextlib import contextmanager
 from ctypes.wintypes import LPARAM, WPARAM
 
 import cv2
@@ -17,9 +17,9 @@ from pymem.exception import MemoryReadError, ProcessError
 from win32con import SM_CYCAPTION
 
 from GhostBot import logger
+from GhostBot.abstract_client_window import AbstractClientWindow, Location
 from GhostBot.lib import vk_codes, win32messages
 from GhostBot.lib.talisman_online_python.pointers import Pointers
-from GhostBot.lib.talisman_ui_locations import UI_locations
 from GhostBot.lib.win32.process import PymemProcess
 from GhostBot.map_navigation import location_to_zone_map
 
@@ -50,9 +50,9 @@ def get_hwnds_for_pid(pid):
 pymem.Pymem.get_pointer = get_pointer
 
 
-class ClientWindow:
+class Win32ClientWindow(AbstractClientWindow):
     """
-    Class to interact with the Talisman Online client window.
+    Class to interact with the Talisman Online client window under Microsoft Windows.
     """
     base_addr = 0x400000
     char_addr = base_addr + 0xC20980
@@ -89,18 +89,6 @@ class ClientWindow:
             win32gui.SetWindowText(self.window_handle, f'Talisman Online | {self.name}')
         return self
 
-    def new_target(self, _key='tab'):
-        self.press_key(_key)
-        return self
-
-    def target_self(self, _key='F1'):
-        self.press_key(_key)
-        return self
-
-    def sit(self, _key='x'):
-        self.press_key(_key)
-        return self
-
     @property
     def disconnected(self):
         return bool(self.pointers.get_dc())
@@ -108,39 +96,6 @@ class ClientWindow:
     @property
     def on_mount(self) -> bool:
         return self.pointers.mount()
-
-    @contextmanager
-    def mounted(self, _key=None):
-        if _key is None:
-            yield
-            return
-
-        yield self.mount(_key)
-        self.dismount(_key)
-
-    def mount(self, _key=None):
-        if _key is None:
-            return
-
-        attempts = 0
-        while not self.on_mount and attempts < 3:
-            attempts += 1
-            self.press_key(_key)
-            time.sleep(4)
-        if attempts == 3:
-            logger.error("Failed to mount up")
-
-    def dismount(self, _key=None):
-        if _key is None:
-            return
-
-        attempts = 0
-        while self.on_mount and attempts < 3:
-            attempts += 1
-            self.press_key(_key)
-            time.sleep(4)
-        if attempts == 3:
-            logger.error("Failed to dismount")
 
     def capture_window(self, color=False):
 
@@ -189,26 +144,21 @@ class ClientWindow:
         win32gui.SendMessage(self.window_handle, win32messages.WM_CHAR, _key, LPARAM(0))
         return
 
-    def type_keys(self, keys: str):
-        for key in keys.swapcase():
-            self.press_key(key)
-            time.sleep(0.1)
-
-    def left_click(self, pos):
+    async def left_click(self, pos):
         lparam = win32api.MAKELONG(*pos)
         win32gui.SendMessage(self.window_handle, win32messages.WM_MOUSEMOVE, None, lparam)
-        time.sleep(0.1)
+        await asyncio.sleep(0.1)
         win32gui.SendMessage(self.window_handle, win32messages.WM_LBUTTONDOWN, WPARAM(0x0001), lparam)
         win32gui.SendMessage(self.window_handle, win32messages.WM_LBUTTONUP, None, lparam)
-        time.sleep(0.1)
+        await asyncio.sleep(0.1)
 
-    def right_click(self, pos):
+    async def right_click(self, pos):
         lparam = win32api.MAKELONG(*pos)
         win32gui.SendMessage(self.window_handle, win32messages.WM_MOUSEMOVE, None, lparam)
-        time.sleep(0.1)
+        await asyncio.sleep(0.1)
         win32gui.SendMessage(self.window_handle, win32messages.WM_RBUTTONDOWN, WPARAM(0x0002), lparam)
         win32gui.SendMessage(self.window_handle, win32messages.WM_RBUTTONUP, None, lparam)
-        time.sleep(0.1)
+        await asyncio.sleep(0.1)
 
     @staticmethod
     def get_mouse_window_pos(window_pos: tuple[int, int]) -> tuple[int, int] | None:
@@ -232,51 +182,9 @@ class ClientWindow:
         wh -= border_thickness + wy
         return tuple(((wx, wy), (ww, wh)))
 
-    def get_window_pos(self) -> tuple[int, int]:
-        return self.get_window_size_pos()[0]
-
-    def get_window_size(self) -> tuple[int, int]:
-        return self.get_window_size_pos()[1]
-
-    def open_surroundings_ui(self):
-        self.left_click(UI_locations.minimap_surroundings)
-        time.sleep(0.5)
-
     @property
     def inventory_open(self):
         return self.pointers.is_bag_open()
-
-    @contextmanager
-    def inventory(self):
-        yield self.open_inventory()
-        self.close_inventory()
-
-    def open_inventory(self):
-        while not self.inventory_open:
-            self.press_key('i')
-            time.sleep(1)
-
-    def close_inventory(self):
-        while self.inventory_open:
-            self.press_key('i')
-            time.sleep(1)
-
-    def search_surroundings(self, val):
-        self.open_surroundings_ui()
-        self.left_click(UI_locations.surroundings_search)
-        time.sleep(0.5)
-        self.type_keys(val)
-        time.sleep(0.5)
-
-    def goto_first_surrounding_result(self):
-        self.left_click(UI_locations.surroundings_firstitem)
-        self.open_surroundings_ui()
-
-    def click_npc(self):
-        self.right_click(UI_locations.npc_location)
-
-    def reset_camera(self):
-        self.left_click(UI_locations.view_reset)
 
     @property
     def team_size(self) -> int:
@@ -346,27 +254,11 @@ class ClientWindow:
         return self.pointers.is_in_battle()
 
     @property
-    def location_x(self) -> int:
-        """
-        character location * 20, usually also off by .5
-        :returns character location as it appears in game
-        """
-        return self.pointers.get_x()
-
-    @property
-    def location_y(self) -> int:
-        """
-        character location * 20, usually also off by .5
-        :returns character location as it appears in game
-        """
-        return self.pointers.get_y()
-
-    @property
     def location(self) -> tuple[int, int]:
         """
         convenience method to return a tuple of our location
         """
-        return self.location_x, self.location_y
+        return Location(self.pointers.get_x(), self.pointers.get_y())
 
     @property
     def location_name(self) -> str | None:
@@ -424,33 +316,15 @@ class ClientWindow:
         """:return: target name if target selected, `None` if no target"""
         return self.pointers.get_target_name()
 
-    def _read_with_offsets(self, in_offsets, get_func, **kwargs):
-        """
-        gets the data at the last offset in `in_offsets`
-        :param in_offsets: List of offsets to get to the data we want
-        :param get_func: should be one of `self.proc.read_x` and is used to read the last offset
-        :param kwargs: passed directly into `get_func`
-        :return: result of `get_func`
-        """
-        try:
-            offsets = list(in_offsets)
-            var = 0
-            last = offsets.pop()
-            for offset in offsets:
-                var = self.proc.read_int(var + offset)
-            return get_func(var + last, **kwargs)
-        except UnicodeDecodeError as e:
-            pass
-
 
 def main():
-    from GhostBot.bot_controller import ExtendedClient
+    from GhostBot.controller.bot_controller import BotClientWindow
 
 
     logger.setLevel(logging.DEBUG)
     #logger.setLevel(logging.INFO)
     for proc in PymemProcess.list_clients():
-        client = ExtendedClient(proc)
+        client = BotClientWindow(proc)
         if client.name == "LilithIsGorgeous":
             time.sleep(2)
             client.running = True

@@ -13,7 +13,7 @@ import pathlib
 from GhostBot import logger
 
 if TYPE_CHECKING:
-    from GhostBot.client_window import ClientWindow
+    from GhostBot.client_window import Win32ClientWindow
 
 
 class ImageFinder:
@@ -94,7 +94,7 @@ class ImageFinder:
 
         return coordinates or None
 
-    def __init__(self, client: ClientWindow):
+    def __init__(self, client: Win32ClientWindow):
         self._client = client
         self._destroy_item_location: tuple[int, tuple[int, int]] = None
 

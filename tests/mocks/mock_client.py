@@ -1,7 +1,10 @@
-from attrdict import AttrDict
+from unittest.mock import MagicMock, patch
 
-from GhostBot.bot_controller import ExtendedClient
-from GhostBot.config import Config
+import pymem
+import pytest
+
+from GhostBot.controller.bot_controller import BotClientWindow
+from GhostBot.config import Config, AttackConfig, RegenConfig
 
 
 class MockConfig(Config):
@@ -12,39 +15,22 @@ class MockConfig(Config):
         pass
 
 
-class MockClient(ExtendedClient):
-
-    def __init__(self):
-        self._name = "testChar"
-        self._location = (0, 0)
-        self._target_hp = 597
-        self._is_target_selected = True
-        self._in_battle = False
-        self._sitting = False
-
-        self._mana = 100
-        self._max_mana = 100
-
-        self._hp = 100
-        self._max_hp = 100
+def MockClient() -> BotClientWindow:
+    with patch('GhostBot.client_window.Pointers', spec_set=True):
+        with patch('GhostBot.controller.bot_controller.ConfigLoader', spec_set=True):
+            bcw = BotClientWindow
+            mocked = bcw(MagicMock(spec=pymem.Pymem)())
+            mocked.pointers.get_max_mana = lambda: 100
+            mocked.pointers.get_max_hp = lambda: 100
+            return mocked
 
 
-        self.config = MockConfig(self)
-        self.pointers = AttrDict(
-            target_hp=lambda: self._target_hp,
-            is_target_selected=lambda: self._is_target_selected,
-            get_mana=lambda: self._mana,
-            get_max_mana=lambda: self._max_mana,
-            get_hp=lambda: self._hp,
-            get_max_hp=lambda: self._max_hp,
-            is_in_battle=lambda: self._in_battle,
-            is_sitting=lambda: self._sitting,
-        )
-
-    @property
-    def location(self):
-        return self._location
-
-    def press_key(self, key: str):
-        print("press key", key)
-
+@pytest.fixture
+def client():
+    config = Config(
+        attack=AttackConfig(attacks=None),
+        regen=RegenConfig(bindings=dict(sit='X', hp_pot='Q', mana_pot='W'))
+    )
+    client = MockClient()
+    client.config = config
+    return client

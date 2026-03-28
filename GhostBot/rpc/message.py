@@ -1,8 +1,12 @@
 import json
 from enum import Enum
+from json import JSONDecodeError
+
+from GhostBot import logger
 
 
 class Command(Enum):
+    ERROR = -2
     EXIT = -1
     INFO = 0
     START = 1
@@ -16,6 +20,7 @@ class Command(Enum):
             case 'INFO': return cls.INFO
             case 'START': return cls.START
             case 'STOP': return cls.STOP
+            case 'CONFIG': return cls.CONFIG
         return None
 
 class Message:
@@ -28,15 +33,22 @@ class Message:
         self.target: str | dict = target
 
     def __str__(self):
-        return json.dumps(dict(command=self.command.name.lower(), target=self.target))
+        try:
+            return json.dumps(dict(command=self.command.name.lower(), target=self.target))
+        except (TypeError, AttributeError) as e:
+            logger.error(f"{self.__class__.__name__}: Error converting Message to string: {self.__dict__}")
+            raise e
 
     def encode(self, inp: str) -> bytes:
         return str(self).encode(inp)
 
     @classmethod
     def from_json(cls, data: str) -> "Message | None":
-        print(data)
-        return cls(**json.loads(data))
+        logger.info(f"{cls.__name__}: building message from JSON: {data}")
+        try:
+            return cls(**json.loads(data))
+        except JSONDecodeError as e:
+            logger.error(f"Error decoding message to JSON: message: type({type(data)} {data}")
 
 if __name__ == '__main__':
     message = Message('exit')
