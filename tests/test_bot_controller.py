@@ -1,20 +1,15 @@
-from typing import List
+from unittest.mock import MagicMock
 
 import pymem
+import pytest
+from pymem.ressources.structure import ProcessEntry32
 
-from GhostBot.bot_controller import BotController
-from GhostBot.lib.win32.process import PymemProcess
+from GhostBot.controller.async_bot_controller import AsyncBotController
 
 
-class MockPymem(pymem.Pymem):
-    pass
+to_process = MagicMock(spec=ProcessEntry32)()
 
-class MockPymemProcess(PymemProcess):
-
-    @staticmethod
-    def list_clients() -> List[pymem.Pymem]:
-        return [MockPymem()]
-
-def test_list_clients():
-    BotController._pymem_process = MockPymemProcess()
-    bot_controller = BotController()
+@pytest.mark.usefixtures('monkeypatch')
+def test_list_clients(monkeypatch):
+    monkeypatch.setattr(pymem.process, 'list_processes', lambda: [to_process])
+    bot_controller = AsyncBotController()

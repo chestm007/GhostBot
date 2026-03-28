@@ -130,11 +130,11 @@ def _goto_centre_of_map():
     import logging
     from GhostBot import logger
     from GhostBot.lib.win32.process import PymemProcess
-    from GhostBot.bot_controller import ExtendedClient
+    from GhostBot.controller.bot_controller import BotClientWindow
 
     logger.setLevel(logging.INFO)
     for proc in PymemProcess.list_clients():
-        client = ExtendedClient(proc)
+        client = BotClientWindow(proc)
         if client.name == "FkYouUp1":
             #client.press_key('m')
             client.right_click((int(1024/2), int(768/2)))

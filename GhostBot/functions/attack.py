@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+import asyncio
 import time
 
 from typing import TYPE_CHECKING
 
+from GhostBot import logger
 from GhostBot.config import AttackConfig
 from GhostBot.functions.runner import Locational
 from GhostBot.lib.math import linear_distance
 
 if TYPE_CHECKING:
-    from GhostBot.bot_controller import ExtendedClient
+    from GhostBot.controller.bot_controller import BotClientWindow
 
 
 class AttackContext:
@@ -19,7 +21,7 @@ class AttackContext:
     If it detects a change, it will return true, then set the current values to what it read, and return
     false until they change again
     """
-    def __init__(self, client: ExtendedClient, stuck_interval: int) -> None:
+    def __init__(self, client: BotClientWindow, stuck_interval: int) -> None:
         self._client = client
         self._location = self._location = tuple(self._client.location)
         self._target_hp = self._client.target_hp
@@ -27,11 +29,21 @@ class AttackContext:
         self._stuck_interval = stuck_interval
         #self._check_stuck = self._client.config.unstuck
 
+    def _log_err(self, msg: str) -> None:
+        logger.error(f"{self._client.name}: {msg}")
+
+    def _log_info(self, msg: str) -> None:
+        logger.info(f"{self._client.name}: {msg}")
+
+    def _log_debug(self, msg: str) -> None:
+        logger.debug(f"{self._client.name}::{self.__class__.__name__}: {msg}")
+
     @property
     def location_changed(self) -> bool:
         loc = tuple(self._location)
         if linear_distance(loc, self._client.location) > 1:
             self._location = self._client.location
+            self._log_debug('location changed')
             return True
         return False
 
@@ -39,6 +51,7 @@ class AttackContext:
     def target_hp_changed(self) -> bool:
         if self._target_hp != self._client.target_hp:
             self._target_hp = self._client.target_hp
+            self._log_debug('target hp changed')
             return True
         return False
 
@@ -49,15 +62,18 @@ class AttackContext:
 
         # if target HP or our position changed, we're not stuck
         if self.location_changed or self.target_hp_changed:
+            self._log_debug('target_hp or location changed, unstuck')
             self._last_changed_time = time.time()
             return False
 
         # if target hp and our position haven't changed in `stuck_interval` we're stuck
         if time.time() - self._last_changed_time > self._stuck_interval:
+            self._log_debug(f'target_hp and location unchanged in {self._stuck_interval}s, stuck')
             self._last_changed_time = time.time()
             return True
 
         # targethp and location haven't changed, but we aren't past `stuck_interval` we're not stuck
+        self._log_debug('target_hp or location changed and not past self._stuck_interval, unstuck')
         return False
 
 
@@ -68,7 +84,7 @@ class Attack(Locational):
     otherwise returns Falsey
     """
     _cur_attack_queue = []
-    def __init__(self, client: ExtendedClient):
+    def __init__(self, client: BotClientWindow):
         super().__init__(client)
         self.config: AttackConfig = client.config.attack
         try:
@@ -78,7 +94,7 @@ class Attack(Locational):
             self._log_err(f"{self._client.name} error {e}")
             self._stuck_interval = 10
 
-    def _run(self) -> bool:
+    async def _run(self) -> bool:
         self._client.close_inventory()
         self._client.dismount()
 
@@ -88,10 +104,10 @@ class Attack(Locational):
         if (dist_to_target := linear_distance(self.start_location, self._client.location)) > self.roam_distance:
             self._log_debug(f'too far go back C:{self._client.location} | T:{self.start_location}')
             if dist_to_target < 100:
-                self._goto_start_location()
+                await self._goto_start_location()
             else:
-                with self._client.mounted():
-                    self._goto_start_location()
+                async with self._client.mounted():
+                    await self._goto_start_location()
             self._client.new_target()
             return True
 
@@ -116,7 +132,7 @@ class Attack(Locational):
             key, interval = self._cur_attack_queue.pop(0)
             self._log_debug(f'ATTACK! {key}  -- {interval}s')
             self._client.press_key(key)
-            time.sleep(int(interval) / 1000)
+            await asyncio.sleep(int(interval) / 1000)
 
             if context.stuck:  # if we're stuck, get a new target and rerun.
                 self._client.new_target()

@@ -3,11 +3,11 @@ import pathlib
 
 import cv2
 
-from GhostBot.client_window import ClientWindow
+from GhostBot.client_window import Win32ClientWindow
 from GhostBot.image_finder import ImageFinder
 
 
-class MockClientWindow(ClientWindow):
+class MockClientWindow(Win32ClientWindow):
     _path_base = pathlib.Path(__file__).resolve().parent
     _image = os.path.join(_path_base, "images", 'inventory.bmp')
 
