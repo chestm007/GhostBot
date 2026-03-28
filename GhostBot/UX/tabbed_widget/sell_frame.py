@@ -2,7 +2,7 @@ import time
 from tkinter import ttk
 
 from GhostBot.UX.tabbed_widget.TabFrame import TabFrame
-from GhostBot.client_window import ClientWindow
+from GhostBot.client_window import Win32ClientWindow
 from GhostBot.config import Config, SellConfig
 from GhostBot.lib.var_or_none import var_or_none
 
@@ -36,7 +36,7 @@ class SellFrame(TabFrame):
         window_pos = self.getvar('window_info.pos')
         self._vars[field].set("Reading Mouse...")
         time.sleep(3)
-        mouse_pos = ClientWindow.get_mouse_window_pos(window_pos)
+        mouse_pos = Win32ClientWindow.get_mouse_window_pos(window_pos)
         self._vars[field].set("{} {}".format(*mouse_pos))
 
     def _set_spot_as_current(self, field: str):

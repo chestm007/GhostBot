@@ -1,13 +1,13 @@
 from tkinter import ttk
 
 from GhostBot.UX.tabbed_widget.TabFrame import TabFrame
-from GhostBot.bot_controller import ExtendedClient
+from GhostBot.controller.bot_controller import BotClientWindow
 from GhostBot.config import Config, RegenConfig
 from GhostBot.lib.var_or_none import var_or_none
 
 
 class RegenFrame(TabFrame):
-    def _init(self, client: ExtendedClient, *args, **kwargs) -> None:
+    def _init(self, client: BotClientWindow, *args, **kwargs) -> None:
         self.client = client
         self._vars = dict(
             hp_low=self._create_entry("HP Low:", 0, 0, ("bot_config.regen.hp_low", str)),
