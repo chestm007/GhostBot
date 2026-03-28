@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import functools
 import json
-import pickle
 import socket
 from asyncio import Server, CancelledError
 from typing import TYPE_CHECKING
@@ -23,36 +22,6 @@ class GhostbotIPCServer:
         self.bot_controller = bot_controller
         self.server: Server | None = None
 
-    def listen(self):
-        """
-        Start and run the sync version of the IPC Server until requested to stop.
-        """
-        while True:
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.bind((self.host, self.port))
-                    s.listen(1)
-                    s.settimeout(1)
-                    try:
-                        conn, addr = s.accept()
-                    except TimeoutError:
-                        continue
-
-                    with conn:
-                        data = Message.from_json(conn.recv(1024).decode('utf8'))
-                        # data = pickle.loads(conn.recv(1024))
-                        if data.command == Command.EXIT:
-                            logger.info(f'{self.__class__.__name__}: exit command received')
-                            return
-                        result = self._dispatch(data)
-                        conn.sendall(result.encode('utf8'))
-                        # conn.sendall(pickle.dumps(result))
-            except KeyboardInterrupt:
-                logger.info(f"{self.__class__.__name__}: Exiting due to keyboard interrupt")
-                break
-            except Exception as e:
-                logger.exception(e)
-
     async def _handle_client(self, reader, writer):
         request = None
         while request != 'quit':
@@ -67,7 +36,7 @@ class GhostbotIPCServer:
                 self.server.close()
                 await self.server.wait_closed()
                 return
-            result = self._dispatch(data)
+            result = await self._dispatch(data)
             writer.write(result.encode('utf8'))
             logger.info(f"{self.__class__.__name__}: sending data: {result}")
             await writer.drain()
@@ -84,23 +53,23 @@ class GhostbotIPCServer:
             except KeyboardInterrupt:
                 logger.info(f"{self.__class__.__name__}: Exiting due to keyboard interrupt")
 
-    def _dispatch(self, message: Message) -> Message | bool | None:
+    async def _dispatch(self, message: Message) -> Message | bool | None:
         logger.info(f"{self.__class__.__name__}: dispatching message: {message}")
         match message.command:
             case Command.START:
                 logger.info(f"{self.__class__.__name__}: dispatching START")
-                self.bot_controller.start_bot(message.target)
+                await self.bot_controller.start_bot(message.target)
                 return message
             case Command.STOP:
                 logger.info(f"{self.__class__.__name__}: dispatching STOP")
-                self.bot_controller.stop_bot(message.target)
+                await self.bot_controller.stop_bot(message.target)
                 return message
             case Command.INFO:
                 logger.info(f"{self.__class__.__name__}: dispatching INFO")
                 if message.target:
                     logger.info(f"{self.__class__.__name__}: dispatching INFO containing [target]")
                     return Message(Command.INFO, self.bot_controller.get_client(message.target).to_json())
-                return Message(Command.INFO, ' '.join(self.bot_controller.client_keys))
+                return Message(Command.INFO, ' '.join(k for k, v in self.bot_controller.clients.items() if not v.disconnected))
             case Command.CONFIG:
                 logger.info(f"{self.__class__.__name__}: dispatching CONFIG")
                 match message.target.get('action'):

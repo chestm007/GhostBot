@@ -12,71 +12,71 @@ class AsyncBotController(BotController):
         super().__init__()
         self._tasks: dict[str, asyncio.Task] = dict()
 
-    async def _add_task(self, coroutine: Coroutine[Any, Any, Any], client_name: str) -> str | None:
+    async def _add_task(self, coroutine: Coroutine[Any, Any, Any], client: BotClientWindow) -> str | None:
             """
             Adds a new asynchronous task to the runner.
 
-            :param coroutine: The coroutine function to be run as a task.
-            :param client_name: An optional name for the task for easier identification.
             :returns: The unique ID of the newly added task.
             """
             if not asyncio.iscoroutine(coroutine):
                 raise TypeError("Only coroutines can be added as tasks.")
 
             # Create the asyncio.Task. It won't start running until the event loop gets to it.
-            task = asyncio.create_task(coroutine, name=client_name)
-            self._tasks[client_name] = task
-            print(f"Task '{client_name}' added.")
-            return client_name
+            self.reload_bot_config(client)
+            client.start_bot()
+            task = asyncio.create_task(coroutine, name=client.name)
+            self._tasks[client.name] = task
+            print(f"Task '{client.name}' added.")
+            return client.name
 
-    async def _stop_task(self, client_name: str) -> bool:
+    async def _stop_task(self, client: BotClientWindow) -> bool:
         """
         Stops a running task.
 
-        :param client_name: The ID of the task to stop.
         :returns: True if the task was found and successfully cancelled, False otherwise.
         """
-        if client_name in self._tasks:
-            task = self._tasks[client_name]
+        if client.name in self._tasks:
+            task = self._tasks[client.name]
             if not task.done():
                 task.cancel()
                 try:
                     # Awaiting the cancelled task to handle potential exceptions
                     await task
                 except asyncio.CancelledError:
-                    print(f"Task '{client_name}' successfully cancelled.")
+                    print(f"Task '{client.name}' successfully cancelled.")
                     # We can optionally remove it after cancellation if we don't want to track finished tasks
-                    # del self._tasks[client_name]
+                    # del self._tasks[client.name]
                     return True
             else:
-                print(f"Task '{client_name}' is already done and cannot be cancelled.")
+                print(f"Task '{client.name}' is already done and cannot be cancelled.")
                 return False
         else:
-            print(f"Task '{client_name}' not found.")
+            print(f"Task '{client.name}' not found.")
             return False
 
-    async def _remove_task(self, client_name: str) -> bool:
+    async def _remove_task(self, client: BotClientWindow) -> bool:
         """
         Removes a task from the runner. If the task is running, it will be cancelled first.
 
-        :param client_name: The ID of the task to remove.
         :returns: True if the task was found and removed, False otherwise.
         """
-        if client_name in self._tasks:
-            task = self._tasks[client_name]
+        if client.name in self._tasks:
+            task = self._tasks[client.name]
             if not task.done():
-                await self._stop_task(client_name) # Ensure it's cancelled before removing
-            del self._tasks[client_name]
-            print(f"Task '{client_name}' removed.")
+                await self._stop_task(client) # Ensure it's cancelled before removing
+            client.stop_bot()
+            del self._tasks[client.name]
+            client.bot_status = BotStatus.stopped
+            print(f"Task '{client.name}' removed.")
             return True
         else:
-            print(f"Task '{client_name}' not found.")
+            print(f"Task '{client.name}' not found.")
             return False
 
-    def _get_task_status(self, task_id: str) -> str:
+    def _get_task_status(self, client_name: str) -> str:
         """Gets the status of a specific task."""
-        if task_id in self._tasks:
-            task = self._tasks[task_id]
+        if client_name in self._tasks:
+            task = self._tasks[client_name]
             if task.cancelled():
                 return "cancelled"
             elif task.done():
@@ -96,8 +96,8 @@ class AsyncBotController(BotController):
             A dictionary where keys are task IDs and values are their statuses.
         """
         status_dict = {}
-        for task_id, task in self._tasks.items():
-            status_dict[task_id] = self._get_task_status(task_id)
+        for client_name, task in self._tasks.items():
+            status_dict[client_name] = self._get_task_status(client_name)
         return status_dict
 
     async def _stop_all_tasks(self) -> None:
@@ -119,17 +119,20 @@ class AsyncBotController(BotController):
         """
         print("Removing all tasks...")
         for client_name in list(self._tasks.keys()):
-            await self._remove_task(client_name)
+            await self._remove_task(self.clients.get(client_name))
         print("All tasks removed.")
 
     async def _run_bot(self, client: BotClientWindow) -> None:
+        logger.info(f"{client.name}: _run_bot()")
         client.bot_status = BotStatus.started
 
         functions = list(self._get_functions_for_client(client))
+        logger.info(f"{client.name}: _run_bot: {functions}")
 
         while client.running:
             client.bot_status = BotStatus.running
             if client.disconnected:
+                client.bot_status = BotStatus.disconnected
                 logger.info(f"{client.name}: disconnected.")
                 break
             try:
@@ -146,7 +149,7 @@ class AsyncBotController(BotController):
             if (client := self.get_client(client)) is None:
                 logger.warning(f'no client {client}')
                 return
-        await self._add_task(self._run_bot(client), client_name=client.name)
+        await self._add_task(self._run_bot(client), client=client)
 
     async def stop_all_bots(self, timeout=30) -> None:
         await self._remove_all_tasks()
@@ -156,7 +159,7 @@ class AsyncBotController(BotController):
             if (client := self.get_client(client)) is None:
                 logger.warning(f'no client {client}')
                 return
-        await self._remove_task(client.name)
+        await self._remove_task(client)
 
     async def listen(self, host=None, port=None):
         server = GhostbotIPCServer(bot_controller=self, host=host, port=port)
