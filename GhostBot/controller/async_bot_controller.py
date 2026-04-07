@@ -85,6 +85,7 @@ class AsyncBotController(BotController, AsyncTaskRunner):
         await self._remove_task(client)
 
     async def listen(self, host=None, port=None):
+        super()._add_task(self._rescan_clients(), "rescan clients")
         server = GhostbotIPCServer(bot_controller=self, host=host, port=port)
         await server.run_server()
 
