@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import time
 from typing import TYPE_CHECKING
 
 from GhostBot.config import SellConfig
@@ -61,21 +60,21 @@ class Sell(Locational):
                 npc_location  = tuple(map(float, first_result.get('coords').split(',')))
                 await self._client.goto_first_surrounding_result()
                 while (linear_distance(self._client.location, npc_location)) > 2 and self._client.running:
-                    time.sleep(0.5)
+                    await asyncio.sleep(0.5)
         except (AttributeError, TypeError):
             self._log_info("Memory access failed to get npc location, falling back to movement detection :(")
             await self._client.goto_first_surrounding_result()
-            time.sleep(5)
+            await asyncio.sleep(5)
             await self._client.block_while_moving()
         return True
 
     async def _sell_items(self):
         await self._client.reset_camera()
-        time.sleep(2)
+        await asyncio.sleep(2)
         await self._client.click_npc()
-        time.sleep(1)
+        await asyncio.sleep(1)
         await self._client.left_click(self.config.npc_sell_click_spot)
-        time.sleep(1)
+        await asyncio.sleep(1)
         for i in range(24):
             await self._client.left_click(
                 item_coordinates_from_pos(

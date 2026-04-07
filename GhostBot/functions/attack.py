@@ -95,8 +95,8 @@ class Attack(Locational):
             self._stuck_interval = 10
 
     async def _run(self) -> bool:
-        self._client.close_inventory()
-        self._client.dismount()
+        await self._client.close_inventory()
+        await self._client.dismount()
 
         context = AttackContext(self._client, self._stuck_interval)
 
