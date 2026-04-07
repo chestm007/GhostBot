@@ -163,15 +163,28 @@ class BotClientWindow(Win32ClientWindow):
 class BotController(ABC):
 
     _pymem_process = PymemProcess
-    _tasks: dict[str, Any]
 
     def __init__(self):
         self.clients: dict[str, BotClientWindow] = dict()
         self._scan_for_clients()
 
     def _scan_for_clients(self):
-        # TODO: maybe we want to scan this again to refresh the client list?
-        for proc in self._pymem_process.list_clients():
+        current_client_proc_ids = {c.proc.process_id for c in self.clients.values()}
+        detected_procs = self._pymem_process.list_clients()
+        _to_remove = []
+        for k, v in self.clients.items():
+            if (c_pid := v.proc.process_id) not in (p.process_id for p in detected_procs):
+                logger.info("removing [%s]", c_pid)
+                _to_remove.append(k)
+        for k in _to_remove:
+            try:
+                self.stop_bot(self.clients.pop(k))
+            except Exception as e:
+                logger.info(e)
+        for proc in detected_procs:
+            if proc.process_id in current_client_proc_ids:
+                logger.debug("Process [%s] already registered with BotController, skipping.", proc.process_id)
+                continue
             client = BotClientWindow(proc)
             try:
                 if client.name is not None and 0 < client.level <= 89:  # and client.name not in self.clients.keys()
@@ -179,7 +192,7 @@ class BotController(ABC):
                         logger.info(f'adding client {client.name} {client.disconnected}')
                         self.add_client(BotClientWindow(proc))
                     else:
-                        logger.info(f'client {client.name} already exists, skipping')
+                        logger.debug(f'client {client.name} already exists, skipping')
             except (TypeError, AttributeError):
                 # TODO: do i want to track this for the autologin? might be an alright hook
                 #       especially if we know which char to log...
@@ -222,11 +235,10 @@ class BotController(ABC):
             yield Fairy(self, client)
 
     @abstractmethod
-    def stop_all_bots(self, timeout=30) -> None: ...
+    async def stop_all_bots(self, timeout=30) -> None: ...
 
     @abstractmethod
-    def stop_bot(self, client: str | BotClientWindow, timeout=5) -> None: ...
+    async def stop_bot(self, client: str | BotClientWindow, timeout=5) -> None: ...
 
-    def listen(self, host=None, port=None):
-        server = GhostbotIPCServer(bot_controller=self, host=host, port=port)
-        server.listen()
+    @abstractmethod
+    async def listen(self, host=None, port=None): ...
