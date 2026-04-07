@@ -19,16 +19,16 @@ def run_at_interval(run_on_start: bool = False, run_in_battle: bool = False):
             self._last_time_ran = 0 if run_on_start else time.time()
             ret = _init(self, *args, **kwargs)
 
+            if hasattr(_clazz, '_setup'):
+                asyncio.get_running_loop().create_task(_clazz._setup(self))
+
             if not hasattr(self, '_interval'):
                 raise AttributeError(f"Abstract property _interval not defined for {self.__class__.__name__}")
             return ret
 
         _run = _clazz.run
-        async def run(self, *args, **kwargs):
-            if hasattr(_clazz, '_setup'):
-                await _clazz._setup(self)
-                del _clazz._setup
-
+        async def run(self: Runner, *args, **kwargs):
+            logger.debug("%s :: %s :: running function", self.__class__.__name__, self._client.name)
             if should_run(self):
                 self._last_time_ran = time.time()
                 await _run(self, *args, **kwargs)
