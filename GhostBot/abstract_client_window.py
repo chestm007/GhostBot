@@ -3,7 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from collections import namedtuple
 from contextlib import asynccontextmanager
-from typing import Self
+from typing import Self, AsyncGenerator, Coroutine
 
 from GhostBot import logger
 from GhostBot.lib.talisman_ui_locations import UI_locations
@@ -43,13 +43,13 @@ class AbstractClientWindow(ABC):
     def on_mount(self) -> bool: ...
 
     @asynccontextmanager
-    async def mounted(self, _key=None):
+    async def mounted(self, _key=None) -> AsyncGenerator[Coroutine, Coroutine]:
         if _key is None:
             yield
             return
 
-        yield await self.mount(_key)
-        await self.dismount(_key)
+        yield self.mount(_key)
+        yield self.dismount(_key)
 
     async def mount(self, _key=None):
         if _key is None:
