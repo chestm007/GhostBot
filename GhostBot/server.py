@@ -29,7 +29,7 @@ class GhostbotIPCServer:
             if reader._eof:
                 await asyncio.sleep(0.5)
                 continue
-            logger.info(f"{self.__class__.__name__}: received data: {result}")
+            logger.debug(f"{self.__class__.__name__}: received data: {result}")
             data = Message.from_json(result.decode('utf8'))
             if data.command == Command.EXIT:
                 logger.info(f'exit command received')
@@ -38,7 +38,7 @@ class GhostbotIPCServer:
                 return
             result = await self._dispatch(data)
             writer.write(result.encode('utf8'))
-            logger.info(f"{self.__class__.__name__}: sending data: {result}")
+            logger.debug(f"{self.__class__.__name__}: sending data: {result}")
             await writer.drain()
         writer.close()
 
@@ -49,40 +49,40 @@ class GhostbotIPCServer:
                 try:
                     await self.server.serve_forever()
                 except CancelledError:
-                    pass
+                    return
             except KeyboardInterrupt:
                 logger.info(f"{self.__class__.__name__}: Exiting due to keyboard interrupt")
 
     async def _dispatch(self, message: Message) -> Message | bool | None:
-        logger.info(f"{self.__class__.__name__}: dispatching message: {message}")
+        logger.debug(f"{self.__class__.__name__}: dispatching message: {message}")
         match message.command:
             case Command.START:
-                logger.info(f"{self.__class__.__name__}: dispatching START")
-                await self.bot_controller.start_bot(message.target)
+                logger.debug(f"{self.__class__.__name__}: dispatching START")
+                self.bot_controller.start_bot(message.target)
                 return message
             case Command.STOP:
-                logger.info(f"{self.__class__.__name__}: dispatching STOP")
+                logger.debug(f"{self.__class__.__name__}: dispatching STOP")
                 await self.bot_controller.stop_bot(message.target)
                 return message
             case Command.INFO:
-                logger.info(f"{self.__class__.__name__}: dispatching INFO")
+                logger.debug(f"{self.__class__.__name__}: dispatching INFO")
                 if message.target:
-                    logger.info(f"{self.__class__.__name__}: dispatching INFO containing [target]")
+                    logger.info(f"{self.__class__.__name__}: dispatching INFO containing for [{message.target}]")
                     return Message(Command.INFO, self.bot_controller.get_client(message.target).to_json())
                 return Message(Command.INFO, ' '.join(k for k, v in self.bot_controller.clients.items() if not v.disconnected))
             case Command.CONFIG:
-                logger.info(f"{self.__class__.__name__}: dispatching CONFIG")
+                logger.debug(f"{self.__class__.__name__}: dispatching CONFIG")
                 match message.target.get('action'):
                     case "get":
                         logger.info(f"{self.__class__.__name__}: dispatching CONFIG get")
                         return Message(Command.CONFIG, json.dumps(self.bot_controller.get_client(message.target['char']).config.to_yaml()))
                     case "set":
-                        logger.info(f"{self.__class__.__name__}: dispatching CONFIG set")
+                        logger.debug(f"{self.__class__.__name__}: dispatching CONFIG set")
                         _client = self.bot_controller.get_client(message.target['char'])
                         if _client is not None:
-                            logger.info(f"{self.__class__.__name__}: Setting config for {_client.name}")
+                            logger.debug(f"{self.__class__.__name__}: Setting config for {_client.name}")
                             conf = Config.load_yaml(message.target.get('config'))
-                            logger.info(f'{self.__class__.__name__}: set config: {conf}')
+                            logger.info(f'{self.__class__.__name__}: char: {_client.name} - set config: {conf}')
                             ConfigLoader(_client).save(conf)
                             _client.set_config(conf)
                             return message

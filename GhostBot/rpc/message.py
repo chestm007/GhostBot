@@ -44,7 +44,7 @@ class Message:
 
     @classmethod
     def from_json(cls, data: str) -> "Message | None":
-        logger.info(f"{cls.__name__}: building message from JSON: {data}")
+        logger.debug(f"{cls.__name__}: building message from JSON: {data}")
         try:
             return cls(**json.loads(data))
         except JSONDecodeError as e:
