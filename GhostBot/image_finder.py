@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import os
 import time
-from _operator import add
-from os import PathLike
 from typing import TYPE_CHECKING
 
 import cv2
@@ -21,6 +19,11 @@ class ImageFinder:
     image_folder = os.path.join(_path_base, "Images", "SELL")
     misc_folder = os.path.join(_path_base, "Images", "misc")
     items = {}
+
+    def __init__(self, client: Win32ClientWindow):
+        self._client = client
+        self._destroy_item_location: tuple[int, tuple[int, int]] = None
+
 
     for filename in os.listdir(image_folder):
         fullpath = os.path.join(image_folder, filename)
@@ -77,7 +80,8 @@ class ImageFinder:
     def _get_destroy_item_location(self) -> tuple[int, int] | None:
         return self._find_ui_element(os.path.join(self.misc_folder, "destroy-item.bmp"), threshold=0.8)
 
-    def _get_dialog_ok_location(self) -> tuple[int, int] | None:
+    @property
+    def dialog_ok_location(self) -> tuple[int, int] | None:
         return self._find_ui_element("Images/misc/dialog_ok.bmp", threshold=0.6)
 
     def _sell_item_npc_location(self, stage=0) -> tuple[int, int] | None:
@@ -89,14 +93,10 @@ class ImageFinder:
         try:
             coordinates = self.find_image_in_window(_image, threshold=threshold)
         except cv2.error as e:
-            logger.exception(e)
+            logger.exception(f"{self.__class__.__name__} :: {self._client.name} :: {e}")
             coordinates = None
 
         return coordinates or None
-
-    def __init__(self, client: Win32ClientWindow):
-        self._client = client
-        self._destroy_item_location: tuple[int, tuple[int, int]] = None
 
     @property
     def destroy_item_location(self) -> tuple[int, int]:

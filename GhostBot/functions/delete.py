@@ -34,6 +34,6 @@ class Delete(Runner):
                 await self._client.left_click(item_pos)
                 await self._client.left_click(self._image_finder.destroy_item_location)
                 await asyncio.sleep(0.3)
-                ok_pos = self._image_finder._get_dialog_ok_location()
+                ok_pos = self._image_finder.dialog_ok_location
                 if ok_pos:
                     await self._client.left_click(ok_pos)
