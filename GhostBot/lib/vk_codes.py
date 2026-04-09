@@ -12,9 +12,12 @@ from attrdict import AttrDict
 
 vk_codes = {
     'backspace': 0x08,
+    'BACKSPACE': 0x08,
     'tab': 0x09,
+    'TAB': 0x09,
     'clear': 0x0C,
     'enter': 0x0D,
+    'ENTER': 0x0D,
     'shift': 0x10,
     'ctrl': 0x11,
     'alt': 0x12,

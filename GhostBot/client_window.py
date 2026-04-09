@@ -71,7 +71,7 @@ class Win32ClientWindow(AbstractClientWindow):
         self._window_handle = None
         self._target_name_offsets = None
         try:
-            self._set_window_name()
+            self.set_window_name()
         except TypeError:
             pass
         # FIXME: wrap all getters in a retry DC check loop
@@ -81,13 +81,20 @@ class Win32ClientWindow(AbstractClientWindow):
         if self._window_handle is None:
             hwnds = get_hwnds_for_pid(self.process_id)
             if len(hwnds) == 1:
+                logger.debug('got window handle')
                 self._window_handle = hwnds[0]
         return self._window_handle
 
-    def _set_window_name(self):
+    def set_window_name(self):
         if self.name is not None:
             win32gui.SetWindowText(self.window_handle, f'Talisman Online | {self.name}')
         return self
+
+    def get_window_name(self) -> str:
+        try:
+            return win32gui.GetWindowText(self.window_handle).split(' | ')[-1]
+        except IndexError:
+            return ''
 
     @property
     def disconnected(self):
@@ -98,36 +105,30 @@ class Win32ClientWindow(AbstractClientWindow):
         return self.pointers.mount()
 
     def capture_window(self, color=False):
+        w, h = self.get_window_size()
 
-        try:
-            w, h = self.get_window_size()
+        handle_dc = win32gui.GetWindowDC(self.window_handle)
+        mfc_dc = win32ui.CreateDCFromHandle(handle_dc)
+        save_dc = mfc_dc.CreateCompatibleDC()
+        save_bitmap = win32ui.CreateBitmap()
+        save_bitmap.CreateCompatibleBitmap(mfc_dc, w, h)
+        save_dc.SelectObject(save_bitmap)
 
-            handle_dc = win32gui.GetWindowDC(self._window_handle)
-            mfc_dc = win32ui.CreateDCFromHandle(handle_dc)
-            save_dc = mfc_dc.CreateCompatibleDC()
-            save_bitmap = win32ui.CreateBitmap()
-            save_bitmap.CreateCompatibleBitmap(mfc_dc, w, h)
-            save_dc.SelectObject(save_bitmap)
+        save_dc.BitBlt((0, 0), (w, h), mfc_dc, (0, 0), win32con.SRCCOPY)
 
-            save_dc.BitBlt((0, 0), (w, h), mfc_dc, (0, 0), win32con.SRCCOPY)
+        bmpinfo = save_bitmap.GetInfo()
+        bmpstr = save_bitmap.GetBitmapBits(True)
+        img = np.frombuffer(bmpstr, dtype=np.uint8)
+        img.shape = (bmpinfo['bmHeight'], bmpinfo['bmWidth'], 4)
 
-            bmpinfo = save_bitmap.GetInfo()
-            bmpstr = save_bitmap.GetBitmapBits(True)
-            img = np.frombuffer(bmpstr, dtype=np.uint8)
-            img.shape = (bmpinfo['bmHeight'], bmpinfo['bmWidth'], 4)
-
-            save_dc.DeleteDC()
-            mfc_dc.DeleteDC()
-            win32gui.ReleaseDC(self._window_handle, handle_dc)
-            win32gui.DeleteObject(save_bitmap.GetHandle())
-            if color:
-                return img[..., :3]
-            else:
-                return cv2.cvtColor(img[..., :3], cv2.COLOR_BGR2GRAY)
-
-        except Exception as e:
-            print(e)
-            return None
+        save_dc.DeleteDC()
+        mfc_dc.DeleteDC()
+        win32gui.ReleaseDC(self._window_handle, handle_dc)
+        win32gui.DeleteObject(save_bitmap.GetHandle())
+        if color:
+            return img[..., :3]
+        else:
+            return cv2.cvtColor(img[..., :3], cv2.COLOR_BGR2GRAY)
 
     def press_key(self, key: int | str):
         """Fetch the keycode for the key from our map, send it to the client window"""
@@ -175,7 +176,7 @@ class Win32ClientWindow(AbstractClientWindow):
         title_bar_height = win32.win32api.GetSystemMetrics(SM_CYCAPTION)
         border_thickness = 8
 
-        wx, wy, ww, wh = win32gui.GetWindowRect(self._window_handle)
+        wx, wy, ww, wh = win32gui.GetWindowRect(self.window_handle)
         wx += border_thickness
         ww -= border_thickness + wx
         wy += (title_bar_height + border_thickness)
