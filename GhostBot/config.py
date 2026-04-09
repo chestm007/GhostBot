@@ -130,13 +130,9 @@ class Config:
         return (k for k, v in self.__dict__.items() if v is not None)
 
 
-class ConfigLoader:
-    def __init__(self, client):
-        self.client = client
-        self.config_filepath = self._detect_path()
-
-    def _detect_path(self):
-        char_name = self.client.name
+class BaseConfigLoader:
+    @staticmethod
+    def _detect_path():
         data_path = os.environ.get('HOME', os.environ.get('LOCALAPPDATA'))
         if data_path is None:
             raise FileNotFoundError('what OS u on bro?')
@@ -147,7 +143,13 @@ class ConfigLoader:
         except FileExistsError:
             pass
 
-        return os.path.join(data_path, f'{char_name}.yml')
+        return data_path
+
+
+class ConfigLoader(BaseConfigLoader):
+    def __init__(self, client):
+        self.client = client
+        self.config_filepath = os.path.join(self._detect_path(), f'{self.client.name}.yml')
 
     def load(self) -> Config:
         logger.debug('loading config')
@@ -165,6 +167,36 @@ class ConfigLoader:
         with open(self.config_filepath, 'w') as c:
             c.write(yaml.safe_dump(_config.to_yaml()))
         return _config
+
+
+class LoginDetailsConfigLoader(BaseConfigLoader):
+    def __init__(self):
+        self.config_filepath = os.path.join(self._detect_path(), f'login_details.yml')
+
+    def load(self) -> dict[str, dict[str, str]]:
+        """
+        reads a config file formatted like
+
+        ::
+
+            char1:
+              username: username1
+              password: password1
+            char2:
+              username: username2
+              password: password2
+
+        :returns: a dict of ``{char_name: {"username": USERNAME, "password": PASSWORD}}``
+        """
+        logger.debug('loading login config')
+        try:
+            with open(self.config_filepath, 'r') as c:
+                _config = yaml.safe_load(c.read())
+                logger.debug('login config loaded')
+                return _config
+        except FileNotFoundError:
+            logger.debug('no login config file found at %s', self.config_filepath)
+            return {}
 
 
 if __name__ == "__main__":
@@ -198,3 +230,9 @@ if __name__ == "__main__":
     yaml_config = yaml.safe_dump(config.to_yaml())
     assert (processed_config := Config.load_yaml(yaml.safe_load(yaml_config)) == config)
     pprint.pprint(config)
+
+    print("####################")
+
+    for char, conf in LoginDetailsConfigLoader().load().items():
+
+        print(char, conf)
