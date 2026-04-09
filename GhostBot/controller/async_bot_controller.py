@@ -1,10 +1,13 @@
 import asyncio
+import logging
 from typing import Coroutine, Any
 
 from GhostBot import logger
 from GhostBot.controller.async_task_runner import AsyncTaskRunner
 from GhostBot.controller.bot_controller import BotController, BotClientWindow
+from GhostBot.controller.login_controller import LoginController
 from GhostBot.enums.bot_status import BotStatus
+from GhostBot.client_launcher import ClientLauncher
 from GhostBot.server import GhostbotIPCServer
 
 
@@ -17,7 +20,52 @@ class AsyncBotController(BotController, AsyncTaskRunner):
         while True:
             logger.debug("Rescanning clients")
             self._scan_for_clients()
+            await self._process_login_queue()
             await asyncio.sleep(2)
+
+    async def _process_login_queue(self):
+
+        async def callback(__client, result):
+            if not result:
+                logger.debug(f'{self.__class__.__name__} :: [{__client.process_id}] Login failed, removing {__client.name} from self._pending_clients')
+                self._pending_clients.pop(__client.name)
+            else:
+                logger.debug(f'{self.__class__.__name__} :: [{__client.process_id}] Login succeeded')
+
+        logger.debug('%s :: self._eligible_logins :: %s', self.__class__.__name__, self._eligible_logins())
+
+        if not self._eligible_logins():
+            return
+        elif len(self.login_queue) < 1:
+            await ClientLauncher().block_until_ready()
+
+        for pid, _client in dict(self.login_queue).items():
+
+            if f"task{pid}" not in self._tasks.keys():
+                lc = LoginController(_client)
+
+                if lc.current_stage == LoginController.LoginStage.character_select:
+                    await asyncio.sleep(5)  # fixes a race condition with the client window opening
+
+                char = _client.get_window_name()
+
+                if char in self._eligible_logins().keys() and _client.name is None:
+                    logger.debug('[%s] resuming login procedure', pid)
+                    _conf = self._eligible_logins().pop(char)
+                elif lc.current_stage == LoginController.LoginStage.enter_credentials:
+                    logger.debug('[%s] starting login procedure', pid)
+                    _conf = self._eligible_logins().popitem()
+                    char = _conf[0]
+                else:
+                    continue
+
+                self._pending_clients[char] = _client
+
+                if lc.current_stage == LoginController.LoginStage.enter_credentials:
+                    logger.debug('[%s] setting config for LoginController', pid)
+                    lc.set_config(_conf)
+                super()._add_task(lc.handle_login(lambda result: callback(_client, result)), f"task{pid}")
+                self.login_queue.pop(pid)
 
     def _add_task(self, coroutine: Coroutine[Any, Any, Any], client: BotClientWindow) -> str | None:
             self.reload_bot_config(client)
