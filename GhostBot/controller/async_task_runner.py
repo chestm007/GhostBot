@@ -5,7 +5,6 @@ class AsyncTaskRunner:
     def __init__(self):
         self._tasks: dict[str, asyncio.Task] = dict()
 
-
     def _add_task(self, coroutine: Coroutine[Any, Any, Any], task_name: str) -> str | None:
         """
         Adds a new asynchronous task to the runner.
@@ -20,7 +19,6 @@ class AsyncTaskRunner:
         self._tasks[task_name] = task
         print(f"Task '{task_name}' added.")
         return task_name
-
 
     async def _stop_task(self, task_name: str) -> bool:
         """
@@ -46,7 +44,6 @@ class AsyncTaskRunner:
             print(f"Task '{task_name}' not found.")
         return False
 
-
     async def _remove_task(self, task_name: str) -> bool:
         """
         Removes a task from the runner. If the task is running, it will be cancelled first.
@@ -64,7 +61,6 @@ class AsyncTaskRunner:
             print(f"Task '{task_name}' not found.")
             return False
 
-
     def _get_task_status(self, task_name: str) -> str:
         """Gets the status of a specific task."""
         if task_name in self._tasks:
@@ -80,7 +76,6 @@ class AsyncTaskRunner:
         else:
             return "not_found"
 
-
     def _list_tasks(self) -> dict[str, str]:
         """
         Lists all tasks currently managed by the runner and their statuses.
@@ -92,7 +87,6 @@ class AsyncTaskRunner:
         for task_name, task in self._tasks.items():
             status_dict[task_name] = self._get_task_status(task_name)
         return status_dict
-
 
     async def _stop_all_tasks(self) -> None:
         """
@@ -107,7 +101,6 @@ class AsyncTaskRunner:
         await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
         print("All tasks stopped.")
 
-
     async def _remove_all_tasks(self) -> None:
         """
         Removes all tasks from the runner. This will also stop them if they are running.
@@ -116,4 +109,3 @@ class AsyncTaskRunner:
         for task_name in list(self._tasks.keys()):
             await self._remove_task(task_name)
         print("All tasks removed.")
-

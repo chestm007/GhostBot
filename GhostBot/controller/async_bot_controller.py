@@ -138,6 +138,10 @@ class AsyncBotController(BotController, AsyncTaskRunner):
         await server.run_server()
 
 if __name__ == '__main__':
+    import os
+    if os.environ.get('PYCHARM_HOSTED') == 1:
+        logger.setLevel(logging.DEBUG)
+
     async def run():
         try:
             await bot_controller.listen()

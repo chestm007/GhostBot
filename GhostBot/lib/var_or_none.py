@@ -1,7 +1,8 @@
-from typing import Any
+from typing import TypeVar, Union, Optional
 
+_T = TypeVar("_T", bound=Optional[Union[int, str, bool, float, tuple]])
 
-def var_or_none(val: Any):
+def var_or_none(val: _T) -> _T:
     if val is None:
         return None
 
