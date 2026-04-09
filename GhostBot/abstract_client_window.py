@@ -21,7 +21,7 @@ class AbstractClientWindow(ABC):
     def window_handle(self) -> int: ...
 
     @abstractmethod
-    def _set_window_name(self) -> Self: ...
+    def set_window_name(self) -> Self: ...
 
     def new_target(self, _key='tab') -> Self:
         self.press_key(_key)
@@ -43,13 +43,14 @@ class AbstractClientWindow(ABC):
     def on_mount(self) -> bool: ...
 
     @asynccontextmanager
-    async def mounted(self, _key=None) -> AsyncGenerator[Coroutine, Coroutine]:
+    async def mounted(self, _key=None):
         if _key is None:
             yield
             return
 
-        yield self.mount(_key)
-        yield self.dismount(_key)
+        await self.mount(_key)
+        yield
+        await self.dismount(_key)
 
     async def mount(self, _key=None):
         if _key is None:
@@ -81,10 +82,10 @@ class AbstractClientWindow(ABC):
     @abstractmethod
     def press_key(self, key: int | str) -> None: ...
 
-    def type_keys(self, keys: str) -> None:  # TODO: should be async?
+    async def type_keys(self, keys: str) -> None:
         for key in keys.swapcase():
             self.press_key(key)
-            time.sleep(0.1)
+            await asyncio.sleep(0.1)
 
     @abstractmethod
     async def left_click(self, pos: tuple[float, float]) -> None: ...
@@ -132,7 +133,7 @@ class AbstractClientWindow(ABC):
         await self.open_surroundings_ui()
         await self.left_click(UI_locations.surroundings_search)
         await asyncio.sleep(0.5)
-        self.type_keys(val)
+        await self.type_keys(val)
         await asyncio.sleep(0.5)
 
     async def goto_first_surrounding_result(self):

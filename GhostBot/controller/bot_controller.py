@@ -53,13 +53,13 @@ class BotClientWindow(Win32ClientWindow):
             window_size=self.get_window_size(),
         )
 
-    def mount(self, _key=0):
+    async def mount(self, _key=0):
         if self.config.sell is not None and self.config.sell.use_mount:
-            super().mount(_key)
+            await super().mount(_key)
 
-    def unmount(self, _key=0):
+    async def unmount(self, _key=0):
         if self.config.sell is not None and self.config.sell.use_mount:
-            super().dismount(_key)
+            await super().dismount(_key)
 
     def load_config(self):
         self.set_config(ConfigLoader(self).load())
