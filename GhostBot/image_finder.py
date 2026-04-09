@@ -31,7 +31,7 @@ class ImageFinder:
             items[filename] = image
 
 
-    def find_image_in_window(self, target_image, threshold=0.8):
+    def _find_image_in_window(self, target_image, threshold=0.8):
         """
         Find the passed in image in the client window and return the coordinates to it.
 
@@ -78,20 +78,20 @@ class ImageFinder:
         return to_delete
 
     def _get_destroy_item_location(self) -> tuple[int, int] | None:
-        return self._find_ui_element(os.path.join(self.misc_folder, "destroy-item.bmp"), threshold=0.8)
+        return self.find_ui_element(os.path.join(self.misc_folder, "destroy-item.bmp"), threshold=0.8)
 
     @property
     def dialog_ok_location(self) -> tuple[int, int] | None:
-        return self._find_ui_element("Images/misc/dialog_ok.bmp", threshold=0.6)
+        return self.find_ui_element("Images/misc/dialog_ok.bmp", threshold=0.6)
 
     def _sell_item_npc_location(self, stage=0) -> tuple[int, int] | None:
         stage_path = ['npc_sell', 'item_sell_window_header', 'item_sell']
-        return self._find_ui_element(f"Images/misc/{stage_path[stage - 1]}.bmp", threshold=0.62)
+        return self.find_ui_element(f"Images/misc/{stage_path[stage - 1]}.bmp", threshold=0.62)
 
-    def _find_ui_element(self, bitmap_path: str, threshold=0.8) -> tuple[int, int] | None:
+    def find_ui_element(self, bitmap_path: str, threshold=0.8) -> tuple[int, int] | None:
         _image = cv2.imread(bitmap_path, cv2.IMREAD_GRAYSCALE)
         try:
-            coordinates = self.find_image_in_window(_image, threshold=threshold)
+            coordinates = self._find_image_in_window(_image, threshold=threshold)
         except cv2.error as e:
             logger.exception(f"{self.__class__.__name__} :: {self._client.name} :: {e}")
             coordinates = None
