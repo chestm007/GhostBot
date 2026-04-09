@@ -60,11 +60,10 @@ class Win32ClientWindow(AbstractClientWindow):
     def __init__(self, proc):
         self.proc = proc
         self.process_id = proc.process_id
-        try:
-            self.pointers = Pointers(self.process_id)
-            self.char = self.proc.read_int(self.char_addr)
-        except (ProcessError, MemoryReadError):
-            self.pointers = None  # TODO: set this when client login
+
+        self.pointers = None
+        self.char = None
+        self.initialize_pointers()
 
         self._name = None
         self._active = False
@@ -75,6 +74,15 @@ class Win32ClientWindow(AbstractClientWindow):
         except TypeError:
             pass
         # FIXME: wrap all getters in a retry DC check loop
+
+    def initialize_pointers(self):
+        try:
+            if self.pointers is None:
+                self.pointers = Pointers(self.process_id)
+            if self.char is None:
+                self.char = self.proc.read_int(self.char_addr)
+        except (ProcessError, MemoryReadError):
+            return
 
     @property
     def window_handle(self):

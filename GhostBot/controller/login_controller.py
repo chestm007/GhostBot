@@ -112,6 +112,8 @@ class LoginController:
             try:
                 self._client.set_window_name()
                 await self._handle_stage()
+                # Initialize the memory pointers, as they cant be set before login.
+                self._client.initialize_pointers()
                 self._client.set_window_name()
             except pywintypes.error as e:
                 logger.exception(e)
