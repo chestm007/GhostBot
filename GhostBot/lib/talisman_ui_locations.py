@@ -17,6 +17,18 @@ UI_locations = AttrDict(
     npc_location=(500, 395),
     sell_item_slot_1=(455, 270),
     confirm_sell_button=(475, 713),
+    char_select_enter_game=(510, 735),
+    char_select_interrupted_ok=(510, 333),
+    server_select=AttrDict(
+        white_horse=(380, 245),
+        blue_ice=(380, 265),
+        wild_wave=(380, 285),
+        giant_sky_metal=(380, 305),
+        tiger_fish=(380, 325),
+        all_stars=(380, 345),
+        light_in_the_darkness=(380, 365),
+        ok=(560, 530),
+    )
 )
 
 TeamLocations = [UI_locations.player, UI_locations.team_1, UI_locations.team_2, UI_locations.team_3, UI_locations.team_4]
