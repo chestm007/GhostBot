@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-from contextlib import asynccontextmanager
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -12,6 +11,7 @@ from GhostBot import logger
 from GhostBot.image_finder import ImageFinder
 from GhostBot.lib.decorators import classproperty
 from GhostBot.lib.talisman_ui_locations import UI_locations
+from GhostBot.lib.utils import retry, asyncretry
 
 if TYPE_CHECKING:
     from GhostBot.controller.bot_controller import BotClientWindow
@@ -70,16 +70,16 @@ class LoginController:
 
     @property
     def _enter_credentials(self):
-        return self._image_finder.find_ui_element(os.path.join(ImageFinder.misc_folder, 'login_main_page.bmp'),
-                                                  threshold=0.6)
+        return bool(self._image_finder.find_ui_element(os.path.join(ImageFinder.misc_folder, 'login_main_page.bmp'),
+                                                  threshold=0.6))
 
     @property
     def _server_select(self):
-        return self._image_finder.find_ui_element(os.path.join(ImageFinder.misc_folder, 'login_server_select.bmp'))
+        return bool(self._image_finder.find_ui_element(os.path.join(ImageFinder.misc_folder, 'login_server_select.bmp')))
 
     @property
     def _login_queue(self):
-        return self._image_finder.find_ui_element(os.path.join(ImageFinder.misc_folder, 'login_queue.bmp'))
+        return bool(self._image_finder.find_ui_element(os.path.join(ImageFinder.misc_folder, 'login_queue.bmp')))
 
     @property
     def _character_select(self):
@@ -116,16 +116,15 @@ class LoginController:
             for _ in range(20):
                 self._client.press_key('backspace')
             await asyncio.sleep(1)
-            await self._client.type_keys(_conf.get("username"))
+            self._client.type_keys(_conf.get("username"), char_only=True)
             self._client.press_key("tab")
-            await self._client.type_keys(_conf.get("password"))
+            self._client.type_keys(_conf.get("password"), char_only=True)
             self._client.press_key("enter")
-            await asyncio.sleep(5)
-            if not self._server_select:
+            if not await asyncretry(lambda: self._server_select, 3, 2):
+                logger.debug("LoginController :: %s :: login server is busy, restarting login process...", self._client.identifier)
                 await self._client.left_click((510, 335)) # 'login server is busy' dialog
                 await asyncio.sleep(0.5)
                 await self._client.left_click((620, 390))  # username text box
-
 
     async def _handle_server_select(self):
         self._login_lock.release()
@@ -141,16 +140,15 @@ class LoginController:
 
     async def _handle_character_select(self):
         logger.debug("LoginController :: %s :: character select", self._client.identifier)
-        retries = 0
-        while retries <= 3:
-            logger.debug('LoginController :: %s :: waiting for game entered... (attempt %s)', self._client.identifier, retries)
+        async def select_char(retry_count):
+            logger.debug('LoginController :: %s :: waiting for game entered... (attempt %s)', self._client.identifier, retry_count)
             await self._client.left_click(UI_locations.char_select_enter_game)
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
             self._client.initialize_pointers(force_reload=True)
-            if self.current_stage == self.LoginStage.success:
-                logger.info("LoginController :: %s :: character logged in", self._client.identifier)
-                break
-            retries += 1
+            return self.current_stage == self.LoginStage.success
+
+        if await asyncretry(select_char, 5, 1):
+            logger.info("LoginController :: %s :: character logged in", self._client.identifier)
         else:
             logger.info("LoginController :: %s :: character interrupted", self._client.identifier)
             await self._client.left_click(UI_locations.char_select_interrupted_ok)

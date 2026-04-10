@@ -36,7 +36,7 @@ class AsyncBotController(BotController, AsyncTaskRunner):
                 logger.debug('AsyncBotController :: [%s] Login failed, removing %s from self._pending_clients', __client.process_id, __client.name)
                 self._pending_clients.pop(__client.name)
             else:
-                logger.debug('AsyncBotController :: :: [%s] Login succeeded', __client.process_id)
+                logger.debug('AsyncBotController :: [%s] :: Login succeeded', __client.process_id)
 
         if not self._eligible_logins():
             return

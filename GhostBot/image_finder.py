@@ -91,12 +91,11 @@ class ImageFinder:
     def find_ui_element(self, bitmap_path: str, threshold=0.8) -> tuple[int, int] | None:
         _image = cv2.imread(bitmap_path, cv2.IMREAD_GRAYSCALE)
         try:
-            coordinates = self._find_image_in_window(_image, threshold=threshold)
+            return self._find_image_in_window(_image, threshold=threshold)
         except cv2.error as e:
-            logger.exception(f"{self.__class__.__name__} :: {self._client.name} :: {e}")
-            coordinates = None
-
-        return coordinates or None
+            logger.error("ImageFinder :: %s :: error in ImageFinder._find_image_in_window", self._client.identifier)
+            logger.exception(e)
+            return None
 
     @property
     def destroy_item_location(self) -> tuple[int, int]:

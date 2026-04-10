@@ -80,12 +80,11 @@ class AbstractClientWindow(ABC):
     def capture_window(self, color: bool): ...
 
     @abstractmethod
-    def press_key(self, key: int | str) -> None: ...
+    def press_key(self, key: int | str, char_only: bool = False) -> None: ...
 
-    async def type_keys(self, keys: str) -> None:
+    def type_keys(self, keys: str, char_only: bool = False) -> None:
         for key in keys.swapcase():
-            self.press_key(key)
-            await asyncio.sleep(0.1)
+            self.press_key(key, char_only=char_only)
 
     @abstractmethod
     async def left_click(self, pos: tuple[float, float]) -> None: ...
@@ -133,7 +132,7 @@ class AbstractClientWindow(ABC):
         await self.open_surroundings_ui()
         await self.left_click(UI_locations.surroundings_search)
         await asyncio.sleep(0.5)
-        await self.type_keys(val)
+        self.type_keys(val)
         await asyncio.sleep(0.5)
 
     async def goto_first_surrounding_result(self):

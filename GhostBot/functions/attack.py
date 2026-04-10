@@ -30,13 +30,13 @@ class AttackContext:
         #self._check_stuck = self._client.config.unstuck
 
     def _log_err(self, msg: str) -> None:
-        logger.error(f"{self._client.name}: {msg}")
+        logger.error("AttackContext :: %s :: %s", self._client.identifier, msg)
 
     def _log_info(self, msg: str) -> None:
-        logger.info(f"{self._client.name}: {msg}")
+        logger.info("AttackContext :: %s :: %s", self._client.identifier, msg)
 
     def _log_debug(self, msg: str) -> None:
-        logger.debug(f"{self._client.name}::{self.__class__.__name__}: {msg}")
+        logger.debug("AttackContext :: %s :: %s", self._client.identifier, msg)
 
     @property
     def location_changed(self) -> bool:

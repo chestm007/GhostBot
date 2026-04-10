@@ -1,7 +1,5 @@
 import asyncio
-import logging
 import math
-import time
 from ctypes.wintypes import LPARAM, WPARAM
 
 import cv2
@@ -14,21 +12,19 @@ import win32con
 import win32gui
 import win32process
 import win32ui
-import ctypes
 
 from pymem.exception import MemoryReadError, ProcessError
 from win32con import SM_CYCAPTION
 
 from GhostBot import logger
 from GhostBot.abstract_client_window import AbstractClientWindow, Location
-from GhostBot.lib import vk_codes, win32messages
+from GhostBot.lib import win32messages, get_with_case
 from GhostBot.lib.talisman_online_python.pointers import Pointers
 from GhostBot.map_navigation import location_to_zone_map
 
 TARGET_MAX_HP=597
 TARGET_MIN_HP=461
 
-user32 = ctypes.windll.user32
 
 def get_pointer(self, base, offsets):
     address = self.read_int(base)
@@ -147,22 +143,15 @@ class Win32ClientWindow(AbstractClientWindow):
         else:
             return cv2.cvtColor(img[..., :3], cv2.COLOR_BGR2GRAY)
 
-    def press_key(self, _key: int | str):
-        """Fetch the keycode for the key from our map, send it to the client window"""
-        try:
-            if isinstance(_key, str) and len(_key) == 1:  # if `key` is [a-zA-Z]
-                _key = vk_codes[_key.lower()] + 0x20 if _key.isupper() else vk_codes[_key.lower()]
-            else:
-                _key = vk_codes[_key]
-        except AttributeError:
-            logger.exception('Win32ClientWindow :: %s :: INTERNAL ERROR: %s not found in vk_codes', self.identifier, _key)
-            return
-        # user32.SendMessageW(self.window_handle, win32messages.WM_KEYDOWN, WPARAM(_key), LPARAM(0))
-        # user32.SendMessageW(self.window_handle, win32messages.WM_KEYUP, WPARAM(_key), LPARAM(0))
-        # user32.SendMessageW(self.window_handle, win32messages.WM_CHAR, WPARAM(_key), LPARAM(0))
-        win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, _key, LPARAM(0))
-        win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, _key, LPARAM(0))
+    def press_key(self, _key: int | str, char_only: bool = False):
+        """Send the key to the client window"""
+        _key = get_with_case(_key)
+
+        if not char_only:
+            win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, _key, LPARAM(0))
         win32gui.SendMessage(self.window_handle, win32messages.WM_CHAR, _key, LPARAM(0))
+        if not char_only:
+            win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, _key, LPARAM(0))
         return
 
     async def left_click(self, pos):
@@ -182,8 +171,7 @@ class Win32ClientWindow(AbstractClientWindow):
         await asyncio.sleep(0.1)
 
     def close_window(self):
-        win32gui.PostMessage(self.window_handle, win32con.WM_CLOSE, 0, 0)
-        asyncio.sleep(0.5)
+        win32gui.SendMessage(self._window_handle, win32messages.WM_DESTROY, None, None)
 
     @staticmethod
     def get_mouse_window_pos(window_pos: tuple[int, int]) -> tuple[int, int] | None:

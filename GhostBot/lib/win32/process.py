@@ -5,7 +5,6 @@ import pymem
 from pymem.exception import CouldNotOpenProcess
 
 
-
 class PymemProcess:
     @staticmethod
     def get_proc_matching(match: bytes):
@@ -33,6 +32,8 @@ class PymemProcess:
             from GhostBot.client_launcher import ClientLauncher
             for game in games[:2]:
                 ClientLauncher(game).close_window()
+                games.remove(game)
+
 
         if len(games) == 1:
             return games.pop()
