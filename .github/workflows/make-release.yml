@@ -1,0 +1,34 @@
+name: Releases
+
+on:
+  push:
+    tags:
+    - '*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+
+      - name: Build
+        uses: ./.github/workflows/build.yml
+
+      - name: Download server artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: server.exe
+
+      - name: Download client artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: client.exe
+
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: "GhostBot/server.exe,GhostBot/client.exe"
+          bodyFile: "body.md"

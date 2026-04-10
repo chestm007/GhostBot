@@ -39,6 +39,15 @@ Install python, clone this repository, and `pip install .` in the root directory
 
 check out the [issues](https://github.com/chestm007/GhostBot/issues) page
 
+### Development
+
+#### Building executables locally:
+
+```commandline
+nuitka --mode=app GhostBot/run_client.py
+nuitka --mode=app GhostBot/run_server.py
+```
+
 ### Special Thanks
 
 [tonirogerio](https://github.com/tonirogerio) - For absolutely invaluable help with finding the right memory pointers

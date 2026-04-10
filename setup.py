@@ -28,12 +28,15 @@ setup(
             "pytest",
             "pytest-asyncio",
             "tox"
+        ],
+        'build': [
+            "nuitka"
         ]
     },
     entry_points={
         'console_scripts': [
             'ghost-bot-client = GhostBot.UX.main:main',
-            'ghost-bot-server = GhostBot.bot_controller:main',
+            'ghost-bot-server = GhostBot.controller.threaded_bot_controller:main',
         ]
     }
 )

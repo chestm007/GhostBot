@@ -203,7 +203,7 @@ class ThreadedBotController(BotController):
         super().shutdown()
         self._stop_all_tasks()
 
-if __name__ == '__main__':
+def main():
     import os
     import logging
     from GhostBot import logger as _logger
@@ -219,3 +219,6 @@ if __name__ == '__main__':
     finally:
         _logger.info('exiting...')
         bot_controller.shutdown()
+
+if __name__ == '__main__':
+    main()
