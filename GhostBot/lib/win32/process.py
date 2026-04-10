@@ -5,6 +5,7 @@ import pymem
 from pymem.exception import CouldNotOpenProcess
 
 
+
 class PymemProcess:
     @staticmethod
     def get_proc_matching(match: bytes):
@@ -23,9 +24,17 @@ class PymemProcess:
 
 
     @classmethod
-    def get_game_exe(cls) -> pymem.Pymem:
+    def get_game_exe(cls, auto_cleanup: bool = False) -> pymem.Pymem:
         games = list(cls.get_proc_matching(b'game.exe'))
+        if len(games) > 1:
+            if not auto_cleanup:
+                raise KeyError
+
+            from GhostBot.client_launcher import ClientLauncher
+            for game in games[:2]:
+                ClientLauncher(game).close_window()
+
         if len(games) == 1:
             return games.pop()
-        raise Exception
-
+        else:
+            raise IndexError

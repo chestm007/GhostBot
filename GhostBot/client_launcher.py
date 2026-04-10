@@ -1,6 +1,7 @@
 import asyncio
 import os
 
+import pymem
 import win32api
 
 from GhostBot.client_window import Win32ClientWindow
@@ -12,10 +13,13 @@ class ClientLauncher(Win32ClientWindow):
     exe = 'game.exe'
     orig_dir = os.getcwd()
 
-    def __init__(self):
-        self.launch()
-        proc = PymemProcess.get_game_exe()
-        super().__init__(proc)
+    def __init__(self, process: pymem.Pymem = None):
+        if process:
+            super().__init__(process)
+        else:
+            self.launch()
+            proc = PymemProcess.get_game_exe()
+            super().__init__(proc)
 
     def launch(self):
         os.chdir(self.path)

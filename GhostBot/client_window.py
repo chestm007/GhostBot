@@ -7,12 +7,15 @@ from ctypes.wintypes import LPARAM, WPARAM
 import cv2
 import numpy as np
 import pymem
+import pywintypes
 import win32.win32api
 import win32api
 import win32con
 import win32gui
 import win32process
 import win32ui
+import ctypes
+
 from pymem.exception import MemoryReadError, ProcessError
 from win32con import SM_CYCAPTION
 
@@ -20,12 +23,12 @@ from GhostBot import logger
 from GhostBot.abstract_client_window import AbstractClientWindow, Location
 from GhostBot.lib import vk_codes, win32messages
 from GhostBot.lib.talisman_online_python.pointers import Pointers
-from GhostBot.lib.win32.process import PymemProcess
 from GhostBot.map_navigation import location_to_zone_map
 
 TARGET_MAX_HP=597
 TARGET_MIN_HP=461
 
+user32 = ctypes.windll.user32
 
 def get_pointer(self, base, offsets):
     address = self.read_int(base)
@@ -58,28 +61,34 @@ class Win32ClientWindow(AbstractClientWindow):
     char_addr = base_addr + 0xC20980
 
     def __init__(self, proc):
-        self.proc = proc
-        self.process_id = proc.process_id
-
-        self.pointers = None
-        self.char = None
-        self.initialize_pointers()
-
         self._name = None
         self._active = False
         self._window_handle = None
         self._target_name_offsets = None
+        self.pointers = None
+        self.char = None
+
+        self.proc = proc
+        self.process_id = proc.process_id
+
+        self.initialize_pointers()
+
         try:
             self.set_window_name()
         except TypeError:
             pass
         # FIXME: wrap all getters in a retry DC check loop
 
-    def initialize_pointers(self):
+    @property
+    def identifier(self):
+        return f"{self.name or ''}[{self.process_id}]"
+
+    def initialize_pointers(self, force_reload: bool = False):
         try:
-            if self.pointers is None:
+            if self.pointers is None or force_reload:
+                logger.debug('Win32ClientWindow :: %s :: %s initializing pointers', self.identifier, 'FORCE' if force_reload else '')
                 self.pointers = Pointers(self.process_id)
-            if self.char is None:
+            if self.char is None or force_reload:
                 self.char = self.proc.read_int(self.char_addr)
         except (ProcessError, MemoryReadError):
             return
@@ -89,7 +98,7 @@ class Win32ClientWindow(AbstractClientWindow):
         if self._window_handle is None:
             hwnds = get_hwnds_for_pid(self.process_id)
             if len(hwnds) == 1:
-                logger.debug('got window handle')
+                logger.debug('Win32ClientWindow :: %s :: got window handle', self.identifier)
                 self._window_handle = hwnds[0]
         return self._window_handle
 
@@ -131,23 +140,26 @@ class Win32ClientWindow(AbstractClientWindow):
 
         save_dc.DeleteDC()
         mfc_dc.DeleteDC()
-        win32gui.ReleaseDC(self._window_handle, handle_dc)
+        win32gui.ReleaseDC(self.window_handle, handle_dc)
         win32gui.DeleteObject(save_bitmap.GetHandle())
         if color:
             return img[..., :3]
         else:
             return cv2.cvtColor(img[..., :3], cv2.COLOR_BGR2GRAY)
 
-    def press_key(self, key: int | str):
+    def press_key(self, _key: int | str):
         """Fetch the keycode for the key from our map, send it to the client window"""
         try:
-            if isinstance(key, str) and len(key) == 1:  # if `key` is [a-zA-Z]
-                _key = vk_codes[key.lower()] + 0x20 if key.isupper() else vk_codes[key.lower()]
+            if isinstance(_key, str) and len(_key) == 1:  # if `key` is [a-zA-Z]
+                _key = vk_codes[_key.lower()] + 0x20 if _key.isupper() else vk_codes[_key.lower()]
             else:
-                _key = vk_codes[key]
+                _key = vk_codes[_key]
         except AttributeError:
-            logger.exception(f'INTERNAL ERROR: {key} not found in vk_codes')
+            logger.exception('Win32ClientWindow :: %s :: INTERNAL ERROR: %s not found in vk_codes', self.identifier, _key)
             return
+        # user32.SendMessageW(self.window_handle, win32messages.WM_KEYDOWN, WPARAM(_key), LPARAM(0))
+        # user32.SendMessageW(self.window_handle, win32messages.WM_KEYUP, WPARAM(_key), LPARAM(0))
+        # user32.SendMessageW(self.window_handle, win32messages.WM_CHAR, WPARAM(_key), LPARAM(0))
         win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, _key, LPARAM(0))
         win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, _key, LPARAM(0))
         win32gui.SendMessage(self.window_handle, win32messages.WM_CHAR, _key, LPARAM(0))
@@ -169,6 +181,10 @@ class Win32ClientWindow(AbstractClientWindow):
         win32gui.SendMessage(self.window_handle, win32messages.WM_RBUTTONUP, None, lparam)
         await asyncio.sleep(0.1)
 
+    def close_window(self):
+        win32gui.PostMessage(self.window_handle, win32con.WM_CLOSE, 0, 0)
+        asyncio.sleep(0.5)
+
     @staticmethod
     def get_mouse_window_pos(window_pos: tuple[int, int]) -> tuple[int, int] | None:
         """Get cursor position relative to window position"""
@@ -184,7 +200,11 @@ class Win32ClientWindow(AbstractClientWindow):
         title_bar_height = win32.win32api.GetSystemMetrics(SM_CYCAPTION)
         border_thickness = 8
 
-        wx, wy, ww, wh = win32gui.GetWindowRect(self.window_handle)
+        try:
+            wx, wy, ww, wh = win32gui.GetWindowRect(self.window_handle)
+        except pywintypes.error as e:
+            logger.debug('Win32ClientWindow :: %s :: error getting window handle %s', self.identifier, self.window_handle)
+            return None
         wx += border_thickness
         ww -= border_thickness + wx
         wy += (title_bar_height + border_thickness)
@@ -324,30 +344,3 @@ class Win32ClientWindow(AbstractClientWindow):
     def target_name(self) -> str | None:
         """:return: target name if target selected, `None` if no target"""
         return self.pointers.get_target_name()
-
-
-def main():
-    from GhostBot.controller.bot_controller import BotClientWindow
-
-
-    logger.setLevel(logging.DEBUG)
-    #logger.setLevel(logging.INFO)
-    for proc in PymemProcess.list_clients():
-        client = BotClientWindow(proc)
-        if client.name == "LilithIsGorgeous":
-            time.sleep(2)
-            client.running = True
-            client.move_to_pos((1400, 1400))
-            return
-
-            #print(client.pointers.get_system_menu())
-            #print(client.pointers.get_dialog())
-            #print(client.pointers.confirm_box())
-            #print(client.pointers.get_notification())
-            # delete: confirm
-            # team: confirm, notification:1
-            # trade: confirm
-
-
-if __name__ == "__main__":
-    main()

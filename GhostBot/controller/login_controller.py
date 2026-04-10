@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+from contextlib import asynccontextmanager
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -9,14 +10,49 @@ import pywintypes
 
 from GhostBot import logger
 from GhostBot.image_finder import ImageFinder
+from GhostBot.lib.decorators import classproperty
 from GhostBot.lib.talisman_ui_locations import UI_locations
 
 if TYPE_CHECKING:
     from GhostBot.controller.bot_controller import BotClientWindow
     from collections.abc import Callable
 
+class LoginLock:
+    _locked: bool = False
+    _waiting: list = list()
+    _poll_frequency: float = 1
+
+    async def __aenter__(self):
+        await self.acquire()
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+
+    @classmethod
+    async def acquire(cls):
+        while cls.locked:
+            logger.debug('LoginLock :: waiting for lock to be unlocked, polling every %ss', cls._poll_frequency)
+            await asyncio.sleep(cls._poll_frequency)
+        cls._locked = True
+        return cls
+
+    @classmethod
+    def release(cls):
+        cls._locked = False
+        return cls
+
+    @classproperty
+    def locked(self):
+        return self._locked
+
+    @classproperty
+    def unlocked(self):
+        return not self._locked
+
 
 class LoginController:
+    _login_lock = LoginLock()
+
     def __init__(self, client: "BotClientWindow"):
         self._client = client
         self._config: tuple[str, dict[str, str]] | None = None
@@ -30,6 +66,7 @@ class LoginController:
         server_select = 1
         login_queue = 2
         character_select = 3
+        success = 4
 
     @property
     def _enter_credentials(self):
@@ -46,6 +83,8 @@ class LoginController:
 
     @property
     def _character_select(self):
+        if self._client.level:
+            return False
         return not any((self._enter_credentials, self._server_select, self._login_queue))
 
     @property
@@ -56,8 +95,10 @@ class LoginController:
             return self.LoginStage.server_select
         elif self._login_queue:
             return self.LoginStage.login_queue
-        else:
+        elif self._character_select:
             return self.LoginStage.character_select
+        else:
+            return self.LoginStage.success
 
     async def _handle_stage(self):
         match self.current_stage:
@@ -68,7 +109,7 @@ class LoginController:
             case _: raise TypeError(f"unexpected stage {self.current_stage}")
 
     async def _handle_enter_credentials(self):
-        logger.debug(f"{self.__class__.__name__} :: {self._client.process_id} :: enter credentials")
+        logger.debug("LoginController :: %s :: enter credentials", self._client.identifier)
         if self._config:
             char, _conf = self._config
             self._client._name = char
@@ -79,53 +120,60 @@ class LoginController:
             self._client.press_key("tab")
             await self._client.type_keys(_conf.get("password"))
             self._client.press_key("enter")
-            await asyncio.sleep(4)
+            await asyncio.sleep(5)
+            if not self._server_select:
+                await self._client.left_click((510, 335)) # 'login server is busy' dialog
+                await asyncio.sleep(0.5)
+                await self._client.left_click((620, 390))  # username text box
+
 
     async def _handle_server_select(self):
-        logger.debug(f"{self.__class__.__name__} :: {self._client.process_id} :: server select")
+        self._login_lock.release()
+        logger.debug("LoginController :: %s :: server select", self._client.identifier)
         if self._config and (server := self._config[1].get('server')):
             await self._client.left_click(UI_locations.server_select.get(server))
             await asyncio.sleep(1)
         await self._client.left_click(UI_locations.server_select.ok)
 
     async def _handle_login_queue(self):
-        logger.debug(f"{self.__class__.__name__} :: {self._client.process_id} :: login queue, waiting 30s")
+        logger.debug("LoginController :: %s :: login queue, waiting 30s", self._client.identifier)
         await asyncio.sleep(25)
 
     async def _handle_character_select(self):
-        logger.debug(f"{self.__class__.__name__} :: {self._client.process_id} :: character select")
+        logger.debug("LoginController :: %s :: character select", self._client.identifier)
         retries = 0
         while retries <= 3:
+            logger.debug('LoginController :: %s :: waiting for game entered... (attempt %s)', self._client.identifier, retries)
             await self._client.left_click(UI_locations.char_select_enter_game)
-            await asyncio.sleep(1)
-            if not self._character_select:
-                logger.debug(f"{self.__class__.__name__} :: {self._client.process_id} :: character logged in")
+            await asyncio.sleep(3)
+            self._client.initialize_pointers(force_reload=True)
+            if self.current_stage == self.LoginStage.success:
+                logger.info("LoginController :: %s :: character logged in", self._client.identifier)
                 break
             retries += 1
         else:
-            logger.debug(f"{self.__class__.__name__} :: {self._client.process_id} :: character interrupted")
+            logger.info("LoginController :: %s :: character interrupted", self._client.identifier)
             await self._client.left_click(UI_locations.char_select_interrupted_ok)
 
     async def handle_login(self, callback: Callable):
-        logger.debug(f"{self.__class__.__name__} :: {self._client.process_id} :: handle login")
+        logger.debug("LoginController :: %s :: handle login", self._client.identifier)
         while self._client.level is None:
             try:
                 self._client.set_window_name()
                 await self._handle_stage()
                 # Initialize the memory pointers, as they cant be set before login.
-                self._client.initialize_pointers()
                 self._client.set_window_name()
             except pywintypes.error as e:
                 logger.exception(e)
                 if e.args[2] == 'Invalid window handle.':
-                    logger.error(f'{self.__class__.__name__} :: {self._client.process_id} :: ERROR with window handle.')
+                    logger.error(f'LoginController :: %s :: ERROR with window handle.', self._client.identifier)
                     break  # jump out of this while loop, skipping the else block.
             await asyncio.sleep(5)
         else:
-            logger.debug(f"{self.__class__.__name__} :: {self._client.process_id} :: login handled")
+            logger.info("LoginController :: %s :: login handled", self._client.identifier)
             await callback(True)
             return
-        logger.debug(f"{self.__class__.__name__} :: {self._client.process_id} :: login failed")
+        logger.error("LoginController :: %s :: login failed", self._client.identifier)
         await callback(False)
 
 

@@ -24,8 +24,10 @@ setup(
         'opencv-python'
     ],
     extras_require={
-        "pytest",
-        "pytest-asyncio"
+        'test': [
+            "pytest",
+            "pytest-asyncio"
+        ]
     },
     entry_points={
         'console_scripts': [

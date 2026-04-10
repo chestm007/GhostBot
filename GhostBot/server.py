@@ -43,10 +43,12 @@ class GhostbotIPCServer:
         writer.close()
 
     async def run_server(self):
+        logger.info('GhostBotIPCServer :: Starting server...')
         self.server = await asyncio.start_server(self._handle_client, self.host, self.port)
         async with self.server:
             try:
                 try:
+                    logger.info('GhostBotIPCServer :: Serving forever...')
                     await self.server.serve_forever()
                 except CancelledError:
                     return

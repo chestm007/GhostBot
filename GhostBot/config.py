@@ -3,11 +3,14 @@ from __future__ import annotations
 import os
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import TypedDict, NotRequired, Any
+from typing import TypedDict, NotRequired, Any, TYPE_CHECKING
 
 import yaml
 
 from GhostBot import logger
+
+if TYPE_CHECKING:
+    from GhostBot.controller.bot_controller import BotClientWindow
 
 
 class FunctionConfig(ABC):
@@ -122,8 +125,6 @@ class Config:
                 setattr(_config, k, _clazz(**v))
             else:
                 raise AttributeError(f"{k} not a valid config category")
-
-        logger.debug(f"Config loaded: {data.keys()}")
         return _config
 
     def functions(self):
@@ -147,19 +148,19 @@ class BaseConfigLoader:
 
 
 class ConfigLoader(BaseConfigLoader):
-    def __init__(self, client):
+    def __init__(self, client: BotClientWindow):
         self.client = client
         self.config_filepath = os.path.join(self._detect_path(), f'{self.client.name}.yml')
 
     def load(self) -> Config:
-        logger.debug('loading config')
+        logger.debug('ConfigLoader :: %s :: loading config', self.client.identifier)
         try:
             with open(self.config_filepath, 'r') as c:
                 _config = Config.load_yaml(yaml.safe_load(c.read()))  # overwrite config defaults with whats in the loaded config
-                logger.debug('config loaded')
+                logger.debug('ConfigLoader :: %s :: config loaded', self.client.identifier)
                 return _config
         except FileNotFoundError:
-            logger.debug('config not found, using defaults')
+            logger.debug('ConfigLoader :: %s :: config not found, using defaults', self.client.identifier)
             _config = Config()
             return self.save(_config)
 
@@ -192,10 +193,10 @@ class LoginDetailsConfigLoader(BaseConfigLoader):
         try:
             with open(self.config_filepath, 'r') as c:
                 _config = yaml.safe_load(c.read())
-                logger.debug('login config loaded')
+                logger.debug('LoginDetailsConfigLoader :: login config loaded')
                 return _config
         except FileNotFoundError:
-            logger.debug('no login config file found at %s', self.config_filepath)
+            logger.debug('LoginDetailsConfigLoader :: no login config file found at %s', self.config_filepath)
             return {}
 
 

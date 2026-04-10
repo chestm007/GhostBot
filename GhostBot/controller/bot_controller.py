@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import math
 from abc import abstractmethod, ABC
 from typing import Generator
@@ -9,8 +8,6 @@ from operator import mul, add
 from GhostBot import logger
 from GhostBot.client_window import Win32ClientWindow
 from GhostBot.config import Config, ConfigLoader, LoginDetailsConfigLoader
-from GhostBot.controller.async_task_runner import AsyncTaskRunner
-from GhostBot.controller.login_controller import LoginController
 from GhostBot.enums.bot_status import BotStatus
 from GhostBot.functions import Attack, Buffs, Fairy, Petfood, Regen, Runner, Sell, Delete
 from GhostBot.lib.math import linear_distance, position_difference, scale_minimap_move_distance, coords_to_map_screen_pos
@@ -160,7 +157,6 @@ class BotClientWindow(Win32ClientWindow):
                 break
 
 
-
 class BotController(ABC):
 
     _pymem_process = PymemProcess
@@ -172,7 +168,6 @@ class BotController(ABC):
         self.login_queue: dict[int, BotClientWindow] = dict()
         self._seen_clients = []
 
-        self._scan_for_clients()
         self._load_login_config()
 
     def _load_login_config(self):
@@ -181,7 +176,7 @@ class BotController(ABC):
     def _eligible_logins(self):
         return {k: v for k, v in self.login_config.items() if (k not in self.client_keys) and (k not in self._pending_clients.keys())}
 
-    def _scan_for_clients(self):
+    async def _scan_for_clients(self):
         current_client_proc_ids = {c.proc.process_id for c in self.clients.values()}
         detected_procs = self._pymem_process.list_clients()
 
@@ -195,37 +190,52 @@ class BotController(ABC):
         _to_remove = []
         for k, v in self.clients.items():
             if (c_pid := v.proc.process_id) not in (p.process_id for p in detected_procs):
-                logger.info("removing [%s]", c_pid)
+                logger.info("BotController :: removing [%s]", c_pid)
                 _to_remove.append(k)
         for k in _to_remove:
             try:
-                asyncio.get_running_loop().run_until_complete(self.stop_bot(self.clients.pop(k)))
+                await self.stop_bot(self.clients.pop(k))
             except Exception as e:
                 logger.info(e)
         for proc in detected_procs:
             if proc.process_id in current_client_proc_ids:
-                logger.debug("Process [%s] already registered with BotController, skipping.", proc.process_id)
+                logger.debug("BotController :: Process [%s] already registered with BotController, skipping.", proc.process_id)
                 continue
             client = BotClientWindow(proc)
             try:
                 if client.name is None and client.get_window_name() not in self._pending_clients.keys():
-                    logger.debug("[%s] client.name is None, possibly hasnt logged in yet", proc.process_id)
+                    logger.debug("BotController :: [%s] client.name is None, possibly hasnt logged in yet", proc.process_id)
                     if proc.process_id not in self.login_queue.keys():
-                        logger.info("[%s] adding process to login_queue routine", proc.process_id)
+                        logger.info("BotController :: [%s] adding process to login_queue routine", proc.process_id)
                         self.login_queue[proc.process_id] = client
                     continue
                 if 0 > client.level >= 89:
-                    logger.info("[%s] client.level(%s) < 0 or > 89.", proc.process_id, client.level)
+                    logger.info("BotController :: [%s] client.level(%s) < 0 or > 89.", proc.process_id, client.level)
                     continue
-                if client.name not in self.client_keys:
-                    logger.info(f'adding client {client.name} {client.disconnected}')
-                    self.add_client(BotClientWindow(proc))
+
+                if client.disconnected:
+                    logger.info(
+                        'BotController :: Detected disconnected client window for char [%s], attempting to restart',
+                        client.name
+                    )
+                    try:
+                        self.clients.pop(client.name)
+                    except KeyError:
+                        logger.info('BotController :: client window for char [%s] not in registered clients list, this is normal if this is a '
+                                    'fresh restart of the bot controller', client.name)
+                    client.close_window()
+                    await asyncio.sleep(0.5)
                 else:
-                    logger.debug(f'client {client.name} already exists, skipping')
+                    if client.name not in self.client_keys:
+                        logger.info('BotController :: adding client %s %s', client.name, client.disconnected)
+                        self.add_client(BotClientWindow(proc))
+                    else:
+                        logger.debug(f'BotController :: client {client.name} already exists, skipping')
+
             except (TypeError, AttributeError):
                 # TODO: do i want to track this for the autologin? might be an alright hook
                 #       especially if we know which char to log...
-                logger.info(f'cannot add client {proc}')
+                logger.info('BotController :: cannot add client %s', proc)
 
     @property
     def client_keys(self) -> list[str]:
@@ -240,12 +250,15 @@ class BotController(ABC):
     def reload_bot_config(self, client: str | BotClientWindow) -> None:
         if isinstance(client, str):
             if (client := self.get_client(client)) is None:
-                logger.warning(f'no client {client}')
+                logger.warning('BotController :: no client %s', client)
                 return
         client.load_config()
 
     def get_client(self, name) -> BotClientWindow | None:
-        return self.clients.get(name)
+        client = self.clients.get(name)
+        if client is None:
+            logger.warning('BotController :: no client %s', client)
+        return client
 
     def _get_functions_for_client(self, client: BotClientWindow) -> Generator[Runner, None, None]:
         if client.config.delete is not None:
@@ -283,7 +296,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
 
     abc = AsyncBotController()
-    asyncio.run(abc._rescan_clients())
+    asyncio.run(abc.scan_for_clients())
 
     # print(foo)
     #

@@ -19,3 +19,11 @@ GhostBot/__pycache__/
 /GhostBot.egg-info/
 
 login_conf.yml
+
+GhostBot.dist/
+
+run_client.dist/
+
+run_server.dist/
+
+nuitka-crash-report.xml

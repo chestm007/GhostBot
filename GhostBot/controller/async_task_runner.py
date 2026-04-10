@@ -1,6 +1,9 @@
 import asyncio
 from typing import Coroutine, Any
 
+from GhostBot import logger
+
+
 class AsyncTaskRunner:
     def __init__(self):
         self._tasks: dict[str, asyncio.Task] = dict()
@@ -17,7 +20,7 @@ class AsyncTaskRunner:
         # Create the asyncio.Task. It won't start running until the event loop gets to it.
         task = asyncio.create_task(coroutine, name=task_name)
         self._tasks[task_name] = task
-        print(f"Task '{task_name}' added.")
+        logger.info("AsyncTaskRunner :: Task '%s' added.", task_name)
         return task_name
 
     async def _stop_task(self, task_name: str) -> bool:
@@ -34,14 +37,14 @@ class AsyncTaskRunner:
                     # Awaiting the cancelled task to handle potential exceptions
                     await task
                 except asyncio.CancelledError:
-                    print(f"Task '{task_name}' successfully cancelled.")
+                    logger.info("AsyncTaskRunner :: Task '%s' successfully cancelled.", task_name)
                     # We can optionally remove it after cancellation if we don't want to track finished tasks
                     # del self._tasks[task_name]
                     return True
             else:
-                print(f"Task '{task_name}' is already done and cannot be cancelled.")
+                logger.info("AsyncTaskRunner :: Task '%s' is already done and cannot be cancelled.", task_name)
         else:
-            print(f"Task '{task_name}' not found.")
+            logger.info("AsyncTaskRunner :: Task '%s' not found.", task_name)
         return False
 
     async def _remove_task(self, task_name: str) -> bool:
@@ -55,10 +58,10 @@ class AsyncTaskRunner:
             if not task.done():
                 await self._stop_task(task_name)  # Ensure it's cancelled before removing
             del self._tasks[task_name]
-            print(f"Task '{task_name}' removed.")
+            logger.info("AsyncTaskRunner :: Task '%s' removed.", task_name)
             return True
         else:
-            print(f"Task '{task_name}' not found.")
+            logger.info("AsyncTaskRunner :: Task '%s' not found.", task_name)
             return False
 
     def _get_task_status(self, task_name: str) -> str:
@@ -92,20 +95,22 @@ class AsyncTaskRunner:
         """
         Stops all currently running tasks.
         """
-        print("Stopping all tasks...")
-        tasks_to_cancel = list(self._tasks.values())
-        for task in tasks_to_cancel:
+        logger.info("AsyncTaskRunner :: Stopping all tasks...")
+        for task_name, task in self._tasks.items():
             if not task.done():
+                logger.info("AsyncTaskRunner :: cancelling task '%s'.", task_name)
                 task.cancel()
+            else:
+                logger.info("AsyncTaskRunner :: task already done '%s'.", task_name)
         # Wait for all cancellations to be processed
-        await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
-        print("All tasks stopped.")
+        await asyncio.gather(*self._tasks.values(), return_exceptions=True)
+        logger.info("AsyncTaskRunner :: All tasks stopped.")
 
     async def _remove_all_tasks(self) -> None:
         """
         Removes all tasks from the runner. This will also stop them if they are running.
         """
-        print("Removing all tasks...")
+        logger.info("AsyncTaskRunner :: Removing all tasks...")
         for task_name in list(self._tasks.keys()):
             await self._remove_task(task_name)
-        print("All tasks removed.")
+        logger.info("AsyncTaskRunner :: All tasks removed.")
