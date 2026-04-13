@@ -1,7 +1,7 @@
 import pickle
 
 from GhostBot import logger
-from GhostBot.config import AttackConfig, RegenConfig, BuffConfig, PetConfig, FairyConfig, Config
+from GhostBot.config import AttackConfig, RegenConfig, BuffConfig, PetConfig, FairyConfig, Config, SellConfig
 from GhostBot.rpc.message import Message
 from GhostBot.server import IPCClient, GhostbotIPCServer
 
@@ -26,7 +26,7 @@ def _config():
         bindings=dict(
             hp_pot="q",
             mana_pot="w",
-            sit="y"
+            sit="y",
         ),
         hp_threshold=10,
         mana_threshold=12,
@@ -103,3 +103,33 @@ def test_config_none_not_stringified():
         logger.debug(_conf)
         assert all(b != 'None' for b in _conf.get('bindings').values() if _conf.get('bindings') is not None)
 
+
+def test_config_loads_yaml_and_parses_types_properly():
+    attack_bindings: AttackConfig.Bindings = {'battle_hp_pot': 'F1'}
+    fairy_bindings: FairyConfig.Bindings = {'heal': 6}
+    pet_bindings: PetConfig.Bindings = {'spawn': 'E', 'food': 9}
+    regen_bindings: RegenConfig.Bindings = {'hp_pot': 'Q', 'mana_pot': 'W', 'sit': 'X'}
+    config = Config(
+        fairy=FairyConfig(
+            bindings=fairy_bindings,
+            heal_self_threshold=0.75,
+        ), attack=AttackConfig(
+            bindings=attack_bindings,
+            attacks=[
+                [1, 1000],
+                [2, 1400]
+            ]
+        ), buff=BuffConfig(
+            buffs=[
+                [7, 2000]
+            ], interval='10'
+        ), pet=PetConfig(
+            bindings=pet_bindings,
+            food_interval_mins=55,
+        ), regen=RegenConfig(
+            bindings=regen_bindings,
+        ), sell=SellConfig(
+            sell_npc_name='Mr Guy Man',
+            use_mount='false',
+        ),
+    )

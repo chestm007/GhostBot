@@ -22,6 +22,7 @@ seems to have crazy UO scripts or their favourite closed source bot app.
 - Automatic sell to NPC
 - Item deletion
 - Map based pathing in MDV (other areas coming as i personally find the need)
+- Auto start client window and login
 
 ### How do i use this thing???
 

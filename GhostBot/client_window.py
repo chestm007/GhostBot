@@ -1,32 +1,26 @@
-import logging
 import math
 import time
-from contextlib import contextmanager
 from ctypes.wintypes import LPARAM, WPARAM
-from dataclasses import dataclass
-from operator import mul, add
 
 import cv2
 import numpy as np
 import pymem
+import pywintypes
 import win32.win32api
 import win32api
 import win32con
 import win32gui
 import win32process
 import win32ui
+
 from pymem.exception import MemoryReadError, ProcessError
 from win32con import SM_CYCAPTION
 
 from GhostBot import logger
-from GhostBot.enums.bot_status import BotStatus
-from GhostBot.lib import vk_codes, win32messages
-from GhostBot.lib.math import position_difference, limit, coords_to_map_screen_pos, linear_distance, \
-    scale_minimap_move_distance
+from GhostBot.abstract_client_window import AbstractClientWindow, Location
+from GhostBot.lib import win32messages, get_with_case
 from GhostBot.lib.talisman_online_python.pointers import Pointers
-from GhostBot.lib.talisman_ui_locations import UI_locations
-from GhostBot.lib.win32.process import PymemProcess
-from GhostBot.map_navigation import location_to_zone_map, zones
+from GhostBot.map_navigation import location_to_zone_map
 
 TARGET_MAX_HP=597
 TARGET_MIN_HP=461
@@ -55,53 +49,65 @@ def get_hwnds_for_pid(pid):
 pymem.Pymem.get_pointer = get_pointer
 
 
-class ClientWindow:
+class Win32ClientWindow(AbstractClientWindow):
+    """
+    Class to interact with the Talisman Online client window under Microsoft Windows.
+    """
     base_addr = 0x400000
     char_addr = base_addr + 0xC20980
 
     def __init__(self, proc):
-        self.proc = proc
-        self.process_id = proc.process_id
-        try:
-            self.pointers = Pointers(self.process_id)
-            self.char = self.proc.read_int(self.char_addr)
-        except (ProcessError, MemoryReadError):
-            self.pointers = None  # TODO: set this when client login
-
         self._name = None
         self._active = False
         self._window_handle = None
         self._target_name_offsets = None
+        self.pointers = None
+        self.char = None
+
+        self.proc = proc
+        self.process_id = proc.process_id
+
+        self.initialize_pointers()
+
         try:
-            self._set_window_name()
+            self.set_window_name()
         except TypeError:
             pass
         # FIXME: wrap all getters in a retry DC check loop
+
+    @property
+    def identifier(self):
+        return f"{self.name or ''}[{self.process_id}]"
+
+    def initialize_pointers(self, force_reload: bool = False):
+        try:
+            if self.pointers is None or force_reload:
+                logger.debug('Win32ClientWindow :: %s :: %s initializing pointers', self.identifier, 'FORCE' if force_reload else '')
+                self.pointers = Pointers(self.process_id)
+            if self.char is None or force_reload:
+                self.char = self.proc.read_int(self.char_addr)
+        except (ProcessError, MemoryReadError):
+            return
 
     @property
     def window_handle(self):
         if self._window_handle is None:
             hwnds = get_hwnds_for_pid(self.process_id)
             if len(hwnds) == 1:
+                logger.debug('Win32ClientWindow :: %s :: got window handle', self.identifier)
                 self._window_handle = hwnds[0]
         return self._window_handle
 
-    def _set_window_name(self):
+    def set_window_name(self):
         if self.name is not None:
             win32gui.SetWindowText(self.window_handle, f'Talisman Online | {self.name}')
         return self
 
-    def new_target(self, _key='tab'):
-        self.press_key(_key)
-        return self
-
-    def target_self(self, _key='F1'):
-        self.press_key(_key)
-        return self
-
-    def sit(self, _key='x'):
-        self.press_key(_key)
-        return self
+    def get_window_name(self) -> str:
+        try:
+            return win32gui.GetWindowText(self.window_handle).split(' | ')[-1]
+        except IndexError:
+            return ''
 
     @property
     def disconnected(self):
@@ -111,90 +117,42 @@ class ClientWindow:
     def on_mount(self) -> bool:
         return self.pointers.mount()
 
-    @contextmanager
-    def mounted(self, _key=None):
-        if _key is None:
-            yield
-            return
-
-        yield self.mount(_key)
-        self.dismount(_key)
-
-    def mount(self, _key=None):
-        if _key is None:
-            return
-
-        attempts = 0
-        while not self.on_mount and attempts < 3:
-            attempts += 1
-            self.press_key(_key)
-            time.sleep(4)
-        if attempts == 3:
-            logger.error("Failed to mount up")
-
-    def dismount(self, _key=None):
-        if _key is None:
-            return
-
-        attempts = 0
-        while self.on_mount and attempts < 3:
-            attempts += 1
-            self.press_key(_key)
-            time.sleep(4)
-        if attempts == 3:
-            logger.error("Failed to dismount")
-
     def capture_window(self, color=False):
+        w, h = self.get_window_size()
 
-        try:
-            w, h = self.get_window_size()
+        handle_dc = win32gui.GetWindowDC(self.window_handle)
+        mfc_dc = win32ui.CreateDCFromHandle(handle_dc)
+        save_dc = mfc_dc.CreateCompatibleDC()
+        save_bitmap = win32ui.CreateBitmap()
+        save_bitmap.CreateCompatibleBitmap(mfc_dc, w, h)
+        save_dc.SelectObject(save_bitmap)
 
-            handle_dc = win32gui.GetWindowDC(self._window_handle)
-            mfc_dc = win32ui.CreateDCFromHandle(handle_dc)
-            save_dc = mfc_dc.CreateCompatibleDC()
-            save_bitmap = win32ui.CreateBitmap()
-            save_bitmap.CreateCompatibleBitmap(mfc_dc, w, h)
-            save_dc.SelectObject(save_bitmap)
+        save_dc.BitBlt((0, 0), (w, h), mfc_dc, (0, 0), win32con.SRCCOPY)
 
-            save_dc.BitBlt((0, 0), (w, h), mfc_dc, (0, 0), win32con.SRCCOPY)
+        bmpinfo = save_bitmap.GetInfo()
+        bmpstr = save_bitmap.GetBitmapBits(True)
+        img = np.frombuffer(bmpstr, dtype=np.uint8)
+        img.shape = (bmpinfo['bmHeight'], bmpinfo['bmWidth'], 4)
 
-            bmpinfo = save_bitmap.GetInfo()
-            bmpstr = save_bitmap.GetBitmapBits(True)
-            img = np.frombuffer(bmpstr, dtype=np.uint8)
-            img.shape = (bmpinfo['bmHeight'], bmpinfo['bmWidth'], 4)
+        save_dc.DeleteDC()
+        mfc_dc.DeleteDC()
+        win32gui.ReleaseDC(self.window_handle, handle_dc)
+        win32gui.DeleteObject(save_bitmap.GetHandle())
+        if color:
+            return img[..., :3]
+        else:
+            return cv2.cvtColor(img[..., :3], cv2.COLOR_BGR2GRAY)
 
-            save_dc.DeleteDC()
-            mfc_dc.DeleteDC()
-            win32gui.ReleaseDC(self._window_handle, handle_dc)
-            win32gui.DeleteObject(save_bitmap.GetHandle())
-            if color:
-                return img[..., :3]
-            else:
-                return cv2.cvtColor(img[..., :3], cv2.COLOR_BGR2GRAY)
+    def press_key(self, _key: int | str, char_only: bool = False):
+        """Send the key to the client window"""
+        _key = get_with_case(_key)
 
-        except Exception as e:
-            print(e)
-            return None
-
-    def press_key(self, key: int | str):
-        """Fetch the keycode for the key from our map, send it to the client window"""
-        try:
-            if isinstance(key, str) and len(key) == 1:  # if `key` is [a-zA-Z]
-                _key = vk_codes[key.lower()] + 0x20 if key.isupper() else vk_codes[key.lower()]
-            else:
-                _key = vk_codes[key]
-        except AttributeError:
-            logger.exception(f'INTERNAL ERROR: {key} not found in vk_codes')
-            return
-        win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, _key, LPARAM(0))
-        win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, _key, LPARAM(0))
+        if not char_only:
+            win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, _key, LPARAM(0))
         win32gui.SendMessage(self.window_handle, win32messages.WM_CHAR, _key, LPARAM(0))
+        if not char_only:
+            win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, _key, LPARAM(0))
         return
-
-    def type_keys(self, keys: str):
-        for key in keys.swapcase():
-            self.press_key(key)
-            time.sleep(0.1)
 
     def left_click(self, pos):
         lparam = win32api.MAKELONG(*pos)
@@ -212,70 +170,8 @@ class ClientWindow:
         win32gui.SendMessage(self.window_handle, win32messages.WM_RBUTTONUP, None, lparam)
         time.sleep(0.1)
 
-    def move_to_pos(self, target_pos):
-        """
-        moves to `target_pos`, will invoke map based pathing if distance is too far.
-        :param target_pos: `tuple(x, y)` coordinates to move too
-        """
-        while linear_distance(self.location, target_pos) > 50 and self.running:
-            logger.debug(f"{self.name} moving via map")
-            return self._move_to_pos_via_map(target_pos)
-
-        pos_diff = position_difference(self.location, target_pos)
-
-        pos_diff_mm_pix = tuple(map(mul, pos_diff, (-1.7, 1.7)))  # corrected to represent 1 pixel per meter
-
-        minimap_relative_pos = scale_minimap_move_distance(pos_diff_mm_pix)
-        minimap_pos = tuple(map(math.ceil, map(add, UI_locations.minimap_centre, minimap_relative_pos)))  # mouse position
-
-        logger.debug(f'{self.name}: clicking {minimap_relative_pos}')  # relative to minimap center
-        self.right_click(minimap_pos)
-        self.block_while_moving()
-
-    def _move_to_pos_via_map(self, target_pos: tuple[int, int]):
-        zone = location_to_zone_map[self.location_name.strip()]
-        screen_coords = coords_to_map_screen_pos(
-            zones[zone],
-            target_pos
-        )
-        # Open the map, and try a list of position offsets, starting at the exact point we want to go to
-        # this avoids movement being blocked when team members are already where we want to be
-        offsets = ((0, 0), (20, 0), (-20, 0), (20, 20), (-20, 20), (-20, -20), (0, -20), (-20, 20), (0, 20))
-        self.press_key('m')
-        time.sleep(1)
-        _loc = self.location
-        self.right_click(tuple(map(add, screen_coords, (-30, -30)))) # Click away from tgt to clear possible existing tgt
-        for offset in offsets:
-            path_tgt = tuple(map(add, screen_coords, offset))
-            self.right_click(path_tgt)
-            time.sleep(2)
-            if linear_distance(_loc, self.location) > 1:
-                # If we've started moving, we can stop trying offsets
-                break
-        else:
-            logger.info(f'{self.name}: failed pathing via map')
-            self.press_key('m')
-            return False
-
-        time.sleep(1)
-        self.press_key('m')
-        self.block_while_moving(path_tgt)
-        if target_pos != path_tgt:
-            # If we moved to a non-zero offset location, we will need to use the minimap to move to the right spot
-            # we're close enough now that it'll work.
-            self.move_to_pos(target_pos)
-            self.block_while_moving()
-        return True
-
-    def block_while_moving(self, destination=None):
-        while self.running:
-            _location = self.location
-            time.sleep(3)
-            if destination is not None:
-                if linear_distance(destination, self.location) < 40:  # if we're close enough, no point overshooting.
-                    break
-            if linear_distance(self.location, _location) < 1:
-                break
+    def close_window(self):
+        win32gui.SendMessage(self._window_handle, win32messages.WM_DESTROY, None, None)
 
     @staticmethod
     def get_mouse_window_pos(window_pos: tuple[int, int]) -> tuple[int, int] | None:
@@ -292,58 +188,20 @@ class ClientWindow:
         title_bar_height = win32.win32api.GetSystemMetrics(SM_CYCAPTION)
         border_thickness = 8
 
-        wx, wy, ww, wh = win32gui.GetWindowRect(self._window_handle)
+        try:
+            wx, wy, ww, wh = win32gui.GetWindowRect(self.window_handle)
+        except pywintypes.error as e:
+            logger.debug('Win32ClientWindow :: %s :: error getting window handle %s', self.identifier, self.window_handle)
+            return None
         wx += border_thickness
         ww -= border_thickness + wx
         wy += (title_bar_height + border_thickness)
         wh -= border_thickness + wy
         return tuple(((wx, wy), (ww, wh)))
 
-    def get_window_pos(self) -> tuple[int, int]:
-        return self.get_window_size_pos()[0]
-
-    def get_window_size(self) -> tuple[int, int]:
-        return self.get_window_size_pos()[1]
-
-    def open_surroundings_ui(self):
-        self.left_click(UI_locations.minimap_surroundings)
-        time.sleep(0.5)
-
     @property
     def inventory_open(self):
         return self.pointers.is_bag_open()
-
-    @contextmanager
-    def inventory(self):
-        yield self.open_inventory()
-        self.close_inventory()
-
-    def open_inventory(self):
-        while not self.inventory_open:
-            self.press_key('i')
-            time.sleep(1)
-
-    def close_inventory(self):
-        while self.inventory_open:
-            self.press_key('i')
-            time.sleep(1)
-
-    def search_surroundings(self, val):
-        self.open_surroundings_ui()
-        self.left_click(UI_locations.surroundings_search)
-        time.sleep(0.5)
-        self.type_keys(val)
-        time.sleep(0.5)
-
-    def goto_first_surrounding_result(self):
-        self.left_click(UI_locations.surroundings_firstitem)
-        self.open_surroundings_ui()
-
-    def click_npc(self):
-        self.right_click(UI_locations.npc_location)
-
-    def reset_camera(self):
-        self.left_click(UI_locations.view_reset)
 
     @property
     def team_size(self) -> int:
@@ -404,36 +262,20 @@ class ClientWindow:
 
     @property
     def sitting(self) -> bool:
-        """:return: `True` if char sitting, `False` if not"""
+        """:return: ``True`` if char sitting, ``False`` if not"""
         return self.pointers.is_sitting()
 
     @property
     def in_battle(self) -> bool:
-        """boolean value, `True` if in battle, `False` otherwise"""
+        """:return: ``True`` if in battle, ``False`` otherwise"""
         return self.pointers.is_in_battle()
-
-    @property
-    def location_x(self) -> int:
-        """
-        character location * 20, usually also off by .5
-        :returns character location as it appears in game
-        """
-        return self.pointers.get_x()
-
-    @property
-    def location_y(self) -> int:
-        """
-        character location * 20, usually also off by .5
-        :returns character location as it appears in game
-        """
-        return self.pointers.get_y()
 
     @property
     def location(self) -> tuple[int, int]:
         """
         convenience method to return a tuple of our location
         """
-        return self.location_x, self.location_y
+        return Location(self.pointers.get_x(), self.pointers.get_y())
 
     @property
     def location_name(self) -> str | None:
@@ -490,48 +332,3 @@ class ClientWindow:
     def target_name(self) -> str | None:
         """:return: target name if target selected, `None` if no target"""
         return self.pointers.get_target_name()
-
-    def _read_with_offsets(self, in_offsets, get_func, **kwargs):
-        """
-        gets the data at the last offset in `in_offsets`
-        :param in_offsets: List of offsets to get to the data we want
-        :param get_func: should be one of `self.proc.read_x` and is used to read the last offset
-        :param kwargs: passed directly into `get_func`
-        :return: result of `get_func`
-        """
-        try:
-            offsets = list(in_offsets)
-            var = 0
-            last = offsets.pop()
-            for offset in offsets:
-                var = self.proc.read_int(var + offset)
-            return get_func(var + last, **kwargs)
-        except UnicodeDecodeError as e:
-            pass
-
-
-def main():
-    from GhostBot.bot_controller import ExtendedClient
-
-
-    logger.setLevel(logging.DEBUG)
-    #logger.setLevel(logging.INFO)
-    for proc in PymemProcess.list_clients():
-        client = ExtendedClient(proc)
-        if client.name == "LilithIsGorgeous":
-            time.sleep(2)
-            client.running = True
-            client.move_to_pos((1400, 1400))
-            return
-
-            #print(client.pointers.get_system_menu())
-            #print(client.pointers.get_dialog())
-            #print(client.pointers.confirm_box())
-            #print(client.pointers.get_notification())
-            # delete: confirm
-            # team: confirm, notification:1
-            # trade: confirm
-
-
-if __name__ == "__main__":
-    main()

@@ -8,11 +8,11 @@ from GhostBot.functions.runner import Locational
 from GhostBot.lib.math import seconds
 
 if TYPE_CHECKING:
-    from GhostBot.bot_controller import ExtendedClient
+    from GhostBot.controller.bot_controller import BotClientWindow
 
 
 class Regen(Locational):
-    def __init__(self, client: ExtendedClient):
+    def __init__(self, client: BotClientWindow):
         super().__init__(client=client)
 
         self.config: RegenConfig = self._client.config.regen
@@ -78,4 +78,4 @@ class Regen(Locational):
     def _sit(self):
         if not self._client.sitting:
             self._log_debug(f'sitting')
-            self._client.press_key(self.config.bindings.get('sit'))
+            self._client.sit(self.config.bindings.get('sit'))

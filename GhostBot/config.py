@@ -3,11 +3,14 @@ from __future__ import annotations
 import os
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import TypedDict, NotRequired, Any
+from typing import TypedDict, NotRequired, Any, TYPE_CHECKING
 
 import yaml
 
 from GhostBot import logger
+
+if TYPE_CHECKING:
+    from GhostBot.controller.bot_controller import BotClientWindow
 
 
 class FunctionConfig(ABC):
@@ -27,14 +30,14 @@ class AttackConfig(FunctionConfig):
 
 @dataclass
 class RegenConfig(FunctionConfig):
-    class Bindings(TypedDict):
+    class Bindings(TypedDict, total=False):
         hp_pot: NotRequired[int | str]
         mana_pot: NotRequired[int | str]
         sit: NotRequired[int | str]
-    bindings: Bindings | None = field(default_factory=lambda: {'sit': 'x'})
+    bindings: Bindings | None = field(default_factory=lambda: dict(sit= 'x'))
     hp_threshold: float | None = None
     mana_threshold: float | None = None
-    spot: list[int] = None
+    spot: tuple[int, int] = None
 
     def __post_init__(self):
         if self.bindings is None:
@@ -74,10 +77,10 @@ class SellConfig(FunctionConfig):
     bindings: Bindings = None
     sell_item_pos: int = 1
     sell_interval_mins: int = 60
-    npc_search_spot: list[int] | None = None
-    return_spot: list[int] | None = None
+    npc_search_spot: tuple[int, int] | None = None
+    return_spot: tuple[int, int] | None = None
     use_mount: bool | None = None
-    npc_sell_click_spot: list[int] | None = None
+    npc_sell_click_spot: tuple[int, int] | None = None
 
     def __post_init__(self):
         if self.bindings is None:
@@ -119,24 +122,18 @@ class Config:
         _confs = cls._sub_configs_by_name()
         for k, v in data.items():
             if (_clazz := _confs.get(k)) is not None:
-                setattr(_config, k, _clazz(**v))
+                setattr(_config, k, _clazz(**{vk: vv for vk, vv in v.items() if v}))
             else:
                 raise AttributeError(f"{k} not a valid config category")
-
-        logger.debug(f"Config loaded: {data.keys()}")
         return _config
 
     def functions(self):
         return (k for k, v in self.__dict__.items() if v is not None)
 
 
-class ConfigLoader:
-    def __init__(self, client):
-        self.client = client
-        self.config_filepath = self._detect_path()
-
-    def _detect_path(self):
-        char_name = self.client.name
+class BaseConfigLoader:
+    @staticmethod
+    def _detect_path():
         data_path = os.environ.get('HOME', os.environ.get('LOCALAPPDATA'))
         if data_path is None:
             raise FileNotFoundError('what OS u on bro?')
@@ -147,25 +144,60 @@ class ConfigLoader:
         except FileExistsError:
             pass
 
-        return os.path.join(data_path, f'{char_name}.yml')
+        return data_path
+
+
+class ConfigLoader(BaseConfigLoader):
+    def __init__(self, client: BotClientWindow):
+        self.client = client
+        self.config_filepath = os.path.join(self._detect_path(), f'{self.client.name}.yml')
 
     def load(self) -> Config:
-        logger.debug('loading config')
+        logger.debug('ConfigLoader :: %s :: loading config', self.client.identifier)
         try:
             with open(self.config_filepath, 'r') as c:
                 _config = Config.load_yaml(yaml.safe_load(c.read()))  # overwrite config defaults with whats in the loaded config
-                logger.debug('config loaded')
+                logger.debug('ConfigLoader :: %s :: config loaded', self.client.identifier)
                 return _config
         except FileNotFoundError:
-            logger.debug('config not found, using defaults')
+            logger.debug('ConfigLoader :: %s :: config not found, using defaults', self.client.identifier)
             _config = Config()
             return self.save(_config)
-
 
     def save(self, _config: Config) -> Config:
         with open(self.config_filepath, 'w') as c:
             c.write(yaml.safe_dump(_config.to_yaml()))
         return _config
+
+
+class LoginDetailsConfigLoader(BaseConfigLoader):
+    def __init__(self):
+        self.config_filepath = os.path.join(self._detect_path(), f'login_details.yml')
+
+    def load(self) -> dict[str, dict[str, str]]:
+        """
+        reads a config file formatted like
+
+        ::
+
+            char1:
+              username: username1
+              password: password1
+            char2:
+              username: username2
+              password: password2
+
+        :returns: a dict of ``{char_name: {"username": USERNAME, "password": PASSWORD}}``
+        """
+        logger.debug('loading login config')
+        try:
+            with open(self.config_filepath, 'r') as c:
+                _config = yaml.safe_load(c.read())
+                logger.debug('LoginDetailsConfigLoader :: login config loaded')
+                return _config
+        except FileNotFoundError:
+            logger.debug('LoginDetailsConfigLoader :: no login config file found at %s', self.config_filepath)
+            return {}
 
 
 if __name__ == "__main__":
@@ -200,3 +232,8 @@ if __name__ == "__main__":
     assert (processed_config := Config.load_yaml(yaml.safe_load(yaml_config)) == config)
     pprint.pprint(config)
 
+    print("####################")
+
+    for char, conf in LoginDetailsConfigLoader().load().items():
+
+        print(char, conf)

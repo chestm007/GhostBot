@@ -52,11 +52,8 @@ class GhostBotMenu (tk.Menu):
 def main():
     ghost_bot = GhostBot()
 
-
-
-
     _char_list = tk.Variable(master=ghost_bot)
-    _char_list.set(ghost_bot.client.list_chars())
+    # _char_list.set(ghost_bot.client.list_chars())
     list_box = ScrollableListbox(parent=ghost_bot, scrollx=False, scrolly=True, listvariable=_char_list)
 
     list_box.config(bg="#646464", fg="#eaeaea")
@@ -93,7 +90,6 @@ def main():
     log = LogWindow(master=ghost_bot)
     log.config(bg="#fff", fg="#000")
     log.place(x=177, y=248, width=508, height=200)
-    #tabbed_widget.setvar("char_info.name", "Ch35TY")
 
     ttk.Button(
         master=ghost_bot, text="Start", command=lambda: ghost_bot.client.start_bot(selected_char())
@@ -110,6 +106,13 @@ def main():
 
     ttk.Button(master=ghost_bot, text="Save", width=10, command=save_config).place(x=590, y=450)
 
+    def refresh_char_list(trigger=False):
+        if trigger:
+            list_box.after(10000, refresh_char_list, True)
+        _server_char_list = ghost_bot.client.list_chars()
+        if _char_list.get() != _server_char_list:
+            _char_list.set(_server_char_list)
+
     def update_char_info_display(trigger=False):
         if trigger:
             list_box.after(1000, update_char_info_display, True)
@@ -120,6 +123,7 @@ def main():
                 response = {}
         except tk.TclError:
             return
+
 
         tabbed_widget.setvar("char_info.name", response.get("name", 'loading.'))
         tabbed_widget.setvar("char_info.level", response.get("level", 'loading.'))
@@ -158,7 +162,7 @@ def main():
 
     list_box.on_list_select(lambda _: on_char_change())
     update_char_info_display(trigger=True)
-
+    refresh_char_list(trigger=True)
 
     ghost_bot.mainloop()
 

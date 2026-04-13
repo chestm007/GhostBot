@@ -1,11 +1,15 @@
 import time
 
+import pytest
+
+from GhostBot.controller.bot_controller import BotClientWindow
 from GhostBot.functions.runner import run_at_interval
 from GhostBot.lib.math import seconds
 from mocks.mock_client import MockClient
 
 
-def test_mock_runner_run_at_interval():
+@pytest.mark.usefixtures('monkeypatch')
+def test_mock_runner_run_at_interval(monkeypatch):
     @run_at_interval()
     class MockRunner:
         def __init__(self):
@@ -15,6 +19,8 @@ def test_mock_runner_run_at_interval():
 
         def run(self):
             self.should_exist = not self.should_exist
+
+    monkeypatch.setattr(BotClientWindow, 'in_battle', property(lambda self: False))
 
     mr = MockRunner()
     assert mr.should_exist

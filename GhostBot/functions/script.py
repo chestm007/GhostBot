@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from GhostBot.functions import Runner
 
 if TYPE_CHECKING:
-    from GhostBot.bot_controller import ExtendedClient
+    pass
 
 class ScriptDefinition:
     """

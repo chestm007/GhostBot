@@ -8,7 +8,8 @@ __all__ = [
     'limit',
     'seconds',
     'item_coordinates_from_pos',
-    'coords_to_map_screen_pos'
+    'coords_to_map_screen_pos',
+    'scale_minimap_move_distance',
 ]
 
 from GhostBot import logger

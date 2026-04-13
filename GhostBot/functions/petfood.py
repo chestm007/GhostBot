@@ -9,7 +9,7 @@ from GhostBot.functions.runner import Runner, run_at_interval
 from GhostBot.lib.math import seconds
 
 if TYPE_CHECKING:
-    from GhostBot.bot_controller import ExtendedClient
+    from GhostBot.controller.bot_controller import BotClientWindow
 
 
 @run_at_interval()
@@ -17,7 +17,7 @@ class Petfood(Runner):
     
     command_delay = 5
 
-    def __init__(self, client: ExtendedClient):
+    def __init__(self, client: BotClientWindow):
         super().__init__(client)
         self.config: PetConfig = client.config.pet
         self._interval = seconds(minutes=int(self.config.food_interval_mins))

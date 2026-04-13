@@ -23,7 +23,12 @@ setup(
         'numpy',
         'opencv-python'
     ],
-    extras_require={},
+    extras_require={
+        'test': [
+            "pytest",
+            "pytest-asyncio"
+        ]
+    },
     entry_points={
         'console_scripts': [
             'ghost-bot-client = GhostBot.UX.main:main',

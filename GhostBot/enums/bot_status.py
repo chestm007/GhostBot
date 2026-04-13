@@ -8,4 +8,5 @@ class BotStatus(Enum):
     running = 3
     stopping = 4
     stopped = 5
+    disconnected = 6
 

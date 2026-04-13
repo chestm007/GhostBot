@@ -1,5 +1,7 @@
 import sys
 
+from GhostBot import logger
+
 if sys.version_info.major == 3:
     if sys.version_info.minor > 9:
         # Monkey patch collections for AttrDict.
@@ -12,9 +14,12 @@ from attrdict import AttrDict
 
 vk_codes = {
     'backspace': 0x08,
+    'BACKSPACE': 0x08,
     'tab': 0x09,
+    'TAB': 0x09,
     'clear': 0x0C,
     'enter': 0x0D,
+    'ENTER': 0x0D,
     'shift': 0x10,
     'ctrl': 0x11,
     'alt': 0x12,
@@ -178,5 +183,18 @@ win32messages = AttrDict(
         WM_LBUTTONDOWN=0x0201,
         WM_LBUTTONUP=0x0202,
         WM_RBUTTONDOWN=0x0204,
-        WM_RBUTTONUP=0x0205
+        WM_RBUTTONUP=0x0205,
+
+        WM_DESTROY=0x0002,
 )
+
+def get_with_case(_key: int | str) -> int | None:
+    """Fetch the keycode for the key from our map"""
+    try:
+        if isinstance(_key, str) and len(_key) == 1:  # if `key` is [a-zA-Z]
+            return vk_codes[_key.lower()] + 0x20 if _key.isupper() else vk_codes[_key.lower()]
+        else:
+            return vk_codes[_key]
+    except AttributeError:
+        logger.exception('vk_codes.py :: INTERNAL ERROR: %s not found in vk_codes', _key)
+        return

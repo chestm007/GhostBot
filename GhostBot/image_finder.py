@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import os
 import time
-from _operator import add
-from os import PathLike
 from typing import TYPE_CHECKING
 
 import cv2
@@ -13,7 +11,7 @@ import pathlib
 from GhostBot import logger
 
 if TYPE_CHECKING:
-    from GhostBot.client_window import ClientWindow
+    from GhostBot.client_window import Win32ClientWindow
 
 
 class ImageFinder:
@@ -22,13 +20,18 @@ class ImageFinder:
     misc_folder = os.path.join(_path_base, "Images", "misc")
     items = {}
 
+    def __init__(self, client: Win32ClientWindow):
+        self._client = client
+        self._destroy_item_location: tuple[int, tuple[int, int]] = None
+
+
     for filename in os.listdir(image_folder):
         fullpath = os.path.join(image_folder, filename)
         if (image := cv2.imread(fullpath, cv2.IMREAD_GRAYSCALE)) is not None:
             items[filename] = image
 
 
-    def find_image_in_window(self, target_image, threshold=0.8):
+    def _find_image_in_window(self, target_image, threshold=0.8):
         """
         Find the passed in image in the client window and return the coordinates to it.
 
@@ -75,28 +78,24 @@ class ImageFinder:
         return to_delete
 
     def _get_destroy_item_location(self) -> tuple[int, int] | None:
-        return self._find_ui_element(os.path.join(self.misc_folder, "destroy-item.bmp"), threshold=0.8)
+        return self.find_ui_element(os.path.join(self.misc_folder, "destroy-item.bmp"), threshold=0.8)
 
-    def _get_dialog_ok_location(self) -> tuple[int, int] | None:
-        return self._find_ui_element("Images/misc/dialog_ok.bmp", threshold=0.6)
+    @property
+    def dialog_ok_location(self) -> tuple[int, int] | None:
+        return self.find_ui_element("Images/misc/dialog_ok.bmp", threshold=0.6)
 
     def _sell_item_npc_location(self, stage=0) -> tuple[int, int] | None:
         stage_path = ['npc_sell', 'item_sell_window_header', 'item_sell']
-        return self._find_ui_element(f"Images/misc/{stage_path[stage - 1]}.bmp", threshold=0.62)
+        return self.find_ui_element(f"Images/misc/{stage_path[stage - 1]}.bmp", threshold=0.62)
 
-    def _find_ui_element(self, bitmap_path: str, threshold=0.8) -> tuple[int, int] | None:
+    def find_ui_element(self, bitmap_path: str, threshold=0.8) -> tuple[int, int] | None:
         _image = cv2.imread(bitmap_path, cv2.IMREAD_GRAYSCALE)
         try:
-            coordinates = self.find_image_in_window(_image, threshold=threshold)
+            return self._find_image_in_window(_image, threshold=threshold)
         except cv2.error as e:
+            logger.error("ImageFinder :: %s :: error in ImageFinder._find_image_in_window", self._client.identifier)
             logger.exception(e)
-            coordinates = None
-
-        return coordinates or None
-
-    def __init__(self, client: ClientWindow):
-        self._client = client
-        self._destroy_item_location: tuple[int, tuple[int, int]] = None
+            return None
 
     @property
     def destroy_item_location(self) -> tuple[int, int]:

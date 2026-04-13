@@ -1,8 +1,8 @@
 from __future__ import annotations
+
 import time
 from typing import TYPE_CHECKING
 
-from GhostBot import logger
 from GhostBot.config import SellConfig
 from GhostBot.functions import Locational
 from GhostBot.functions.runner import run_at_interval
@@ -10,15 +10,15 @@ from GhostBot.lib.math import seconds, item_coordinates_from_pos, linear_distanc
 from GhostBot.lib.talisman_ui_locations import UI_locations
 
 if TYPE_CHECKING:
-    from GhostBot.bot_controller import ExtendedClient
+    from GhostBot.controller.bot_controller import BotClientWindow
 
 
 @run_at_interval()
 class Sell(Locational):
-    def __init__(self, client: ExtendedClient):
+    def __init__(self, client: BotClientWindow):
         super().__init__(client)
         self.config: SellConfig = self._client.config.sell
-        self._interval = seconds(minutes=self._client.config.sell.sell_interval_mins)
+        self._interval = seconds(minutes=int(self._client.config.sell.sell_interval_mins))
 
         if (_return_spot := self.config.return_spot) is None:
             _return_spot = self.determine_start_location()
