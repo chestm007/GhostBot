@@ -1,5 +1,5 @@
 from GhostBot import logger
-from GhostBot.UX.tabbed_widget.TabFrame import TabFrame
+from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
 from GhostBot.config import Config, DeleteConfig
 from GhostBot.lib.var_or_none import var_or_none
 
