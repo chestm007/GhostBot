@@ -1,5 +1,5 @@
-import asyncio
 import os
+import time
 
 import pymem
 import win32api
@@ -27,13 +27,13 @@ class ClientLauncher(Win32ClientWindow):
         os.chdir(self.orig_dir)
         return self
 
-    async def block_until_ready(self):
-        await asyncio.sleep(1)
-        await self.left_click((480, 335))  # Genesis
-        await asyncio.sleep(1.5)
-        await self.left_click((480, 455))  # Enter Game
-        await asyncio.sleep(6)
+    def block_until_ready(self):
+        time.sleep(1)
+        self.left_click((480, 335))  # Genesis
+        time.sleep(1.5)
+        self.left_click((480, 455))  # Enter Game
+        time.sleep(6)
 
 
 if __name__ == "__main__":
-    asyncio.run(ClientLauncher().block_until_ready())
+    ClientLauncher().block_until_ready()

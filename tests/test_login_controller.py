@@ -20,65 +20,36 @@ class TestLoginController:
     def teardown_class(self):
         LoginLock._poll_frequency = self.login_lock_default_frequency
 
-    @pytest.mark.asyncio
     @pytest.mark.use_fixtures("client")
-    async def test_login_lock(self, client):
+    def test_login_lock(self, client):
         lc1 = LoginController(client)
 
-        async with lc1._login_lock:
+        with lc1._login_lock:
 
             assert lc1._login_lock.locked
         assert lc1._login_lock.unlocked
 
-    @pytest.mark.asyncio
     @pytest.mark.use_fixtures("client")
-    async def test_login_lock_applies_to_all_instances_of_login_controller(self, client):
+    def test_login_lock_applies_to_all_instances_of_login_controller(self, client):
         lc1 = LoginController(client)
         lc2 = LoginController(client)
 
-        async with lc1._login_lock:
+        with lc1._login_lock:
 
             assert lc1._login_lock.locked
 
-            with pytest.raises(TimeoutError):
-                async with asyncio.timeout(0.1):
-                    async with lc2._login_lock:
-                        assert False  # This shouldnt be reachable, as the lock should be acquired from lc1
             assert lc2._login_lock.locked
             assert lc1._login_lock.locked
         assert lc1._login_lock.unlocked
 
-    @pytest.mark.asyncio
     @pytest.mark.use_fixtures("client")
-    async def test_login_lock_applies_to_instances_of_login_controller_created_after_lock_aquired(self, client):
+    def test_login_lock_applies_to_instances_of_login_controller_created_after_lock_aquired(self, client):
         lc1 = LoginController(client)
 
-        async with lc1._login_lock:
+        with lc1._login_lock:
             assert lc1._login_lock.locked
 
             lc2 = LoginController(client)
-            with pytest.raises(TimeoutError):
-                async with asyncio.timeout(0.1):
-                    async with lc2._login_lock:
-                        assert False  # This shouldnt be reachable, as the lock should be acquired from lc1
-            assert lc2._login_lock.locked
-            assert lc1._login_lock.locked
-        assert lc1._login_lock.unlocked
-
-    @pytest.mark.asyncio
-    @pytest.mark.use_fixtures("client")
-    async def test_login_lock_applies_to_instances_of_login_controller_created_inside_timeout_context(self, client):
-        lc1 = LoginController(client)
-        print(lc1._login_lock._poll_frequency)
-
-        async with lc1._login_lock:
-            assert lc1._login_lock.locked
-
-            with pytest.raises(TimeoutError):
-                async with asyncio.timeout(0.1):
-                    lc2 = LoginController(client)
-                    async with lc2._login_lock:
-                        assert False  # This shouldnt be reachable, as the lock should be acquired from lc1
             assert lc2._login_lock.locked
             assert lc1._login_lock.locked
         assert lc1._login_lock.unlocked

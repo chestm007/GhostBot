@@ -8,9 +8,8 @@ from GhostBot.lib.math import seconds
 from mocks.mock_client import MockClient
 
 
-@pytest.mark.asyncio
 @pytest.mark.usefixtures('monkeypatch')
-async def test_mock_runner_run_at_interval(monkeypatch):
+def test_mock_runner_run_at_interval(monkeypatch):
     @run_at_interval()
     class MockRunner:
         def __init__(self):
@@ -18,18 +17,18 @@ async def test_mock_runner_run_at_interval(monkeypatch):
             self._interval = seconds(seconds=1)
             self._client = MockClient()
 
-        async def run(self):
+        def run(self):
             self.should_exist = not self.should_exist
 
     monkeypatch.setattr(BotClientWindow, 'in_battle', property(lambda self: False))
 
     mr = MockRunner()
     assert mr.should_exist
-    await mr.run()
+    mr.run()
     assert mr.should_exist
     time.sleep(mr._interval)
-    await mr.run()
+    mr.run()
     assert not mr.should_exist
     time.sleep(mr._interval)
-    await mr.run()
+    mr.run()
     assert mr.should_exist

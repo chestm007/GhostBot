@@ -1,5 +1,6 @@
-import asyncio
+import itertools
 import math
+import time
 from abc import abstractmethod, ABC
 from typing import Generator
 
@@ -51,13 +52,13 @@ class BotClientWindow(Win32ClientWindow):
             window_size=self.get_window_size(),
         )
 
-    async def mount(self, _key=0):
+    def mount(self, _key=0):
         if self.config.sell is not None and self.config.sell.use_mount:
-            await super().mount(_key)
+            super().mount(_key)
 
-    async def unmount(self, _key=0):
+    def unmount(self, _key=0):
         if self.config.sell is not None and self.config.sell.use_mount:
-            await super().dismount(_key)
+            super().dismount(_key)
 
     def load_config(self):
         self.set_config(ConfigLoader(self).load())
@@ -91,14 +92,14 @@ class BotClientWindow(Win32ClientWindow):
         self.bot_status = BotStatus.stopping
         self.running = False
 
-    async def move_to_pos(self, target_pos):
+    def move_to_pos(self, target_pos):
         """
         moves to `target_pos`, will invoke map based pathing if distance is too far.
         :param target_pos: `tuple(x, y)` coordinates to move too
         """
         while linear_distance(self.location, target_pos) > 50 and self.running:
             logger.debug(f"{self.name} moving via map")
-            return await self._move_to_pos_via_map(target_pos)
+            return self._move_to_pos_via_map(target_pos)
 
         pos_diff = position_difference(self.location, target_pos)
 
@@ -108,10 +109,10 @@ class BotClientWindow(Win32ClientWindow):
         minimap_pos: tuple[float, float] = tuple(map(math.ceil, map(add, UI_locations.minimap_centre, minimap_relative_pos)))  # mouse position
 
         logger.debug(f'{self.name}: clicking {minimap_relative_pos}')  # relative to minimap center
-        await self.right_click(minimap_pos)
-        await self.block_while_moving()
+        self.right_click(minimap_pos)
+        self.block_while_moving()
 
-    async def _move_to_pos_via_map(self, target_pos: tuple[int, int]):
+    def _move_to_pos_via_map(self, target_pos: tuple[int, int]):
         zone = location_to_zone_map[self.location_name.strip()]
         screen_coords = coords_to_map_screen_pos(
             zones[zone],
@@ -121,13 +122,13 @@ class BotClientWindow(Win32ClientWindow):
         # this avoids movement being blocked when team members are already where we want to be
         offsets = ((0, 0), (20, 0), (-20, 0), (20, 20), (-20, 20), (-20, -20), (0, -20), (-20, 20), (0, 20))
         self.press_key('m')
-        await asyncio.sleep(1)
+        time.sleep(1)
         _loc = self.location
-        await self.right_click(tuple(map(add, screen_coords, (-30, -30)))) # Click away from tgt to clear possible existing tgt
+        self.right_click(tuple(map(add, screen_coords, (-30, -30)))) # Click away from tgt to clear possible existing tgt
         for offset in offsets:
             path_tgt = tuple(map(add, screen_coords, offset))
-            await self.right_click(path_tgt)
-            await asyncio.sleep(2)
+            self.right_click(path_tgt)
+            time.sleep(2)
             if linear_distance(_loc, self.location) > 1:
                 # If we've started moving, we can stop trying offsets
                 break
@@ -136,20 +137,20 @@ class BotClientWindow(Win32ClientWindow):
             self.press_key('m')
             return False
 
-        await asyncio.sleep(1)
+        time.sleep(1)
         self.press_key('m')
-        await self.block_while_moving(path_tgt)
+        self.block_while_moving(path_tgt)
         if target_pos != path_tgt:
             # If we moved to a non-zero offset location, we will need to use the minimap to move to the right spot
             # we're close enough now that it'll work.
-            await self.move_to_pos(target_pos)
-            await self.block_while_moving()
+            self.move_to_pos(target_pos)
+            self.block_while_moving()
         return True
 
-    async def block_while_moving(self, destination=None):
+    def block_while_moving(self, destination=None):
         while self.running:
             _location = self.location
-            await asyncio.sleep(3)
+            time.sleep(3)
             if destination is not None:
                 if linear_distance(destination, self.location) < 40:  # if we're close enough, no point overshooting.
                     break
@@ -163,6 +164,7 @@ class BotController(ABC):
     login_config = None
 
     def __init__(self):
+        self._controller_start_time = time.time()
         self.clients: dict[str, BotClientWindow] = dict()
         self._pending_clients: dict[str, BotClientWindow] = dict()
         self.login_queue: dict[int, BotClientWindow] = dict()
@@ -170,34 +172,42 @@ class BotController(ABC):
 
         self._load_login_config()
 
+    @property
+    def _total_running_secs(self):
+        return int(time.time() - self._controller_start_time)
+
     def _load_login_config(self):
         self.login_config = LoginDetailsConfigLoader().load()
 
     def _eligible_logins(self):
-        return {k: v for k, v in self.login_config.items() if (k not in self.client_keys) and (k not in self._pending_clients.keys())}
+        logged_in_clients = list(itertools.chain(self.client_keys, self._pending_clients.keys()))
+        eligible = {k: v for k, v in self.login_config.items() if k not in logged_in_clients}
+        return eligible
 
-    async def _scan_for_clients(self):
+    def _scan_for_clients(self):
+        current_running_procs = self._pymem_process.list_clients()
+
+        def remove_closed_clients():
+            for k, v in list(self.clients.items()):
+                if (c_pid := v.proc.process_id) not in (p.process_id for p in current_running_procs):
+                    logger.info("BotController :: removing [%s]", c_pid)
+                    try:
+                        self.stop_bot(self.clients.pop(k))
+                    except Exception as e:
+                        logger.info(e)
+
         current_client_proc_ids = {c.proc.process_id for c in self.clients.values()}
-        detected_procs = self._pymem_process.list_clients()
 
-        if [p.process_id for p in detected_procs] == self._seen_clients:
-            logger.debug('BotController :: not running full client scan as no changes detected to process list.')
-            self._seen_clients = [p.process_id for p in detected_procs]
+        if [p.process_id for p in current_running_procs] == self._seen_clients:
+            logger.debug('BotController :: No change in running processes')
+            self._seen_clients = [p.process_id for p in current_running_procs]
             return
 
-        self._seen_clients = [p.process_id for p in detected_procs]
+        self._seen_clients = [p.process_id for p in current_running_procs]
 
-        _to_remove = []
-        for k, v in self.clients.items():
-            if (c_pid := v.proc.process_id) not in (p.process_id for p in detected_procs):
-                logger.info("BotController :: removing [%s]", c_pid)
-                _to_remove.append(k)
-        for k in _to_remove:
-            try:
-                await self.stop_bot(self.clients.pop(k))
-            except Exception as e:
-                logger.info(e)
-        for proc in detected_procs:
+        remove_closed_clients()
+
+        for proc in current_running_procs:
             if proc.process_id in current_client_proc_ids:
                 logger.debug("BotController :: Process [%s] already registered with BotController, skipping.", proc.process_id)
                 continue
@@ -224,7 +234,7 @@ class BotController(ABC):
                         logger.info('BotController :: client window for char [%s] not in registered clients list, this is normal if this is a '
                                     'fresh restart of the bot controller', client.name)
                     client.close_window()
-                    await asyncio.sleep(0.5)
+                    time.sleep(0.5)
                 else:
                     if client.name not in self.client_keys:
                         logger.info('BotController :: adding client %s %s', client.name, client.disconnected)
@@ -277,10 +287,10 @@ class BotController(ABC):
             yield Fairy(self, client)
 
     @abstractmethod
-    async def stop_all_bots(self, timeout=30) -> None: ...
+    def stop_all_bots(self, timeout=30) -> None: ...
 
     @abstractmethod
-    async def stop_bot(self, client: str | BotClientWindow, timeout=5) -> None: ...
+    def stop_bot(self, client: str | BotClientWindow, timeout=5) -> None: ...
 
     @abstractmethod
-    async def listen(self, host=None, port=None): ...
+    def listen(self, host=None, port=None): ...

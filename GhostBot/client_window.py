@@ -1,5 +1,5 @@
-import asyncio
 import math
+import time
 from ctypes.wintypes import LPARAM, WPARAM
 
 import cv2
@@ -154,21 +154,21 @@ class Win32ClientWindow(AbstractClientWindow):
             win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, _key, LPARAM(0))
         return
 
-    async def left_click(self, pos):
+    def left_click(self, pos):
         lparam = win32api.MAKELONG(*pos)
         win32gui.SendMessage(self.window_handle, win32messages.WM_MOUSEMOVE, None, lparam)
-        await asyncio.sleep(0.1)
+        time.sleep(0.1)
         win32gui.SendMessage(self.window_handle, win32messages.WM_LBUTTONDOWN, WPARAM(0x0001), lparam)
         win32gui.SendMessage(self.window_handle, win32messages.WM_LBUTTONUP, None, lparam)
-        await asyncio.sleep(0.1)
+        time.sleep(0.1)
 
-    async def right_click(self, pos):
+    def right_click(self, pos):
         lparam = win32api.MAKELONG(*pos)
         win32gui.SendMessage(self.window_handle, win32messages.WM_MOUSEMOVE, None, lparam)
-        await asyncio.sleep(0.1)
+        time.sleep(0.1)
         win32gui.SendMessage(self.window_handle, win32messages.WM_RBUTTONDOWN, WPARAM(0x0002), lparam)
         win32gui.SendMessage(self.window_handle, win32messages.WM_RBUTTONUP, None, lparam)
-        await asyncio.sleep(0.1)
+        time.sleep(0.1)
 
     def close_window(self):
         win32gui.SendMessage(self._window_handle, win32messages.WM_DESTROY, None, None)

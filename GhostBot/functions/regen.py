@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import time
 from typing import TYPE_CHECKING
 
@@ -20,17 +19,17 @@ class Regen(Locational):
         self._mana_threshold = float(self.config.mana_threshold or 0.75)
         self._hp_threshold = float(self.config.hp_threshold or 0.75)
 
-    async def _run(self) -> bool:
+    def _run(self) -> bool:
         """
         :return: True is we healed successfully, False if we were attacked, or in battle while healing
         """
         if self._mana_low() or self._hp_low():
-            await self._goto_start_location()
+            self._goto_start_location()
 
             start_wait = time.time()
             if self._client.in_battle:
                 while self._client.in_battle and time.time() - start_wait < seconds(seconds=3):
-                    await asyncio.sleep(0.5)
+                    time.sleep(0.5)
                     if not self._client.in_battle:
                         break
                 else:
@@ -40,18 +39,18 @@ class Regen(Locational):
             if self.config.bindings:
                 # mana/hp pots\
                 if self._client.hp_percent < self._hp_threshold:
-                    await self._use_hp_pot()
+                    self._use_hp_pot()
                 if self._client.mana_percent < self._mana_threshold:
-                    await self._use_mana_pot()
+                    self._use_mana_pot()
 
             hp = int(self._client.hp)
             while (self._client.hp < self._client.max_hp or self._client.mana < self._client.max_mana) and self._client.running:
                 self._log_debug(f'healing')
-                await asyncio.sleep(2)
+                time.sleep(2)
                 if self._client.in_battle or self._client.hp < hp:
                     self._log_debug(f'Ouch, attacking')
                     return False
-                await self._goto_spot_and_sit()
+                self._goto_spot_and_sit()
                 hp = int(self._client.hp)
             return True
         return False
@@ -62,18 +61,18 @@ class Regen(Locational):
     def _hp_low(self) -> int:
         return self._client.hp_percent < self._hp_threshold
 
-    async def _use_hp_pot(self) -> None:
+    def _use_hp_pot(self) -> None:
         if self.config.bindings.get('hp_pot') is not None:
-            await self._goto_spot_and_sit()
+            self._goto_spot_and_sit()
             self._client.press_key(self.config.bindings.get('hp_pot'))
 
-    async def _use_mana_pot(self) -> None:
+    def _use_mana_pot(self) -> None:
         if self.config.bindings.get('mana_pot') is not None:
-            await self._goto_spot_and_sit()
+            self._goto_spot_and_sit()
             self._client.press_key(self.config.bindings.get('mana_pot'))
 
-    async def _goto_spot_and_sit(self) -> None:
-        await self._goto_start_location()
+    def _goto_spot_and_sit(self) -> None:
+        self._goto_start_location()
         self._sit()
 
     def _sit(self):

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import time
 
 from typing import TYPE_CHECKING
@@ -88,15 +87,15 @@ class Attack(Locational):
         super().__init__(client)
         self.config: AttackConfig = client.config.attack
         try:
-            self._stuck_interval = self.config.stuck_interval or 10
-            self.roam_distance = self.config.roam_distance or 40
+            self._stuck_interval = int(self.config.stuck_interval or 10)
+            self.roam_distance = int(self.config.roam_distance or 40)
         except AttributeError as e:
             self._log_err(f"{self._client.name} error {e}")
             self._stuck_interval = 10
 
-    async def _run(self) -> bool:
-        await self._client.close_inventory()
-        await self._client.dismount()
+    def _run(self) -> bool:
+        self._client.close_inventory()
+        self._client.dismount()
 
         context = AttackContext(self._client, self._stuck_interval)
 
@@ -104,10 +103,10 @@ class Attack(Locational):
         if (dist_to_target := linear_distance(self.start_location, self._client.location)) > self.roam_distance:
             self._log_debug(f'too far go back C:{self._client.location} | T:{self.start_location}')
             if dist_to_target < 100:
-                await self._goto_start_location()
+                self._goto_start_location()
             else:
-                async with self._client.mounted():
-                    await self._goto_start_location()
+                with self._client.mounted():
+                    self._goto_start_location()
             self._client.new_target()
             return True
 
@@ -132,7 +131,7 @@ class Attack(Locational):
             key, interval = self._cur_attack_queue.pop(0)
             self._log_debug(f'ATTACK! {key}  -- {interval}s')
             self._client.press_key(key)
-            await asyncio.sleep(int(interval) / 1000)
+            time.sleep(int(interval) / 1000)
 
             if context.stuck:  # if we're stuck, get a new target and rerun.
                 self._client.new_target()

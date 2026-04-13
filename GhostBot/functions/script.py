@@ -21,5 +21,5 @@ class ScriptDefinition:
 
 class Script(Runner):
 
-    async def _run(self) -> bool:
+    def _run(self) -> bool:
         pass

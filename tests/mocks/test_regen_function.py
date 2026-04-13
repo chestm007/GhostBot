@@ -12,19 +12,17 @@ from mocks.mock_client import client
 logger.debug = print
 logger.setLevel(10)
 
-@pytest.mark.asyncio
 @pytest.mark.usefixtures('client', 'monkeypatch')
-async def test_regen_doesnt_trigger_when_hp_full(client, monkeypatch):
+def test_regen_doesnt_trigger_when_hp_full(client, monkeypatch):
     monkeypatch.setattr(BotClientWindow, 'mana', property(lambda self: 100))
     monkeypatch.setattr(BotClientWindow, 'hp', property(lambda self: 100))
 
     regen = Regen(client)
     client.bot_status = BotStatus.running
-    assert not await regen.run()
+    assert not regen.run()
 
-@pytest.mark.asyncio
 @pytest.mark.usefixtures('client', 'monkeypatch')
-async def test_regen_not_trigger_when_hp_over_thresh(client, monkeypatch):
+def test_regen_not_trigger_when_hp_over_thresh(client, monkeypatch):
     _hp = 76
     monkeypatch.setattr(BotClientWindow, 'mana', property(lambda self: 100))
     monkeypatch.setattr(BotClientWindow, 'hp', property(lambda self: _hp))
@@ -36,11 +34,10 @@ async def test_regen_not_trigger_when_hp_over_thresh(client, monkeypatch):
     regen = Regen(client)
     Regen._use_hp_pot = lambda self: _hp.__eq__(100)
     client.bot_status = BotStatus.running
-    assert not await regen.run()
+    assert not regen.run()
 
-@pytest.mark.asyncio
 @pytest.mark.usefixtures('client', 'monkeypatch')
-async def test_regen_trigger_when_hp_50_pct(client, monkeypatch):
+def test_regen_trigger_when_hp_50_pct(client, monkeypatch):
     _hp = 0.1
     monkeypatch.setattr(BotClientWindow, 'mana', property(lambda self: 100))
     monkeypatch.setattr(BotClientWindow, 'hp', property(lambda self: _hp))
@@ -52,15 +49,14 @@ async def test_regen_trigger_when_hp_50_pct(client, monkeypatch):
     client.config.bindings = dict(hp_pot=4)
 
     regen = Regen(client)
-    async def _set_hp(self):
+    def _set_hp(self):
         _hp.__eq__(100)
     Regen._use_hp_pot = _set_hp
     client.bot_status = BotStatus.running
-    assert await regen.run()
+    assert regen.run()
 
-@pytest.mark.asyncio
 @pytest.mark.usefixtures('client', 'monkeypatch')
-async def test_regen_trigger_when_mana_50_pct(client, monkeypatch):
+def test_regen_trigger_when_mana_50_pct(client, monkeypatch):
     _mana = 0.1
     monkeypatch.setattr(BotClientWindow, 'mana', property(lambda self: _mana))
     monkeypatch.setattr(BotClientWindow, 'hp', property(lambda self: 100))
@@ -72,15 +68,14 @@ async def test_regen_trigger_when_mana_50_pct(client, monkeypatch):
     client.config.bindings = dict(mana_pot=4)
 
     regen = Regen(client)
-    async def _set_mp(self):
+    def _set_mp(self):
         _mana.__eq__(100)
     Regen._use_mana_pot = _set_mp
     client.bot_status = BotStatus.running
-    assert await regen.run()
+    assert regen.run()
 
-@pytest.mark.asyncio
 @pytest.mark.usefixtures('client', 'monkeypatch')
-async def test_regen_breaks_out_when_attacked(client, monkeypatch):
+def test_regen_breaks_out_when_attacked(client, monkeypatch):
     monkeypatch.setattr(BotClientWindow, 'mana', property(lambda self: 100))
     monkeypatch.setattr(BotClientWindow, 'hp', property(lambda self: 0.1))
     monkeypatch.setattr(BotClientWindow, 'location', Location(200, 200))
@@ -91,11 +86,11 @@ async def test_regen_breaks_out_when_attacked(client, monkeypatch):
 
     regen = Regen(client)
 
-    async def _set_battle(self):
+    def _set_battle(self):
         monkeypatch.setattr(BotClientWindow, 'in_battle', True)
 
     Regen._use_hp_pot = _set_battle
     client.bot_status = BotStatus.running
     client.running = True
-    assert not await regen.run()
+    assert not regen.run()
 

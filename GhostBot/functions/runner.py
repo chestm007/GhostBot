@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import time
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
@@ -20,18 +19,19 @@ def run_at_interval(run_on_start: bool = False, run_in_battle: bool = False):
             ret = _init(self, *args, **kwargs)
 
             if hasattr(_clazz, '_setup'):
-                asyncio.get_running_loop().create_task(_clazz._setup(self))
+                logger.debug("%s :: %s :: running function setup", self.__class__.__name__, self._client.name)
+                _clazz._setup(self)
 
             if not hasattr(self, '_interval'):
                 raise AttributeError(f"Abstract property _interval not defined for {self.__class__.__name__}")
             return ret
 
         _run = _clazz.run
-        async def run(self: Runner, *args, **kwargs):
-            logger.debug("%s :: %s :: running function", self.__class__.__name__, self._client.name)
+        def run(self: Runner, *args, **kwargs):
             if should_run(self):
+                logger.debug("%s :: %s :: running function", self.__class__.__name__, self._client.name)
                 self._last_time_ran = time.time()
-                await _run(self, *args, **kwargs)
+                _run(self, *args, **kwargs)
 
         def should_run(self):
             if not run_in_battle and self._client.in_battle:
@@ -53,14 +53,14 @@ class Runner(ABC):
         self._client = client
         self._log_debug(f"initializing {self.__class__.__name__}...")
 
-    async def run(self):
+    def run(self):
         if self._client.bot_status == BotStatus.running:
-            return await self._run()
+            return self._run()
         self._log_debug("not running as client not in running status.")
         return None
 
     @abstractmethod
-    async def _run(self) -> bool: ...
+    def _run(self) -> bool: ...
 
     def _log_err(self, msg: str) -> None:
         logger.error(f"{self._client.name}: {msg}")
@@ -85,11 +85,11 @@ class Locational(Runner, ABC):
         """Returns either the config stored attack_spot, or the current location of the char as the `start_location`"""
         if (regen := self._client.config.regen) is not None:
             if regen.spot is not None:
-                return regen.spot
+                return tuple(map(int, regen.spot))
         return self._client.location
 
-    async def _goto_start_location(self):
+    def _goto_start_location(self):
         """Moves the char to the saved `start_location`"""
         while linear_distance(self.start_location, self._client.location) > 2 and self._client.running:
             logger.debug(f'{self._client.name}: go to saved spot: {self.start_location}')
-            await self._client.move_to_pos(self.start_location)
+            self._client.move_to_pos(self.start_location)

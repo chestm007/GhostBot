@@ -30,14 +30,14 @@ class AttackConfig(FunctionConfig):
 
 @dataclass
 class RegenConfig(FunctionConfig):
-    class Bindings(TypedDict):
+    class Bindings(TypedDict, total=False):
         hp_pot: NotRequired[int | str]
         mana_pot: NotRequired[int | str]
         sit: NotRequired[int | str]
-    bindings: Bindings | None = field(default_factory=lambda: {'sit': 'x'})
+    bindings: Bindings | None = field(default_factory=lambda: dict(sit= 'x'))
     hp_threshold: float | None = None
     mana_threshold: float | None = None
-    spot: list[int] = None
+    spot: tuple[int, int] = None
 
     def __post_init__(self):
         if self.bindings is None:
@@ -77,10 +77,10 @@ class SellConfig(FunctionConfig):
     bindings: Bindings = None
     sell_item_pos: int = 1
     sell_interval_mins: int = 60
-    npc_search_spot: list[int] | None = None
-    return_spot: list[int] | None = None
+    npc_search_spot: tuple[int, int] | None = None
+    return_spot: tuple[int, int] | None = None
     use_mount: bool | None = None
-    npc_sell_click_spot: list[int] | None = None
+    npc_sell_click_spot: tuple[int, int] | None = None
 
     def __post_init__(self):
         if self.bindings is None:
@@ -122,7 +122,7 @@ class Config:
         _confs = cls._sub_configs_by_name()
         for k, v in data.items():
             if (_clazz := _confs.get(k)) is not None:
-                setattr(_config, k, _clazz(**v))
+                setattr(_config, k, _clazz(**{vk: vv for vk, vv in v.items() if v}))
             else:
                 raise AttributeError(f"{k} not a valid config category")
         return _config

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import asyncio
-
+import time
 from typing import TYPE_CHECKING
 
 from GhostBot.config import BuffConfig
@@ -20,8 +19,8 @@ class Buffs(Runner):
         self.config: BuffConfig = client.config.buff
         self._interval = seconds(minutes=int(self.config.interval))
 
-    async def _run(self) -> None:
+    def _run(self) -> None:
         self._log_info(f'Buffing.')
         for _key, _sleep in self.config.buffs:
             self._client.press_key(_key)
-            await asyncio.sleep(_sleep/1000)
+            time.sleep(_sleep/1000)

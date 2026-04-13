@@ -32,11 +32,23 @@ def MockClient() -> BotClientWindow:
                         raise FileNotFoundError(self._image)
                     return cv2.imread(self._image, cv2.IMREAD_GRAYSCALE)
 
-            bcw = MockClientWindow
-            mocked = bcw(MagicMock(spec=pymem.Pymem)())
-            mocked.pointers.get_max_mana = lambda: 100
-            mocked.pointers.get_max_hp = lambda: 100
-            return mocked
+                @classmethod
+                def new_mocked_client(cls):
+                    mocked = cls(MagicMock(spec=pymem.Pymem)())
+                    return mocked
+
+                def initialize_pointers(self, force_reload: bool = False):
+                    class Pointers:
+                        get_max_mana = lambda _: 100
+                        get_max_hp = lambda _: 100
+                        get_dc = lambda _: False
+                        get_x = lambda _: 0
+                        get_y = lambda _: 0
+                        mount = lambda _: None
+                        is_bag_open = lambda _: None
+                    self.pointers = Pointers()
+
+            return MockClientWindow.new_mocked_client()
 
 
 @pytest.fixture

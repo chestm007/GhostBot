@@ -1,9 +1,8 @@
-import asyncio
 import time
 from abc import ABC, abstractmethod
 from collections import namedtuple
-from contextlib import asynccontextmanager
-from typing import Self, AsyncGenerator, Coroutine
+from contextlib import contextmanager
+from typing import Self
 
 from GhostBot import logger
 from GhostBot.lib.talisman_ui_locations import UI_locations
@@ -42,17 +41,17 @@ class AbstractClientWindow(ABC):
     @abstractmethod
     def on_mount(self) -> bool: ...
 
-    @asynccontextmanager
-    async def mounted(self, _key=None):
+    @contextmanager
+    def mounted(self, _key=None):
         if _key is None:
             yield
             return
 
-        await self.mount(_key)
+        self.mount(_key)
         yield
-        await self.dismount(_key)
+        self.dismount(_key)
 
-    async def mount(self, _key=None):
+    def mount(self, _key=None):
         if _key is None:
             return
 
@@ -60,11 +59,11 @@ class AbstractClientWindow(ABC):
         while not self.on_mount and attempts < 3:
             attempts += 1
             self.press_key(_key)
-            await asyncio.sleep(4)
+            time.sleep(4)
         if attempts == 3:
             logger.error("Failed to mount up")
 
-    async def dismount(self, _key=None):
+    def dismount(self, _key=None):
         if _key is None:
             return
 
@@ -72,7 +71,7 @@ class AbstractClientWindow(ABC):
         while self.on_mount and attempts < 3:
             attempts += 1
             self.press_key(_key)
-            await asyncio.sleep(4)
+            time.sleep(4)
         if attempts == 3:
             logger.error("Failed to dismount")
 
@@ -87,10 +86,10 @@ class AbstractClientWindow(ABC):
             self.press_key(key, char_only=char_only)
 
     @abstractmethod
-    async def left_click(self, pos: tuple[float, float]) -> None: ...
+    def left_click(self, pos: tuple[float, float]) -> None: ...
 
     @abstractmethod
-    async def right_click(self, pos: tuple[float, float]) -> None: ...
+    def right_click(self, pos: tuple[float, float]) -> None: ...
 
     @staticmethod
     @abstractmethod
@@ -105,45 +104,45 @@ class AbstractClientWindow(ABC):
     def get_window_size(self) -> Location:
         return self.get_window_size_pos()[1]
 
-    async def open_surroundings_ui(self):
-        await self.left_click(UI_locations.minimap_surroundings)
-        await asyncio.sleep(0.5)
+    def open_surroundings_ui(self):
+        self.left_click(UI_locations.minimap_surroundings)
+        time.sleep(0.5)
 
     @property
     @abstractmethod
     def inventory_open(self) -> bool: ...
 
-    @asynccontextmanager
-    async def inventory(self):
-        yield await self.open_inventory()
-        await self.close_inventory()
+    @contextmanager
+    def inventory(self):
+        yield self.open_inventory()
+        self.close_inventory()
 
-    async def open_inventory(self):
+    def open_inventory(self):
         while not self.inventory_open:
             self.press_key('i')
-            await asyncio.sleep(1)
+            time.sleep(1)
 
-    async def close_inventory(self):
+    def close_inventory(self):
         while self.inventory_open:
             self.press_key('i')
-            await  asyncio.sleep(1)
+            time.sleep(1)
 
-    async def search_surroundings(self, val):
-        await self.open_surroundings_ui()
-        await self.left_click(UI_locations.surroundings_search)
-        await asyncio.sleep(0.5)
+    def search_surroundings(self, val):
+        self.open_surroundings_ui()
+        self.left_click(UI_locations.surroundings_search)
+        time.sleep(0.5)
         self.type_keys(val)
-        await asyncio.sleep(0.5)
+        time.sleep(0.5)
 
-    async def goto_first_surrounding_result(self):
-        await self.left_click(UI_locations.surroundings_firstitem)
-        await self.open_surroundings_ui()
+    def goto_first_surrounding_result(self):
+        self.left_click(UI_locations.surroundings_firstitem)
+        self.open_surroundings_ui()
 
-    async def click_npc(self):
-        await self.right_click(UI_locations.npc_location)
+    def click_npc(self):
+        self.right_click(UI_locations.npc_location)
 
-    async def reset_camera(self):
-        await self.left_click(UI_locations.view_reset)
+    def reset_camera(self):
+        self.left_click(UI_locations.view_reset)
 
     @abstractmethod
     def team_size(self) -> int: ...

@@ -45,6 +45,8 @@ class SellFrame(TabFrame):
     def display_config(self, config: Config):
         def _format_spot(_spot):
             if _spot:
+                if isinstance(_spot, str):
+                    return tuple(_spot.split(" "))
                 return f"{' '.join(map(str, _spot))}"
             return ''
 

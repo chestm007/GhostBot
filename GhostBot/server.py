@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import asyncio
 import functools
 import json
 import socket
-from asyncio import Server, CancelledError
+from asyncio import Server
 from typing import TYPE_CHECKING
 
 from GhostBot import logger
@@ -16,75 +15,121 @@ if TYPE_CHECKING:
 
 
 class GhostbotIPCServer:
-    def __init__(self, bot_controller: BotController, host: str | None = None, port: int = None):
+    logger = logger
+    vdebug = lambda msg, *args: None
+
+    def __init__(
+        self,
+        bot_controller: BotController,
+        host: str | None = None,
+        port: int = None,
+        verbose_logging: bool = False
+    ):
+        if verbose_logging:
+            self.vdebug = self.logger.debug
         self.host = host or ''
         self.port = port or 64057
         self.bot_controller = bot_controller
         self.server: Server | None = None
 
-    async def _handle_client(self, reader, writer):
-        request = None
-        while request != 'quit':
-            result = await reader.read(1024)
-            if reader._eof:
-                await asyncio.sleep(0.5)
-                continue
-            logger.debug(f"{self.__class__.__name__}: received data: {result}")
-            data = Message.from_json(result.decode('utf8'))
-            if data.command == Command.EXIT:
-                logger.info(f'exit command received')
-                self.server.close()
-                await self.server.wait_closed()
-                return
-            result = await self._dispatch(data)
-            writer.write(result.encode('utf8'))
-            logger.debug(f"{self.__class__.__name__}: sending data: {result}")
-            await writer.drain()
-        writer.close()
-
-    async def run_server(self):
-        logger.info('GhostBotIPCServer :: Starting server...')
-        self.server = await asyncio.start_server(self._handle_client, self.host, self.port)
-        async with self.server:
+    def listen(self):
+        """
+        Start and run the sync version of the IPC Server until requested to stop.
+        """
+        while True:
             try:
-                try:
-                    logger.info('GhostBotIPCServer :: Serving forever...')
-                    await self.server.serve_forever()
-                except CancelledError:
-                    return
-            except KeyboardInterrupt:
-                logger.info(f"{self.__class__.__name__}: Exiting due to keyboard interrupt")
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind((self.host, self.port))
+                    s.listen(1)
+                    s.settimeout(1)
+                    try:
+                        conn, addr = s.accept()
+                    except TimeoutError:
+                        continue
 
-    async def _dispatch(self, message: Message) -> Message | bool | None:
-        logger.debug(f"{self.__class__.__name__}: dispatching message: {message}")
+                    with conn:
+                        data = Message.from_json(conn.recv(1024).decode('utf8'))
+                        # data = pickle.loads(conn.recv(1024))
+                        if data.command == Command.EXIT:
+                            logger.info('GhostBotIPCServer ::  exit command received')
+                            return
+                        result = self._dispatch(data)
+                        conn.sendall(result.encode('utf8'))
+                        # conn.sendall(pickle.dumps(result))
+            except KeyboardInterrupt:
+                logger.info("GhostBotIPCServer :: Exiting due to keyboard interrupt")
+                break
+            except Exception as e:
+                logger.exception(e)
+
+
+    # async def _handle_client(self, reader, writer):
+    #     request = None
+    #     while request != 'quit':
+    #         result = await reader.read(1024)
+    #         if reader._eof:
+    #             await asyncio.sleep(0.5)
+    #             continue
+    #         self.vdebug("GhostBotIPCServer :: received data: %s", result)
+    #         data = Message.from_json(result.decode('utf8'))
+    #         if data.command == Command.EXIT:
+    #             logger.info(f'exit command received')
+    #             self.server.close()
+    #             await self.server.wait_closed()
+    #             return
+    #         result = await self._dispatch(data)
+    #         writer.write(result.encode('utf8'))
+    #         self.vdebug("GhostBotIPCServer :: sending data: %s", result)
+    #         await writer.drain()
+    #     writer.close()
+    #
+    # async def run_server(self):
+    #     logger.info('GhostBotIPCServer :: Starting server...')
+    #     self.server = await asyncio.start_server(self._handle_client, self.host, self.port)
+    #     async with self.server:
+    #         try:
+    #             try:
+    #                 self.logger.info('GhostBotIPCServer :: Serving forever...')
+    #                 await self.server.serve_forever()
+    #             except CancelledError:
+    #                 return
+    #         except KeyboardInterrupt:
+    #             self.logger.info("GhostBotIPCServer :: Exiting due to keyboard interrupt")
+    #             return
+    #         except Exception as e:
+    #             logger.exception(e)
+    #             return
+
+    def _dispatch(self, message: Message) -> Message | bool | None:
+        self.vdebug("GhostBotIPCServer :: dispatching message: %s", message)
         match message.command:
             case Command.START:
-                logger.debug(f"{self.__class__.__name__}: dispatching START")
+                self.logger.debug("GhostBotIPCServer :: dispatching START")
                 self.bot_controller.start_bot(message.target)
                 return message
             case Command.STOP:
-                logger.debug(f"{self.__class__.__name__}: dispatching STOP")
-                await self.bot_controller.stop_bot(message.target)
+                self.logger.debug("GhostBotIPCServer :: dispatching STOP")
+                self.bot_controller.stop_bot(message.target)
                 return message
             case Command.INFO:
-                logger.debug(f"{self.__class__.__name__}: dispatching INFO")
+                self.vdebug("GhostBotIPCServer :: dispatching INFO")
                 if message.target:
-                    logger.info(f"{self.__class__.__name__}: dispatching INFO containing for [{message.target}]")
+                    self.vdebug("GhostBotIPCServer :: dispatching INFO containing for [%s]", message.target)
                     return Message(Command.INFO, self.bot_controller.get_client(message.target).to_json())
                 return Message(Command.INFO, ' '.join(k for k, v in self.bot_controller.clients.items() if not v.disconnected))
             case Command.CONFIG:
-                logger.debug(f"{self.__class__.__name__}: dispatching CONFIG")
+                self.vdebug("GhostBotIPCServer :: dispatching CONFIG")
                 match message.target.get('action'):
                     case "get":
-                        logger.info(f"{self.__class__.__name__}: dispatching CONFIG get")
+                        self.logger.info("GhostBotIPCServer :: dispatching CONFIG get")
                         return Message(Command.CONFIG, json.dumps(self.bot_controller.get_client(message.target['char']).config.to_yaml()))
                     case "set":
-                        logger.debug(f"{self.__class__.__name__}: dispatching CONFIG set")
+                        self.vdebug("GhostBotIPCServer :: dispatching CONFIG set")
                         _client = self.bot_controller.get_client(message.target['char'])
                         if _client is not None:
-                            logger.debug(f"{self.__class__.__name__}: Setting config for {_client.name}")
+                            self.vdebug("GhostBotIPCServer :: Setting config for %s", _client.name)
                             conf = Config.load_yaml(message.target.get('config'))
-                            logger.info(f'{self.__class__.__name__}: char: {_client.name} - set config: {conf}')
+                            self.logger.info("GhostBotIPCServer :: char: %s - set config: %s", _client.name, conf)
                             ConfigLoader(_client).save(conf)
                             _client.set_config(conf)
                             return message
@@ -151,6 +196,6 @@ class IPCClient:
         )
 
     def set_config(self, target: str, config: Config):
-        logger.info(f"{self.__class__.__name__}: sending set config message for :{target}")
+        logger.info(f"{self.__class__.__name__}: sending set config message for :{target} :: {config}")
         return self.send(Message(Command.CONFIG, dict(action="set",char=target, config=config.to_yaml())))
 
