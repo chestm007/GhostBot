@@ -109,27 +109,54 @@ def test_config_loads_yaml_and_parses_types_properly():
     fairy_bindings: FairyConfig.Bindings = {'heal': 6}
     pet_bindings: PetConfig.Bindings = {'spawn': 'E', 'food': 9}
     regen_bindings: RegenConfig.Bindings = {'hp_pot': 'Q', 'mana_pot': 'W', 'sit': 'X'}
+
+    # We're deliberately passing the wrong types in here to ensure they're converted later.
+    # noinspection PyTypeChecker
     config = Config(
         fairy=FairyConfig(
             bindings=fairy_bindings,
-            heal_self_threshold=0.75,
+            heal_self_threshold='0.75',
+            heal_team_threshold='0.5',
         ), attack=AttackConfig(
             bindings=attack_bindings,
             attacks=[
                 [1, 1000],
                 [2, 1400]
-            ]
+            ],
+            stuck_interval='4',
+            battle_mana_threshold='0.56',
+            battle_hp_threshold=0.75,
+            roam_distance='40'
         ), buff=BuffConfig(
             buffs=[
                 [7, 2000]
-            ], interval='10'
+            ],
+            interval='10'
         ), pet=PetConfig(
             bindings=pet_bindings,
             food_interval_mins=55,
+            spawn_interval_mins='55',
         ), regen=RegenConfig(
             bindings=regen_bindings,
+            hp_threshold='0.75',
+            mana_threshold=0.75,
+            spot=(123, '456'),
         ), sell=SellConfig(
             sell_npc_name='Mr Guy Man',
             use_mount='false',
+            npc_sell_click_spot=(100, 200),
+            npc_search_spot=['123', 456],
+            return_spot=[123, '456'],
         ),
     )
+
+    config.validate()
+    assert isinstance(config.fairy.heal_self_threshold, float)
+    assert isinstance(config.attack.battle_mana_threshold, float)
+    assert not config.sell.use_mount
+    assert isinstance(config.buff.interval, int)
+    assert config.regen.spot == (123, 456)
+    assert config.sell.npc_sell_click_spot == (100, 200)
+
+def test_config_validation():
+    pass

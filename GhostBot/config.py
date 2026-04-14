@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import inspect
 import os
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import TypedDict, NotRequired, Any, TYPE_CHECKING
+from typing import TypedDict, NotRequired, Any, TYPE_CHECKING, Sized
 
 import yaml
 
@@ -14,7 +15,41 @@ if TYPE_CHECKING:
 
 
 class FunctionConfig(ABC):
-    pass
+    def _try_change_type(self, __val, __type):
+        if __type == bool:
+            if isinstance(__val, str):
+                if __val.lower() == 'false':
+                    return False
+            return bool(__val)
+        return __type(__val)
+
+    def validate(self):
+        for _attr, _expected_type in inspect.get_annotations(type(self),eval_str=True).items():
+            _val = getattr(self, _attr)
+            try:
+                if _val is None:
+                    logger.debug(f'{self.__class__.__name__}.{_attr}: [{_expected_type.__name__}] -- value is None in config.')
+                    continue
+                if not isinstance(_val, _expected_type):
+                    setattr(self, _attr, self._try_change_type(_val, _expected_type))
+                    if not isinstance((_val := getattr(self, _attr)), _expected_type):
+                        raise TypeError
+            except TypeError as e:
+                if isinstance(_val, Sized) and _expected_type == tuple[int, int]:
+                    if isinstance(_val, set):
+                        raise TypeError(f'{self.__class__.__name__}.{_attr} is an unexpected type.\n'
+                                        f'expected {_expected_type}, got {type(_val).__name__}.\n'
+                                        f'cannot fix as ordering isnt guaranteed in sets.')
+                    assert len(_val) == 2
+                    if not all(map(lambda _v: isinstance(_v, int), _val)) or not isinstance(_val, tuple):
+                        setattr(self, _attr, (int(_val[0]), int(_val[1])))
+                        if not all(map(lambda _v: isinstance(_v, int), getattr(self, _attr))):
+                            raise IndexError
+                elif _attr not in  ('attacks', 'bindings', 'buffs'):
+                    raise TypeError(f'{self.__class__.__name__}.{_attr} is an unexpected type.\n'
+                                    f'expected {_expected_type}, got {type(_val).__name__}')
+                else:
+                    logger.debug(f'Skipping {self.__class__.__name__}.{_attr}: [{_expected_type.__name__}]')
 
 @dataclass
 class AttackConfig(FunctionConfig):
@@ -22,11 +57,11 @@ class AttackConfig(FunctionConfig):
         battle_hp_pot: NotRequired[int | str]
         battle_mana_pot: NotRequired[int | str]
     attacks: list[list[str | int]]
-    bindings: Bindings | None = None
-    stuck_interval: int | None = None
-    battle_mana_threshold: float | None = None
-    battle_hp_threshold: float | None = None
-    roam_distance: int | None = None
+    bindings: Bindings = None
+    stuck_interval: int = None
+    battle_mana_threshold: float = None
+    battle_hp_threshold: float = None
+    roam_distance: int = None
 
 @dataclass
 class RegenConfig(FunctionConfig):
@@ -34,9 +69,9 @@ class RegenConfig(FunctionConfig):
         hp_pot: NotRequired[int | str]
         mana_pot: NotRequired[int | str]
         sit: NotRequired[int | str]
-    bindings: Bindings | None = field(default_factory=lambda: dict(sit= 'x'))
-    hp_threshold: float | None = None
-    mana_threshold: float | None = None
+    bindings: Bindings = field(default_factory=lambda: dict(sit= 'x'))
+    hp_threshold: float = None
+    mana_threshold: float = None
     spot: tuple[int, int] = None
 
     def __post_init__(self):
@@ -48,7 +83,7 @@ class RegenConfig(FunctionConfig):
 @dataclass
 class BuffConfig(FunctionConfig):
     buffs: list[list[str | int]]
-    interval: int | None = None
+    interval: int = None
 
 @dataclass
 class PetConfig(FunctionConfig):
@@ -56,8 +91,8 @@ class PetConfig(FunctionConfig):
         spawn: NotRequired[int | str]
         food: NotRequired[int | str]
     bindings: Bindings = None
-    spawn_interval_mins: int | None = None
-    food_interval_mins: int | None = None
+    spawn_interval_mins: int = None
+    food_interval_mins: int = None
 
 @dataclass
 class FairyConfig(FunctionConfig):
@@ -66,8 +101,8 @@ class FairyConfig(FunctionConfig):
         cure: NotRequired[int | str]
         revive: NotRequired[int | str]
     bindings: Bindings = None
-    heal_team_threshold: float | None = None
-    heal_self_threshold: float | None = None
+    heal_team_threshold: float = None
+    heal_self_threshold: float = None
 
 @dataclass
 class SellConfig(FunctionConfig):
@@ -77,10 +112,10 @@ class SellConfig(FunctionConfig):
     bindings: Bindings = None
     sell_item_pos: int = 1
     sell_interval_mins: int = 60
-    npc_search_spot: tuple[int, int] | None = None
-    return_spot: tuple[int, int] | None = None
-    use_mount: bool | None = None
-    npc_sell_click_spot: tuple[int, int] | None = None
+    npc_search_spot: tuple[int, int] = None
+    return_spot: tuple[int, int] = None
+    use_mount: bool = None
+    npc_sell_click_spot: tuple[int, int] = None
 
     def __post_init__(self):
         if self.bindings is None:
@@ -89,20 +124,26 @@ class SellConfig(FunctionConfig):
 @dataclass
 class DeleteConfig(FunctionConfig):
     delete_trash: bool = False
-    interval: int | None = None
+    interval: int = None
 
 @dataclass
 class Config:
-    attack: AttackConfig | None = None
-    buff: BuffConfig | None = None
+    attack: AttackConfig = None
+    buff: BuffConfig = None
     fairy: FairyConfig = None
-    pet: PetConfig | None = None
-    regen: RegenConfig | None = None
-    sell: SellConfig | None = None
-    delete: DeleteConfig | None = None
+    pet: PetConfig = None
+    regen: RegenConfig = None
+    sell: SellConfig = None
+    delete: DeleteConfig = None
 
     def to_yaml(self) -> dict:
         return {k: v.__dict__ for k, v in self.__dict__.items() if v is not None}
+
+    def validate(self):
+        for _name in self._sub_configs_by_name().keys():
+            _sub = getattr(self, _name)
+            if _sub is not None:
+                _sub.validate()
 
     @staticmethod
     def _sub_configs_by_name() -> dict[str, type[FunctionConfig]]:
@@ -125,6 +166,7 @@ class Config:
                 setattr(_config, k, _clazz(**{vk: vv for vk, vv in v.items() if v}))
             else:
                 raise AttributeError(f"{k} not a valid config category")
+        _config.validate()
         return _config
 
     def functions(self):
