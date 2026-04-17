@@ -13,6 +13,7 @@ from GhostBot.client_window import Win32ClientWindow
 from GhostBot.config import Config, ConfigLoader, LoginDetailsConfigLoader, GhostBotServerConfigLoader
 from GhostBot.enums.bot_status import BotStatus
 from GhostBot.functions import Attack, Buffs, Fairy, Petfood, Regen, Runner, Sell, Delete
+from GhostBot.image_finder import ImageFinder
 from GhostBot.lib.math import linear_distance, position_difference, scale_minimap_move_distance, coords_to_map_screen_pos
 from GhostBot.lib.talisman_ui_locations import UI_locations
 from GhostBot.lib.win32.process import PymemProcess
@@ -75,6 +76,13 @@ class BotClientWindow(Win32ClientWindow):
         return str(self.bot_status.name)
 
     @property
+    def disconnected(self) -> bool:
+        if super().disconnected:
+            self.bot_status = BotStatus.disconnected
+            return True
+        return False
+
+    @property
     def hp_percent(self) -> float:
         return self.hp / self.max_hp
 
@@ -125,24 +133,21 @@ class BotClientWindow(Win32ClientWindow):
         # Open the map, and try a list of position offsets, starting at the exact point we want to go to
         # this avoids movement being blocked when team members are already where we want to be
         offsets = ((0, 0), (20, 0), (-20, 0), (20, 20), (-20, 20), (-20, -20), (0, -20), (-20, 20), (0, 20))
-        self.press_key('m')
-        time.sleep(1)
-        _loc = self.location
-        self.right_click(tuple(map(add, screen_coords, (-30, -30)))) # Click away from tgt to clear possible existing tgt
-        for offset in offsets:
-            path_tgt = tuple(map(add, screen_coords, offset))
-            self.right_click(path_tgt)
-            time.sleep(2)
-            if linear_distance(_loc, self.location) > 1:
-                # If we've started moving, we can stop trying offsets
-                break
-        else:
-            self.logger.info(f'{self.name}: failed pathing via map')
-            self.press_key('m')
-            return False
+        with self.map():
+            time.sleep(1)
+            _loc = self.location
+            self.right_click(tuple(map(add, screen_coords, (-30, -30)))) # Click away from tgt to clear possible existing tgt
+            for offset in offsets:
+                path_tgt = tuple(map(add, screen_coords, offset))
+                self.right_click(path_tgt)
+                time.sleep(2)
+                if linear_distance(_loc, self.location) > 1:
+                    # If we've started moving, we can stop trying offsets
+                    break
+            else:
+                self.logger.info(f'{self.name}: failed pathing via map')
+                return False
 
-        time.sleep(1)
-        self.press_key('m')
         self.block_while_moving(path_tgt)
         if target_pos != path_tgt:
             # If we moved to a non-zero offset location, we will need to use the minimap to move to the right spot

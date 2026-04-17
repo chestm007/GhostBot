@@ -1,4 +1,5 @@
 import math
+import threading
 import time
 from ctypes.wintypes import LPARAM, WPARAM
 
@@ -19,6 +20,7 @@ from win32con import SM_CYCAPTION
 from GhostBot.abstract_client_window import AbstractClientWindow, Location
 from GhostBot.lib import win32messages, get_with_case
 from GhostBot.lib.talisman_online_python.pointers import Pointers
+from GhostBot.lib.utils import with_timeout
 from GhostBot.map_navigation import location_to_zone_map
 
 TARGET_MAX_HP=597
@@ -61,7 +63,7 @@ class Win32ClientWindow(AbstractClientWindow):
         self._active = False
         self._window_handle = None
         self._target_name_offsets = None
-        self.pointers = None
+        self.pointers: Pointers = None
         self.char = None
 
         self.proc = proc
@@ -111,7 +113,7 @@ class Win32ClientWindow(AbstractClientWindow):
 
     @property
     def disconnected(self):
-        return bool(self.pointers.get_dc())
+        return bool(self.pointers.get_dc()) and not self.hp == 0
 
     @property
     def on_mount(self) -> bool:
@@ -295,8 +297,11 @@ class Win32ClientWindow(AbstractClientWindow):
 
     @property
     def target_location(self) -> tuple[int, int] | None:
-        if self.has_target:
-            x, y, pointer = self.pointers.search_id()
+        if self.has_alive_target and self.target_hp >= 0:
+            try:
+                x, y, pointer = with_timeout(self.pointers.search_id, timeout=1)
+            except TimeoutError:
+                return None
             if x and y:
                 return x, y
         return None
