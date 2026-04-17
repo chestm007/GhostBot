@@ -11,9 +11,10 @@ from GhostBot.enums.bot_status import BotStatus
 
 
 class ThreadedBotController(BotController):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, auto_login: bool = True, **kwargs):
+        super().__init__(**kwargs)
         self._tasks: dict[str, threading.Thread] = dict()
+        self.auto_login = auto_login
 
     def scan_for_clients(self):
         try:
@@ -21,7 +22,10 @@ class ThreadedBotController(BotController):
                 self.logger.debug("uptime %ss", self._total_running_secs)
                 self._remove_closed_pending_clients()
                 self._scan_for_clients()
-                self._process_login_queue()
+
+                if self.auto_login:
+                    self._process_login_queue()
+
                 for i in range(0, 10):
                     if not self._running:
                         break
