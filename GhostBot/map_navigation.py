@@ -1,17 +1,17 @@
 from collections import namedtuple
 
 
-Zone = namedtuple('Zone', ['location', 'boundary', 'centre', 'scale'])
+Zone = namedtuple('Zone', ['location', 'boundary', 'centre', 'scale'])  #, 'fay'])
 zones = (
     {
         'simen_mountain': Zone('simen_mountain', ((1270, 1800), (2030, 1280)), (1667, 1544), (-1, 1.2)),
         'barbarian_mountain': Zone('barbarian_mountain', ((1281, 1280), (2050, 510)), (1667, 902), (-1, 1.2)),
-        'cloud_mountain': Zone('cloud_mountain', ((-200, 220), (760, -266)), (257, 45), (-1.4, 1.5)),
-        'stone_city': Zone('stone_city', ((-70, -266), (490, -760)), (217, -528), (-1, 1.2)),
-        'black_wind_camp': Zone('black_wind_camp', ((-762, -270), (-60, -760)), (-415, -497), (-1, 1.1)),
-        'laurel_mountain': Zone('laurel_mountain', ((-770, -770), (-260, -1500)), (-489, -1125), (-1.45, 1.65)),
-        'snow_mountain': Zone('snow_mountain', ((-1270, -780), (-1075, -1275)), (-1009, -1012), (-0.95, 1.2)),
-        'whorl_mountain': Zone('whorl_mountain', ((-1260, -1275), (-800, -2020)), (-1001, -1639), (-1.5, 1.5)),
+        'cloud_mountain': Zone('cloud_mountain', ((-200, 220), (760, -266)), (257, 45), (-1.4, 1.5)),  #(274, -116)),
+        'stone_city': Zone('stone_city', ((-70, -266), (490, -760)), (217, -528), (-1, 1.2)), # (178, -517)),
+        'black_wind_camp': Zone('black_wind_camp', ((-762, -270), (-60, -760)), (-415, -497), (-1, 1.1)), # (-255, -484)),
+        'laurel_mountain': Zone('laurel_mountain', ((-770, -770), (-260, -1500)), (-489, -1125), (-1.45, 1.65)), # (-590, -844)),
+        'snow_mountain': Zone('snow_mountain', ((-1270, -780), (-1075, -1275)), (-1009, -1012), (-0.95, 1.2)), # (-1125, -997)),
+        'whorl_mountain': Zone('whorl_mountain', ((-1260, -1275), (-800, -2020)), (-1001, -1639), (-1.5, 1.5)), # (-1207, -1732)),
         'vast_mountain': Zone('vast_mountain', ((491, -280), (1540, -410)), (989, -489), (-1.38, 1.38)),
         'dais_field': Zone('dais_field', ((1540, -20), (3070, -750)), (2304, -453), (-2.05, 2.05))  # FIXME: wrong multiplier
     }
@@ -137,7 +137,8 @@ def _goto_centre_of_map():
         client = BotClientWindow(proc)
         if client.name == "FkYouUp1":
             #client.press_key('m')
-            client.right_click((int(1024/2), int(768/2)))
+            wx, wy = client.get_window_size()
+            client.right_click((int(wx/2), int(wy/2)))
 
 if __name__ == '__main__':
     _goto_centre_of_map()

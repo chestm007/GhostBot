@@ -43,6 +43,17 @@ async def asyncretry(func: RetryCoroutine, retries: int = 1, delay: float = 1) -
     return False
 
 
+def recursive_subclasses(_clazz):
+    if not inspect.isabstract(_clazz):
+        yield _clazz
+    for _sub in _clazz.__subclasses__():
+        yield from recursive_subclasses(_sub)
+
+def subclasses_by_name(_clazz):
+    return {a.__name__: a for a in recursive_subclasses(_clazz)}
+
+
+
 if __name__ == "__main__":
 
     async def async_thing():

@@ -1,4 +1,5 @@
 def location_to_name(location: tuple[int, int]) -> str | None:
+    # FIXME: DETETE, UNUSED.
     x, y = location
     if 70 < x < 500 and -250 > y > -780:
         return "Stone City"

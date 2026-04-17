@@ -1,19 +1,21 @@
+__all__ = ['AbstractClientWindow']
+
 import time
 from abc import ABC, abstractmethod
-from collections import namedtuple
 from contextlib import contextmanager
 from typing import Self
 
-from GhostBot import logger
+from GhostBot import logger as _logger
+from GhostBot.lib.types import Location
 from GhostBot.lib.talisman_ui_locations import UI_locations
-
-Location = namedtuple('Location', ['x', 'y'])
 
 
 class AbstractClientWindow(ABC):
     """
     Abstract Class containing all methods expected to interact with the Talisman Online client window.
     """
+    def __init__(self):
+        self.logger = _logger.getChild(self.__class__.__name__)
 
     @property
     @abstractmethod
@@ -61,7 +63,7 @@ class AbstractClientWindow(ABC):
             self.press_key(_key)
             time.sleep(4)
         if attempts == 3:
-            logger.error("Failed to mount up")
+            self.logger.error("Failed to mount up")
 
     def dismount(self, _key=None):
         if _key is None:
@@ -73,7 +75,7 @@ class AbstractClientWindow(ABC):
             self.press_key(_key)
             time.sleep(4)
         if attempts == 3:
-            logger.error("Failed to dismount")
+            self.logger.error("Failed to dismount")
 
     @abstractmethod
     def capture_window(self, color: bool): ...
@@ -114,7 +116,8 @@ class AbstractClientWindow(ABC):
 
     @contextmanager
     def inventory(self):
-        yield self.open_inventory()
+        self.open_inventory()
+        yield
         self.close_inventory()
 
     def open_inventory(self):

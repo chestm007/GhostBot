@@ -1,21 +1,25 @@
 import itertools
 import math
+import threading
 import time
 from abc import abstractmethod, ABC
 from typing import Generator
 
 from operator import mul, add
 
-from GhostBot import logger
+from GhostBot import logger as _logger
+from GhostBot.IPC.server import IPCServerLogHandler
 from GhostBot.client_window import Win32ClientWindow
-from GhostBot.config import Config, ConfigLoader, LoginDetailsConfigLoader
+from GhostBot.config import Config, ConfigLoader, LoginDetailsConfigLoader, GhostBotServerConfigLoader
 from GhostBot.enums.bot_status import BotStatus
 from GhostBot.functions import Attack, Buffs, Fairy, Petfood, Regen, Runner, Sell, Delete
 from GhostBot.lib.math import linear_distance, position_difference, scale_minimap_move_distance, coords_to_map_screen_pos
 from GhostBot.lib.talisman_ui_locations import UI_locations
 from GhostBot.lib.win32.process import PymemProcess
 from GhostBot.map_navigation import location_to_zone_map, zones
+from GhostBot.server import GhostbotIPCServer
 
+lock = threading.Lock()
 
 class BotClientWindow(Win32ClientWindow):
     running: bool = False
@@ -79,16 +83,16 @@ class BotClientWindow(Win32ClientWindow):
         return self.mana / self.max_mana
 
     def start_bot(self):
-        logger.info(f'{self.name}: Starting...')
+        self.logger.info(f'{self.name}: Starting...')
         if self.disconnected:
             self.bot_status = BotStatus.disconnected
-            logger.info(f'{self.name}: Client disconnected.')
+            self.logger.info(f'{self.name}: Client disconnected.')
         self.bot_status = BotStatus.starting
         self.running = True
         self.load_config()
 
     def stop_bot(self):
-        logger.info(f'{self.name}: Stopping...')
+        self.logger.info(f'{self.name}: Stopping...')
         self.bot_status = BotStatus.stopping
         self.running = False
 
@@ -98,7 +102,7 @@ class BotClientWindow(Win32ClientWindow):
         :param target_pos: `tuple(x, y)` coordinates to move too
         """
         while linear_distance(self.location, target_pos) > 50 and self.running:
-            logger.debug(f"{self.name} moving via map")
+            self.logger.debug(f"{self.name} moving via map")
             return self._move_to_pos_via_map(target_pos)
 
         pos_diff = position_difference(self.location, target_pos)
@@ -108,7 +112,7 @@ class BotClientWindow(Win32ClientWindow):
         minimap_relative_pos = scale_minimap_move_distance(pos_diff_mm_pix)
         minimap_pos: tuple[float, float] = tuple(map(math.ceil, map(add, UI_locations.minimap_centre, minimap_relative_pos)))  # mouse position
 
-        logger.debug(f'{self.name}: clicking {minimap_relative_pos}')  # relative to minimap center
+        self.logger.debug(f'{self.name}: clicking {minimap_relative_pos}')  # relative to minimap center
         self.right_click(minimap_pos)
         self.block_while_moving()
 
@@ -133,7 +137,7 @@ class BotClientWindow(Win32ClientWindow):
                 # If we've started moving, we can stop trying offsets
                 break
         else:
-            logger.info(f'{self.name}: failed pathing via map')
+            self.logger.info(f'{self.name}: failed pathing via map')
             self.press_key('m')
             return False
 
@@ -163,14 +167,24 @@ class BotController(ABC):
     _pymem_process = PymemProcess
     login_config = None
 
-    def __init__(self):
+    def __init__(self, host=None, port = None):
+        self.logger = _logger.getChild(self.__class__.__name__)
+        self._running = False
         self._controller_start_time = time.time()
         self.clients: dict[str, BotClientWindow] = dict()
         self._pending_clients: dict[str, BotClientWindow] = dict()
         self.login_queue: dict[int, BotClientWindow] = dict()
         self._seen_clients = []
+        self.server = GhostbotIPCServer(bot_controller=self, host=host, port=port)
+        self.logger.addHandler(IPCServerLogHandler(self.server))
 
+        GhostBotServerConfigLoader().load()
         self._load_login_config()
+        self._cached_eligible_logins: dict[str, LoginDetailsConfigLoader.CharDetails] = {}
+
+    @property
+    def running(self):
+        return self._running
 
     @property
     def _total_running_secs(self):
@@ -180,26 +194,29 @@ class BotController(ABC):
         self.login_config = LoginDetailsConfigLoader().load()
 
     def _eligible_logins(self):
-        logged_in_clients = list(itertools.chain(self.client_keys, self._pending_clients.keys()))
-        eligible = {k: v for k, v in self.login_config.items() if k not in logged_in_clients}
-        return eligible
+        with lock:
+            if not self._cached_eligible_logins:
+                logged_in_clients = list(itertools.chain(self.client_keys, self._pending_clients.keys()))
+                self._cached_eligible_logins = {k: v for k, v in self.login_config.items() if k not in logged_in_clients}
+            return self._cached_eligible_logins
 
     def _scan_for_clients(self):
         current_running_procs = self._pymem_process.list_clients()
 
         def remove_closed_clients():
-            for k, v in list(self.clients.items()):
-                if (c_pid := v.proc.process_id) not in (p.process_id for p in current_running_procs):
-                    logger.info("BotController :: removing [%s]", c_pid)
-                    try:
-                        self.stop_bot(self.clients.pop(k))
-                    except Exception as e:
-                        logger.info(e)
+            with lock:
+                for k, v in list(self.clients.items()):
+                    if (c_pid := v.proc.process_id) not in (p.process_id for p in current_running_procs):
+                        self.logger.info("removing [%s]", c_pid)
+                        try:
+                            self.stop_bot(self.remove_client(v))
+                        except Exception as e:
+                            self.logger.exception(e)
 
         current_client_proc_ids = {c.proc.process_id for c in self.clients.values()}
 
         if [p.process_id for p in current_running_procs] == self._seen_clients:
-            logger.debug('BotController :: No change in running processes')
+            self.logger.debug('No change in running processes')
             self._seen_clients = [p.process_id for p in current_running_procs]
             return
 
@@ -209,50 +226,63 @@ class BotController(ABC):
 
         for proc in current_running_procs:
             if proc.process_id in current_client_proc_ids:
-                logger.debug("BotController :: Process [%s] already registered with BotController, skipping.", proc.process_id)
+                self.logger.debug("Process [%s] already registered with BotController, skipping.", proc.process_id)
                 continue
             client = BotClientWindow(proc)
             try:
                 if client.name is None and client.get_window_name() not in self._pending_clients.keys():
-                    logger.debug("BotController :: [%s] client.name is None, possibly hasnt logged in yet", proc.process_id)
+                    self.logger.debug("[%s] client.name is None, possibly hasnt logged in yet", proc.process_id)
                     if proc.process_id not in self.login_queue.keys():
-                        logger.info("BotController :: [%s] adding process to login_queue routine", proc.process_id)
+                        self.logger.info("[%s] adding process to login_queue routine", proc.process_id)
                         self.login_queue[proc.process_id] = client
                     continue
                 if 0 > client.level >= 89:
-                    logger.info("BotController :: [%s] client.level(%s) < 0 or > 89.", proc.process_id, client.level)
+                    self.logger.info("[%s] client.level(%s) < 0 or > 89.", proc.process_id, client.level)
                     continue
 
                 if client.disconnected:
-                    logger.info(
-                        'BotController :: Detected disconnected client window for char [%s], attempting to restart',
+                    self.logger.info(
+                        'Detected disconnected client window for char [%s], attempting to restart',
                         client.name
                     )
-                    try:
-                        self.clients.pop(client.name)
-                    except KeyError:
-                        logger.info('BotController :: client window for char [%s] not in registered clients list, this is normal if this is a '
-                                    'fresh restart of the bot controller', client.name)
-                    client.close_window()
+                    self.remove_client(client)
                     time.sleep(0.5)
                 else:
                     if client.name not in self.client_keys:
-                        logger.info('BotController :: adding client %s %s', client.name, client.disconnected)
+                        self.logger.info('adding client %s %s', client.name, client.disconnected)
                         self.add_client(BotClientWindow(proc))
                     else:
-                        logger.debug(f'BotController :: client {client.name} already exists, skipping')
+                        self.logger.debug('client %s already exists, skipping', client.identifier)
 
             except (TypeError, AttributeError):
                 # TODO: do i want to track this for the autologin? might be an alright hook
                 #       especially if we know which char to log...
-                logger.info('BotController :: cannot add client %s', proc)
+                self.logger.info('cannot add client %s', proc)
 
     @property
     def client_keys(self) -> list[str]:
         return list(str(k) for k in self.clients.keys())
 
-    def add_client(self, client: BotClientWindow) -> None:
-        self.clients[client.name] = client
+    def add_client(self, client: BotClientWindow) -> BotClientWindow:
+        with lock:
+            self.clients[client.name] = client
+            self.server.send_to_all(self.server.bot_controller_clients_message)
+            return client
+
+    def remove_client(self, client: BotClientWindow, close=True) -> BotClientWindow:
+        try:
+            self.clients.pop(client.name)
+            self.server.send_to_all(self.server.bot_controller_clients_message)
+        except KeyError:
+            self.logger.info(
+                'client window for char %s not in registered clients list, this is normal if this is a '
+                'fresh restart of the bot controller', client.identifier)
+        if close:
+            self.logger.info(
+                'client window for char %s will be closed', client.identifier
+            )
+            client.close_window()
+        return client
 
     @abstractmethod
     def start_bot(self, client: BotClientWindow | str) -> None: ...
@@ -260,14 +290,14 @@ class BotController(ABC):
     def reload_bot_config(self, client: str | BotClientWindow) -> None:
         if isinstance(client, str):
             if (client := self.get_client(client)) is None:
-                logger.warning('BotController :: no client %s', client)
+                self.logger.warning('no client %s', client)
                 return
         client.load_config()
 
     def get_client(self, name) -> BotClientWindow | None:
         client = self.clients.get(name)
         if client is None:
-            logger.warning('BotController :: no client %s', client)
+            self.logger.warning('no client %s', client)
         return client
 
     def _get_functions_for_client(self, client: BotClientWindow) -> Generator[Runner, None, None]:
@@ -278,7 +308,7 @@ class BotController(ABC):
         if client.config.pet is not None:
             yield Petfood(client)
         if client.config.regen is not None:
-            yield Regen(client)
+            yield Regen(client, bool(client.config.fairy))
         if client.config.buff is not None:
             yield Buffs(client)
         if client.config.attack is not None:
@@ -294,3 +324,7 @@ class BotController(ABC):
 
     @abstractmethod
     def listen(self, host=None, port=None): ...
+
+    def shutdown(self):
+        self._running = False
+        self.stop_all_bots(5)

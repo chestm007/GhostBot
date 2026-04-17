@@ -16,7 +16,6 @@ import win32ui
 from pymem.exception import MemoryReadError, ProcessError
 from win32con import SM_CYCAPTION
 
-from GhostBot import logger
 from GhostBot.abstract_client_window import AbstractClientWindow, Location
 from GhostBot.lib import win32messages, get_with_case
 from GhostBot.lib.talisman_online_python.pointers import Pointers
@@ -57,6 +56,7 @@ class Win32ClientWindow(AbstractClientWindow):
     char_addr = base_addr + 0xC20980
 
     def __init__(self, proc):
+        super().__init__()
         self._name = None
         self._active = False
         self._window_handle = None
@@ -82,7 +82,7 @@ class Win32ClientWindow(AbstractClientWindow):
     def initialize_pointers(self, force_reload: bool = False):
         try:
             if self.pointers is None or force_reload:
-                logger.debug('Win32ClientWindow :: %s :: %s initializing pointers', self.identifier, 'FORCE' if force_reload else '')
+                self.logger.debug('Win32ClientWindow :: %s :: %s initializing pointers', self.identifier, 'FORCE' if force_reload else '')
                 self.pointers = Pointers(self.process_id)
             if self.char is None or force_reload:
                 self.char = self.proc.read_int(self.char_addr)
@@ -94,7 +94,7 @@ class Win32ClientWindow(AbstractClientWindow):
         if self._window_handle is None:
             hwnds = get_hwnds_for_pid(self.process_id)
             if len(hwnds) == 1:
-                logger.debug('Win32ClientWindow :: %s :: got window handle', self.identifier)
+                self.logger.debug('Win32ClientWindow :: %s :: got window handle', self.identifier)
                 self._window_handle = hwnds[0]
         return self._window_handle
 
@@ -143,15 +143,18 @@ class Win32ClientWindow(AbstractClientWindow):
         else:
             return cv2.cvtColor(img[..., :3], cv2.COLOR_BGR2GRAY)
 
-    def press_key(self, _key: int | str, char_only: bool = False):
+    def press_key(self, _key: int | str | None, char_only: bool = False):
         """Send the key to the client window"""
-        _key = get_with_case(_key)
+        try:
+            __key = get_with_case(_key)
+        except AttributeError:
+            return
 
         if not char_only:
-            win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, _key, LPARAM(0))
-        win32gui.SendMessage(self.window_handle, win32messages.WM_CHAR, _key, LPARAM(0))
+            win32gui.SendMessage(self.window_handle, win32messages.WM_KEYDOWN, __key, LPARAM(0))
+        win32gui.SendMessage(self.window_handle, win32messages.WM_CHAR, __key, LPARAM(0))
         if not char_only:
-            win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, _key, LPARAM(0))
+            win32gui.SendMessage(self.window_handle, win32messages.WM_KEYUP, __key, LPARAM(0))
         return
 
     def left_click(self, pos):
@@ -190,14 +193,14 @@ class Win32ClientWindow(AbstractClientWindow):
 
         try:
             wx, wy, ww, wh = win32gui.GetWindowRect(self.window_handle)
-        except pywintypes.error as e:
-            logger.debug('Win32ClientWindow :: %s :: error getting window handle %s', self.identifier, self.window_handle)
+        except pywintypes.error:
+            self.logger.debug('Win32ClientWindow :: %s :: error getting window handle %s', self.identifier, self.window_handle)
             return None
         wx += border_thickness
         ww -= border_thickness + wx
         wy += (title_bar_height + border_thickness)
         wh -= border_thickness + wy
-        return tuple(((wx, wy), (ww, wh)))
+        return (wx, wy), (ww, wh)
 
     @property
     def inventory_open(self):
@@ -326,7 +329,7 @@ class Win32ClientWindow(AbstractClientWindow):
             else:
                 return None
         except pymem.exception.MemoryReadError as e:
-            logger.error(e)
+            self.logger.error(e)
 
     @property
     def target_name(self) -> str | None:

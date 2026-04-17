@@ -3,13 +3,13 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from GhostBot.config import SellConfig
 from GhostBot.functions import Locational
 from GhostBot.functions.runner import run_at_interval
 from GhostBot.lib.math import seconds, item_coordinates_from_pos, linear_distance
 from GhostBot.lib.talisman_ui_locations import UI_locations
 
 if TYPE_CHECKING:
+    from GhostBot.config import SellConfig
     from GhostBot.controller.bot_controller import BotClientWindow
 
 
@@ -59,8 +59,11 @@ class Sell(Locational):
             if self.config.sell_npc_name in first_result.get('name'):
                 npc_location  = tuple(map(float, first_result.get('coords').split(',')))
                 self._client.goto_first_surrounding_result()
+                self._log_info('Going to npc location %s' % npc_location)
                 while (linear_distance(self._client.location, npc_location)) > 2 and self._client.running:
                     time.sleep(0.5)
+            else:
+                self._log_info('No npc location found')
         except (AttributeError, TypeError):
             self._log_info("Memory access failed to get npc location, falling back to movement detection :(")
             self._client.goto_first_surrounding_result()
@@ -69,6 +72,7 @@ class Sell(Locational):
         return True
 
     def _sell_items(self):
+        self._log_info('Selling...')
         self._client.reset_camera()
         time.sleep(2)
         self._client.click_npc()
@@ -86,6 +90,7 @@ class Sell(Locational):
 
     def _path_to_npc_search_spot(self):
         if self.config.npc_search_spot is not None:
+            self._log_info('going to npc search location %s' % self.config.npc_search_spot)
             self._client.move_to_pos(self.config.npc_search_spot)
 
     def _path_to_attack_spot(self):

@@ -4,11 +4,11 @@ import time
 
 from typing import TYPE_CHECKING
 
-from GhostBot.config import PetConfig
 from GhostBot.functions.runner import Runner, run_at_interval
 from GhostBot.lib.math import seconds
 
 if TYPE_CHECKING:
+    from GhostBot.config import PetConfig
     from GhostBot.controller.bot_controller import BotClientWindow
 
 
@@ -32,6 +32,7 @@ class Petfood(Runner):
         return self.config.bindings.get('spawn')
 
     def _run(self) -> None:
+        self._client.dismount()
         self._feed_pet()
         self._respawn_pet()
 

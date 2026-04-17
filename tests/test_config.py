@@ -1,9 +1,12 @@
 import pickle
 
+import pytest
+
 from GhostBot import logger
-from GhostBot.config import AttackConfig, RegenConfig, BuffConfig, PetConfig, FairyConfig, Config, SellConfig
+from GhostBot.config import *
 from GhostBot.rpc.message import Message
-from GhostBot.server import IPCClient, GhostbotIPCServer
+from GhostBot.server import IPCClient, GhostbotIPCServer, GhostbotIPCClient
+
 
 def _config():
     ac = AttackConfig(
@@ -79,7 +82,7 @@ def test_config_ipc():
         def get_client(self, client):
             pass
 
-    class TestIPCClient(IPCClient):
+    class TestIPCClient(GhostbotIPCClient):
         def send(self, data: Message) -> Message:
             return pickle.loads(pickle.dumps(data))
 
@@ -157,6 +160,29 @@ def test_config_loads_yaml_and_parses_types_properly():
     assert isinstance(config.buff.interval, int)
     assert config.regen.spot == (123, 456)
     assert config.sell.npc_sell_click_spot == (100, 200)
+
+def test_config_loads_yaml_and_errors_on_unfixable_return_spot():
+    # noinspection PyTypeChecker
+    dumb_config = Config(
+        sell=SellConfig(
+            sell_npc_name='Mr Guy Man',
+            return_spot=False,
+        )
+    )
+    with pytest.raises(TypeError, match=r'tuple\[int, int\], got bool$'):
+        dumb_config.validate()
+
+def test_config_loads_yaml_and_parses_string_return_spot():
+    # noinspection PyTypeChecker
+    string_spot_config = Config(
+        sell=SellConfig(
+            sell_npc_name='Mr Guy Man',
+            return_spot='123 -123',
+        )
+    )
+    string_spot_config.validate()
+    assert isinstance(string_spot_config.sell.return_spot, tuple)
+    assert string_spot_config.sell.return_spot == (123, -123)
 
 def test_config_validation():
     pass
