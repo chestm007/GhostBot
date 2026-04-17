@@ -172,7 +172,8 @@ class BotController(ABC):
     _pymem_process = PymemProcess
     login_config = None
 
-    def __init__(self, host=None, port = None):
+    def __init__(self, host=None, port = None, close_disconnected_clients: bool = True):
+        self._close_disconnected_clients = close_disconnected_clients
         self.logger = _logger.getChild(self.__class__.__name__)
         self._running = False
         self._controller_start_time = time.time()
@@ -214,7 +215,7 @@ class BotController(ABC):
                     if (c_pid := v.proc.process_id) not in (p.process_id for p in current_running_procs):
                         self.logger.info("removing [%s]", c_pid)
                         try:
-                            self.stop_bot(self.remove_client(v))
+                            self.stop_bot(self.remove_client(v, close=self._close_disconnected_clients))
                         except Exception as e:
                             self.logger.exception(e)
 
@@ -250,7 +251,7 @@ class BotController(ABC):
                         'Detected disconnected client window for char [%s], attempting to restart',
                         client.name
                     )
-                    self.remove_client(client)
+                    self.remove_client(client, close=self._close_disconnected_clients)
                     time.sleep(0.5)
                 else:
                     if client.name not in self.client_keys:
