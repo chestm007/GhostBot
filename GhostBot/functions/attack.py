@@ -100,15 +100,11 @@ class Attack(Locational):
             self._client.new_target()
             return True
 
-        if (self._client.target_hp is None
-            or self._client.target_name == self._client.name
-            or self._client.target_hp < 0
-            #or (self._distance_to_target() or 0) > self.roam_distance
-        ):
+        if not self._client.has_alive_target or (self._distance_to_target() or 0) > self.roam_distance:
             self._client.new_target()
             return True
 
-        while (self._client.target_hp is not None) and int(self._client.target_hp) >= 0 and self._client.running:
+        while self._client.target_hp is not None and self._client.target_hp >= 0 and self._client.running:
             if self._client.target_name == self._client.name:  # if were targeting ourselves, get a new target
                 return True
 
@@ -139,7 +135,7 @@ class Attack(Locational):
                     self._client.press_key(self.config.bindings.get('battle_hp_pot'))
 
     def _distance_to_target(self) -> int | None:
-        if self._client.has_target:
+        if self._client.has_alive_target:
             if (tgt_loc := self._client.target_location) is not None:
                 return linear_distance(self.start_location, tgt_loc)
         return None
