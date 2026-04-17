@@ -8,7 +8,7 @@ from GhostBot import logger
 from GhostBot.UX.tabbed_widget.delete_frame import DeleteFrame
 from GhostBot.UX.tabbed_widget.sell_frame import SellFrame
 from GhostBot.config import Config
-from GhostBot.rpc.message import Command
+from GhostBot.rpc.message import Command, Message
 from GhostBot.server import GhostbotIPCClient
 
 from GhostBot.UX.pyuiWidgets.logWindow import LogWindow
@@ -133,6 +133,15 @@ class GhostBot(tk.Tk):
         ).place(x=500, y=450)
 
         ttk.Button(master=self, text="Save", width=10, command=save_config).place(x=590, y=450)
+        def _config_callback(message: Message):
+            if message.target:
+
+                if isinstance(message.target, dict) and message.target.get('action') == 'set':
+                    self.log.insert_log(f'Config set for {message.target.get("char")}')
+                else:
+                    _update_char_config(message)
+
+        self.client.add_callback(Command.CONFIG, _config_callback)
 
         self.client.run()
 
