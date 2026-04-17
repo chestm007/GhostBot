@@ -84,6 +84,9 @@ class ImageFinder:
     def dialog_ok_location(self) -> tuple[int, int] | None:
         return self.find_ui_element("Images/misc/dialog_ok.bmp", threshold=0.6)
 
+    def is_map_open(self) -> bool:
+        return bool(self.find_ui_element(os.path.join(self.misc_folder, 'map_open.bmp')))
+
     def _sell_item_npc_location(self, stage=0) -> tuple[int, int] | None:
         stage_path = ['npc_sell', 'item_sell_window_header', 'item_sell']
         return self.find_ui_element(f"Images/misc/{stage_path[stage - 1]}.bmp", threshold=0.62)
