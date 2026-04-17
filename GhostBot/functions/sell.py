@@ -59,7 +59,7 @@ class Sell(Locational):
             if self.config.sell_npc_name in first_result.get('name'):
                 npc_location  = tuple(map(float, first_result.get('coords').split(',')))
                 self._client.goto_first_surrounding_result()
-                self._log_info('Going to npc location %s' % npc_location)
+                self._log_info('Going to npc location %s', str(npc_location))
                 while (linear_distance(self._client.location, npc_location)) > 2 and self._client.running:
                     time.sleep(0.5)
             else:
@@ -90,12 +90,12 @@ class Sell(Locational):
 
     def _path_to_npc_search_spot(self):
         if self.config.npc_search_spot is not None:
-            self._log_info('going to npc search location %s' % self.config.npc_search_spot)
+            self._log_info('going to npc search location %s', str(self.config.npc_search_spot))
             self._client.move_to_pos(self.config.npc_search_spot)
 
     def _path_to_attack_spot(self):
         if self.config.return_spot is not None:
-            self._log_info(f'returning to {self._return_spot}')
+            self._log_info('returning to %s', str(self._return_spot))
             # TODO: loop trying to move via map until the char moves.
             self._client.move_to_pos(self._return_spot)
             self._goto_start_location()
