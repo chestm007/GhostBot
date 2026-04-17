@@ -11,7 +11,7 @@ import pathlib
 from GhostBot import logger
 
 if TYPE_CHECKING:
-    from GhostBot.client_window import Win32ClientWindow
+    from GhostBot.abstract_client_window import AbstractClientWindow
 
 
 class ImageFinder:
@@ -20,7 +20,7 @@ class ImageFinder:
     misc_folder = os.path.join(_path_base, "Images", "misc")
     items = {}
 
-    def __init__(self, client: Win32ClientWindow):
+    def __init__(self, client: AbstractClientWindow):
         self._client = client
         self._destroy_item_location: tuple[int, tuple[int, int]] = None
 
