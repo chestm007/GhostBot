@@ -20,9 +20,7 @@ class Sell(Locational):
         self.config: SellConfig = self._client.config.sell
         self._interval = seconds(minutes=int(self._client.config.sell.sell_interval_mins))
 
-        if (_return_spot := self.config.return_spot) is None:
-            _return_spot = self.determine_start_location()
-        self._return_spot = _return_spot
+        self._return_spot = self.determine_start_location()
 
         try:
             self._use_mount = client.config.sell.use_mount
@@ -57,7 +55,8 @@ class Sell(Locational):
         try:
             first_result = self._client.pointers.get_sur_info()
             if self.config.sell_npc_name in first_result.get('name'):
-                npc_location  = tuple(map(float, first_result.get('coords').split(',')))
+                coords = first_result.get('coords').split(',')
+                npc_location: tuple[int, int] = (int(coords[0]), int(coords[1]))
                 self._client.goto_first_surrounding_result()
                 self._log_info('Going to npc location %s', str(npc_location))
                 while (linear_distance(self._client.location, npc_location)) > 2 and self._client.running:
@@ -94,7 +93,7 @@ class Sell(Locational):
             self._client.move_to_pos(self.config.npc_search_spot)
 
     def _path_to_attack_spot(self):
-        if self.config.return_spot is not None:
+        if self._return_spot is not None:
             self._log_info('returning to %s', str(self._return_spot))
             # TODO: loop trying to move via map until the char moves.
             self._client.move_to_pos(self._return_spot)
