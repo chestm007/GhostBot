@@ -105,6 +105,9 @@ class Locational(Runner, ABC):
         if (attack := self._client.config.attack) is not None:
             if attack.spot is not None:
                 return int(attack.spot[0]), int(attack.spot[1])
+        if (fairy := self._client.config.fairy) is not None:
+            if fairy.spot is not None:
+                return int(fairy.spot[0]), int(fairy.spot[1])
         return self._client.location
 
     def _goto_start_location(self):

@@ -26,10 +26,11 @@ import yaml
 from GhostBot import logger as _logger
 from GhostBot.functions.runner import InjectedLoggingMixin
 from GhostBot.lib.utils import subclasses_by_name
+from GhostBot.upgrades.config import all_upgrades
 
 if TYPE_CHECKING:
-    from GhostBot.controller.bot_controller import BotClientWindow
-    from GhostBot.functions.runner import Runner
+    from ghostbot.controller.bot_controller import botclientwindow
+    from ghostbot.functions.runner import runner
 
 _T = TypeVar('_T')
 
@@ -150,6 +151,7 @@ class FairyConfig(FunctionConfig):
     bindings: Bindings = None
     heal_team_threshold: float = None
     heal_self_threshold: float = None
+    spot: tuple[int, int] = None
 
 @dataclass
 class SellConfig(FunctionConfig):
@@ -174,6 +176,8 @@ class DeleteConfig(FunctionConfig):
 
 @dataclass
 class Config:
+    logger = _logger.getChild('Config')
+
     attack: AttackConfig = None
     buff: BuffConfig = None
     fairy: FairyConfig = None
@@ -207,7 +211,7 @@ class Config:
     def load_yaml(cls, data: dict[str, Any]) -> Config:
         _config = cls()
         _confs = cls._sub_configs_by_name()
-        for k, v in data.items():
+        for k, v in cls.upgrade(data).items():
             if (_clazz := _confs.get(k)) is not None:
                 setattr(_config, k, _clazz(**{vk: vv for vk, vv in v.items() if v}))
             else:
@@ -218,8 +222,16 @@ class Config:
     def functions(self):
         return (k for k, v in self.__dict__.items() if v is not None)
 
+    @classmethod
+    def upgrade(cls, data: dict[str, Any]) -> dict[str, Any]:
+        for i, _func in enumerate(all_upgrades):
+            print(i, data)
+            cls.logger.debug('Running config upgrade :: %s', i)
+            data = _func(data)
+        return data
 
-class BaseConfigLoader:
+
+
 class BaseConfigLoader(ABC):
     config_filename: str
 
@@ -374,11 +386,16 @@ if __name__ == "__main__":
             food_interval_mins=55,
         ), regen=RegenConfig(
             bindings=regen_bindings,
+        ), sell=SellConfig(
+            sell_npc_name='foo'
         )
     )
     yaml_config = yaml.safe_dump(config.to_yaml())
     assert (processed_config := Config.load_yaml(yaml.safe_load(yaml_config)) == config)
     pprint.pprint(config)
+    config.regen.spot = (100, 200)
+    config.sell.return_spot = (200,300)
+    pprint.pprint(ConfigLoader.upgrade(config.to_yaml()))
 
     print("####################")
 
