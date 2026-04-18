@@ -69,7 +69,9 @@ class FunctionsFrame(tk.Frame):
         ttk.Label(master=char_info_frame, textvariable=self._vars['status'], width=10).grid(row=0, column=3)
 
     def save_config(self):
-        _function_enabled = lambda f: self.getvar(f'bot_config.{f}.enabled') == '1'
+        def _function_enabled(f):
+            return int(self.getvar(f'bot_config.{f}.enabled')) == 1
+        
         _config = Config()
 
         for child in (c for c in self.master.children.values() if isinstance(c, tk.Frame)):

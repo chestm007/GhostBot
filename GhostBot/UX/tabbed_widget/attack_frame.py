@@ -36,13 +36,16 @@ class AttackFrame(TabFrame):
             self.setvar('bot.config.attack.battle_stuck', str(config.attack.stuck_interval or ''))
             self.setvar('bot_config.attack.battle_roam', str(config.attack.roam_distance or ''))
             self.attacks.delete(1.0, tk.END)
-            self.attacks.insert(tk.END, "\n".join(f"{key} {delay}" for key, delay in config.attack.attacks))
+            try:
+                self.attacks.insert(tk.END, "\n".join(f"{key} {delay}" for key, delay in config.attack.attacks))
+            except TypeError:
+                pass
 
         else:
             self.clear()
 
     def extract_config(self) -> AttackConfig:
-        _san = lambda x: [x[0], int(x[1])]
+        _san = lambda x: [x[0], int(x[1])] if x else None
         bindings = dict(
             battle_hp_pot=self._nullable_string(self.getvar('bot_config.attack.battle_hp_key')),
             battle_mana_pot=self._nullable_string(self.getvar('bot_config.attack.battle_mp_key')),

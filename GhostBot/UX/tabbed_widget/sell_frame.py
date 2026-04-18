@@ -2,6 +2,7 @@ import time
 from tkinter import ttk
 
 from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
+from GhostBot.UX.utils import _format_spot
 from GhostBot.client_window import Win32ClientWindow
 from GhostBot.config import Config, SellConfig
 from GhostBot.lib.var_or_none import var_or_none
@@ -43,12 +44,6 @@ class SellFrame(TabFrame):
         self._vars[field].set(eval(self.master.getvar('char_info.position')))
 
     def display_config(self, config: Config):
-        def _format_spot(_spot):
-            if _spot:
-                if isinstance(_spot, str):
-                    return tuple(_spot.split(" "))
-                return f"{' '.join(map(str, _spot))}"
-            return ''
 
         if config.sell:
             mount_key = ''
