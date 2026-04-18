@@ -1,7 +1,7 @@
 from tkinter import ttk
 
 from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
-from GhostBot.UX.utils import _format_spot
+from GhostBot.UX.utils import _format_spot, create_entry
 from GhostBot.config import Config, FairyConfig
 from GhostBot.lib.var_or_none import var_or_none
 
@@ -9,12 +9,12 @@ from GhostBot.lib.var_or_none import var_or_none
 class FairyFrame(TabFrame):
     def _init(self, *args, **kwargs) -> None:
         self._vars = dict(
-            heal_team=self._create_entry("Heal team at:", 0, 0, ("bot_config.fairy.heal_team", str)),
-            heal_self=self._create_entry("Heal self at:", 1, 0, ("bot_config.fairy.heal_self", str)),
-            heal=self._create_entry("Heal key:", 2, 0, ("bot_config.fairy.heal", str)),
-            cure=self._create_entry("Cure key:", 3, 0, ("bot_config.fairy.cure", str)),
-            revive=self._create_entry("Revive key:", 4, 0, ("bot_config.fairy.revive", str)),
-            spot=self._create_entry("Spot:", 5, 0, ("bot_config.fairy.spot", str)),
+            heal_team=create_entry(self, "Heal team at:", 0, 0, ("bot_config.fairy.heal_team", str)),
+            heal_self=create_entry(self, "Heal self at:", 1, 0, ("bot_config.fairy.heal_self", str)),
+            heal=create_entry(self, "Heal key:", 2, 0, ("bot_config.fairy.heal", str)),
+            cure=create_entry(self, "Cure key:", 3, 0, ("bot_config.fairy.cure", str)),
+            revive=create_entry(self, "Revive key:", 4, 0, ("bot_config.fairy.revive", str)),
+            spot=create_entry(self, "Spot:", 5, 0, ("bot_config.fairy.spot", str)),
         )
 
         ttk.Button(

@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
-from GhostBot.UX.utils import _format_spot
+from GhostBot.UX.utils import _format_spot, create_entry
 from GhostBot.config import Config, AttackConfig
 from GhostBot.lib.var_or_none import var_or_none
 
@@ -10,13 +10,13 @@ from GhostBot.lib.var_or_none import var_or_none
 class AttackFrame(TabFrame):
     def _init(self, *args, **kwargs) -> None:
         self._vars = dict(
-            hp_low=self._create_entry("BattleHP Low:", 0, 0, ("bot_config.attack.battle_hp_low", str)),
-            hp_key=self._create_entry("BattleHP Key:", 0, 2, ("bot_config.attack.battle_hp_key", str)),
-            mp_low=self._create_entry("BattleMP Low:", 1, 0, ("bot_config.attack.battle_mp_low", str)),
-            mp_key=self._create_entry("BattleMP Key:", 1, 2, ("bot_config.attack.battle_mp_key", str)),
-            stuck=self._create_entry("Stuck Sec:", 2, 0, ("bot_config.attack.battle_stuck", str)),
-            roam=self._create_entry("Roam Distance:", 3, 0, ("bot_config.attack.battle_roam", str)),
-            spot=self._create_entry("Spot:", 5, 0, ("bot_config.attack.spot", str)),
+            hp_low=create_entry(self, "BattleHP Low:", 0, 0, ("bot_config.attack.battle_hp_low", str)),
+            hp_key=create_entry(self, "BattleHP Key:", 0, 2, ("bot_config.attack.battle_hp_key", str)),
+            mp_low=create_entry(self, "BattleMP Low:", 1, 0, ("bot_config.attack.battle_mp_low", str)),
+            mp_key=create_entry(self, "BattleMP Key:", 1, 2, ("bot_config.attack.battle_mp_key", str)),
+            stuck=create_entry(self, "Stuck Sec:", 2, 0, ("bot_config.attack.battle_stuck", str)),
+            roam=create_entry(self, "Roam Distance:", 3, 0, ("bot_config.attack.battle_roam", str)),
+            spot=create_entry(self, "Spot:", 5, 0, ("bot_config.attack.spot", str)),
         )
 
         ttk.Button(

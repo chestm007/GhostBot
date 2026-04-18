@@ -236,7 +236,6 @@ class Config:
     @classmethod
     def upgrade(cls, data: dict[str, Any]) -> dict[str, Any]:
         for i, _func in enumerate(all_upgrades):
-            print(i, data)
             cls.logger.debug('Running config upgrade :: %s', i)
             data = _func(data)
         return data
@@ -297,6 +296,7 @@ class LoginDetailsConfigLoader(BaseConfigLoader):
         username: str
         password: str
         server: str
+        enabled: bool
 
     @dataclass
     class LoginDetails:
@@ -304,6 +304,9 @@ class LoginDetailsConfigLoader(BaseConfigLoader):
 
         def items(self):
             return self.chars.items()
+
+        def get(self, item: str):
+            return self.chars.get(item)
 
     def load(self) -> 'LoginDetailsConfigLoader.LoginDetails':
         """
@@ -325,15 +328,29 @@ class LoginDetailsConfigLoader(BaseConfigLoader):
             with open(self.config_filepath, 'r') as c:
                 _config: dict[str, dict[str, str]] = yaml.safe_load(c.read())
                 self.logger.debug('LoginDetailsConfigLoader :: login config loaded')
-                return LoginDetailsConfigLoader.LoginDetails(
+                return self.LoginDetails(
                     chars = {
-                        _name: LoginDetailsConfigLoader.CharDetails(char_name=_name, **_details)
+                        _name: self.CharDetails(char_name=_name, **_details)
                         for _name, _details in _config.items()
                     }
                 )
         except FileNotFoundError:
             self.logger.debug('LoginDetailsConfigLoader :: no login config file found at %s', self.config_filepath)
             return {}
+
+    def to_yaml(self, login_details: LoginDetails) -> dict:
+        _config = {k: self.CharDetails(**v.__dict__).__dict__ for k, v in login_details.chars.items()}
+        return {_char_name: {k: v for k, v in _conf.items() if k != 'char_name'} for _char_name, _conf in _config.items()}
+
+    def save(self, login_details: LoginDetails):
+        self.logger.debug('LoginDetailsConfigLoader :: saving login config')
+        with open(self.config_filepath, 'w') as c:
+            c.write(
+                yaml.safe_dump(
+                    self.to_yaml(login_details),
+                )
+            )
+
 
 class GhostBotServerConfigLoader(BaseConfigLoader):
     config_filename = 'ghostbot_server.yml'

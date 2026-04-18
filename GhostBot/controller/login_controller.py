@@ -15,6 +15,7 @@ from GhostBot.lib.utils import retry
 
 if TYPE_CHECKING:
     from GhostBot.controller.bot_controller import BotClientWindow
+    from controller.bot_controller import BotController
     from collections.abc import Callable
     from GhostBot.config import LoginDetailsConfigLoader
 
@@ -56,8 +57,9 @@ class LoginLock:
 class LoginController:
     _login_lock = LoginLock()
 
-    def __init__(self, client: "BotClientWindow"):
+    def __init__(self, client: BotClientWindow, bot_controller: BotController):
         self.logger = _logger.getChild(self.__class__.__name__)
+        self._bot_controller = bot_controller
         self._client = client
         self._config: LoginDetailsConfigLoader.CharDetails | None = None
         self._image_finder = ImageFinder(client)
@@ -152,6 +154,7 @@ class LoginController:
 
         if retry(select_char, 5, 1):
             self.logger.info("%s :: character logged in", self._client.identifier)
+            self._client.post_login_setup()
         else:
             self.logger.info("%s :: character interrupted", self._client.identifier)
             self._client.left_click(UI_locations.char_select_interrupted_ok)
@@ -159,6 +162,9 @@ class LoginController:
     def handle_login(self, callback: Callable):
         self.logger.debug("%s :: handle login", self._client.identifier)
         while self._client.level is None:
+            if not self._bot_controller.running:
+                self.logger.debug("%s :: bot controller not running, exiting...", self._client.identifier)
+                return
             try:
                 self._client.set_window_name()
                 self._handle_stage()

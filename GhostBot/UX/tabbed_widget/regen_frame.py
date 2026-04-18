@@ -2,17 +2,18 @@ from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
 from GhostBot.controller.bot_controller import BotClientWindow
 from GhostBot.config import Config, RegenConfig
 from GhostBot.lib.var_or_none import var_or_none
+from UX.utils import create_entry
 
 
 class RegenFrame(TabFrame):
     def _init(self, client: BotClientWindow, *args, **kwargs) -> None:
         self.client = client
         self._vars = dict(
-            hp_low=self._create_entry("HP Low:", 0, 0, ("bot_config.regen.hp_low", str)),
-            hp_key=self._create_entry("HP Key:", 0, 2, ("bot_config.rege.hp_key", str)),
-            mp_low=self._create_entry("MP Low:", 1, 0, ("bot_config.regen.mp_low", str)),
-            mp_key=self._create_entry("MP Key:", 1, 2, ("bot_config.regen.mp_key", str)),
-            sit_key=self._create_entry("Sit Key:", 2, 0, ("bot_config.regen.sit_key", str)),
+            hp_low=create_entry(self, "HP Low:", 0, 0, ("bot_config.regen.hp_low", str)),
+            hp_key=create_entry(self, "HP Key:", 0, 2, ("bot_config.rege.hp_key", str)),
+            mp_low=create_entry(self, "MP Low:", 1, 0, ("bot_config.regen.mp_low", str)),
+            mp_key=create_entry(self, "MP Key:", 1, 2, ("bot_config.regen.mp_key", str)),
+            sit_key=create_entry(self, "Sit Key:", 2, 0, ("bot_config.regen.sit_key", str)),
         )
 
     def display_config(self, config: Config):

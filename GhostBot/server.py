@@ -8,6 +8,7 @@ from GhostBot.IPC.client import IPCClient
 from GhostBot.IPC.server import IPCServer
 from GhostBot.config import Config, ConfigLoader
 from GhostBot.IPC.message import Message, Command
+from config import LoginDetailsConfigLoader
 
 if TYPE_CHECKING:
     from GhostBot.controller.bot_controller import BotController
@@ -68,12 +69,28 @@ class GhostbotIPCServer(IPCServer):
                             if _target:
                                 return Message(Command.INFO_CHAR, _target.to_json())
                             return
+                    case Command.INFO_AUTOLOGIN:
+                        self.vdebug("dispatching INFO_AUTOLOGIN")
+                        return Message(Command.INFO_AUTOLOGIN, ' '.join(self.bot_controller.login_config.chars.keys()))
                     case Command.CONFIG_GET:
                         self.logger.info("dispatching CONFIG get")
                         _client: BotClientWindow = self.bot_controller.get_client(message.target['char'])
+                        if not _client:
+                            self.logger.info('char: %s - not found', message.target['char'])
+                            return
                         if _client.config is None:
                             _client.load_config()
+                            if _client.config is None:
+                                self.logger.error('client config not found for %s', message.target['char'])
+                                return
                         return Message(Command.CONFIG_GET, json.dumps(_client.config.to_yaml()))
+                    case Command.CONFIG_AUTOLOGIN_GET:
+                        self.logger.info("dispatching CONFIG_AUTOLOGIN_GET")
+                        _config = self.bot_controller.login_config.get(message.target['char'])
+                        if _config:
+                            return Message(Command.CONFIG_AUTOLOGIN_GET, json.dumps(_config.__dict__))
+                        self.logger.info('autologin config not found for %s', message.target['char'])
+                        return Message(Command.CONFIG_AUTOLOGIN_GET, json.dumps({}))
                     case Command.CONFIG_SET:
                         self.vdebug("dispatching CONFIG set")
                         _client: BotClientWindow = self.bot_controller.get_client(message.target['char'])
@@ -84,8 +101,32 @@ class GhostbotIPCServer(IPCServer):
                             ConfigLoader(_client).save(conf)
                             _client.set_config(conf)
                             return message
+                        self.logger.info('char: %s - not found', message.target['char'])
                         return False
-
+                    case Command.CONFIG_AUTOLOGIN_SET:
+                        self.logger.info("dispatching CONFIG_AUTOLOGIN_SET")
+                        _conf_yaml = message.target
+                        _char_autologin_config = LoginDetailsConfigLoader.CharDetails(**_conf_yaml)
+                        self.bot_controller.login_config.chars[_char_autologin_config.char_name] = _char_autologin_config
+                        LoginDetailsConfigLoader().save(self.bot_controller.login_config)
+                        return message
+                    case Command.CONFIG_AUTOLOGIN_DELETE:
+                        self.logger.info("dispatching CONFIG_AUTOLOGIN_DELETE")
+                        del self.bot_controller.login_config.chars[message.target['char']]
+                        LoginDetailsConfigLoader().save(self.bot_controller.login_config)
+                        return message
+                    case Command.OPEN_CLIENT:
+                        self.logger.info("dispatching OPEN_CLIENT")
+                        self.bot_controller.requested_logins.append(message.target['char'])
+                        return message
+                    case Command.CLOSE_CLIENT:
+                        self.logger.info("dispatching CLOSE_CLIENT")
+                        _client = self.bot_controller.get_client(message.target['char'])
+                        if _client is not None:
+                            _client.close_window()
+                            return message
+                        self.logger.info('char: %s - not found', message.target['char'])
+                        return False
                 return None
             try:
                 conn.sendall(_dispatch_message().encode('utf8'))
@@ -96,7 +137,7 @@ class GhostbotIPCServer(IPCServer):
 class GhostbotIPCClient(IPCClient):
     def __init__(self, host: str = 'localhost', port: int = 64057):
         super().__init__(host=host, port=port)
-        self._callbacks: dict[Command, Callable[[Message], Any]] = {}
+        self._callbacks: dict[Command, list[Callable[[Message], Any]]] = {command: [] for command in Command.__members__}
 
     def send(self, data: Message) -> Message:
         try:
@@ -108,7 +149,12 @@ class GhostbotIPCClient(IPCClient):
             self.logger.exception(e)
 
     def add_callback(self, command: Command, callback: Callable[[Message], Any]):
-        self._callbacks[command] = callback
+        self.logger.debug(f'registering callback for {command} to func {callback}')
+        self._callbacks[command.name].append(callback)
+
+    def del_callback(self, command: Command, callback: Callable[[Message], Any]):
+        self.logger.debug(f'unregistering callback for {command} to func {callback}')
+        self._callbacks[command.name].remove(callback)
 
     def _dispatch(self, data: bytes):
         _data = data.decode('utf8')
@@ -122,8 +168,9 @@ class GhostbotIPCClient(IPCClient):
                     self.logger.debug('received empty message')
                     continue
                 self.logger.debug(f'dispatching callback for {message}')
-                if cb := self._callbacks.get(message.command):
-                    return cb(message)
+                _callbacks = self._callbacks.get(message.command.name)
+                if _callbacks:
+                    return all(cb(message) for cb in _callbacks)
                 self.logger.debug('No callback set for %s', message.command)
         except EOFError as e:  # Thrown when server crashes, or is shutdown
             if data.command != Command.EXIT:
@@ -140,9 +187,7 @@ class GhostbotIPCClient(IPCClient):
     def list_chars(self) -> list[str]:
         self.logger.info(f"{self.__class__.__name__}: sending list chars message")
         response = self.send(Message(Command.INFO))
-        if response:
-            return response.target.split(' ')
-        return []
+        return response.target.split(' ') if response else []
 
     def start_bot(self, target: str):
         self.logger.info(f"{self.__class__.__name__}: sending start bot message for :{target}")
@@ -160,6 +205,31 @@ class GhostbotIPCClient(IPCClient):
         self.logger.info(f"{self.__class__.__name__}: sending get config message for :{target}")
         self.send(Message(Command.CONFIG_GET, dict(action="get", char=target)))
 
+    def get_config_autologin(self, target: str):
+        self.logger.info(f"{self.__class__.__name__}: sending get autologin config message for :{target}")
+        self.send(Message(Command.CONFIG_AUTOLOGIN_GET, dict(action="get", char=target)))
+
     def set_config(self, target: str, config: Config):
         self.logger.info(f"{self.__class__.__name__}: sending set config message for :{target} :: {config}")
         return self.send(Message(Command.CONFIG_SET, dict(action="set",char=target, config=config.to_yaml())))
+
+    def set_config_autologin(self, config: LoginDetailsConfigLoader.CharDetails):
+        self.logger.info(f'{self.__class__.__name__}: sending set autologin config message for :{config.char_name}')
+        return self.send(Message(Command.CONFIG_AUTOLOGIN_SET, config.__dict__))
+
+    def delete_config_autologin(self, target: str):
+        self.logger.info(f"{self.__class__.__name__}: sending delete config autologin message for :{target}")
+        return self.send(Message(Command.CONFIG_AUTOLOGIN_DELETE, dict(action="delete", char=target)))
+
+    def list_chars_autologin(self) -> list[str]:
+        self.logger.info(f"{self.__class__.__name__}: sending list chars autologin message")
+        response = self.send(Message(Command.INFO_AUTOLOGIN))
+        return response.target.split(' ') if response else []
+
+    def close_client(self, target: str):
+        self.logger.info(f"{self.__class__.__name__}: sending close client message for :{target}")
+        return self.send(Message(Command.CLOSE_CLIENT, dict(action='close', char=target)))
+
+    def open_client(self, target: str):
+        self.logger.info(f"{self.__class__.__name__}: sending open client message for :{target}")
+        return self.send(Message(Command.OPEN_CLIENT, dict(action='open', char=target)))

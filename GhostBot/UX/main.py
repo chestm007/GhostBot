@@ -1,3 +1,4 @@
+import contextlib
 import os
 import threading
 import time
@@ -5,6 +6,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 
 from GhostBot import logger
+from GhostBot.UX.autologin.main import GhostBotAutoLogin
 from GhostBot.UX.tabbed_widget.delete_frame import DeleteFrame
 from GhostBot.UX.tabbed_widget.sell_frame import SellFrame
 from GhostBot.config import Config
@@ -23,7 +25,7 @@ from GhostBot.UX.tabbed_widget.pet_frame import PetFrame
 from GhostBot.UX.tabbed_widget.regen_frame import RegenFrame
 
 
-char_info_refresh_lock = threading.Lock()
+char_info_refresh_lock = threading.RLock()
 
 class GhostBot(tk.Tk):
     def __init__(self):
@@ -84,7 +86,8 @@ class GhostBot(tk.Tk):
         self.tabbed_widget.add(self._delete_frame, text="Delete")
 
         def update_char_info_display(response):
-            char_info_refresh_lock.release_lock()
+            with contextlib.suppress(RuntimeError):
+                char_info_refresh_lock.release()
             if response.get('name') != self.selected_char():
                 return
 
@@ -167,6 +170,7 @@ class GhostBotMenu (tk.Menu):
         menu_0.add_command(label="Import char config", command=self._import_char_config)
         menu_0.add_command(label="Export char config", command=self._export_char_config)
         menu_0.add_command(label="Shutdown server", command=self.master.client.shutdown_server)
+        menu_0.add_command(label="Auto login configuration", command=lambda: GhostBotAutoLogin(self, client=self.master.client))
         menu_0.add_command(label="Exit", command=self.master.destroy)
         self.add_cascade(label="File", menu=menu_0)
 
@@ -221,7 +225,7 @@ def main():
 
     def _on_char_change():
         if _selected := ghost_bot.selected_char():
-            char_info_refresh_lock.acquire_lock()
+            char_info_refresh_lock.acquire()
             ghost_bot.client.char_info(_selected)
             time.sleep(0.1)
             ghost_bot.client.get_config(_selected)
@@ -230,7 +234,7 @@ def main():
         while True:
             time.sleep(1)
             if _selected := ghost_bot.selected_char():
-                char_info_refresh_lock.acquire_lock()
+                char_info_refresh_lock.acquire()
                 ghost_bot.client.char_info(_selected)
 
     ghost_bot.list_box.on_list_select(lambda _: _on_char_change())

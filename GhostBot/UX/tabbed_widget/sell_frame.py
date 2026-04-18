@@ -2,7 +2,7 @@ import time
 from tkinter import ttk
 
 from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
-from GhostBot.UX.utils import _format_spot
+from GhostBot.UX.utils import _format_spot, create_entry
 from GhostBot.client_window import Win32ClientWindow
 from GhostBot.config import Config, SellConfig
 from GhostBot.lib.var_or_none import var_or_none
@@ -11,13 +11,13 @@ from GhostBot.lib.var_or_none import var_or_none
 class SellFrame(TabFrame):
     def _init(self, *args, **kwargs) -> None:
         self._vars = dict(
-            item_pos=self._create_entry("Start item pos:", 0, 0, ("bot_config.sell.item_pos", str)),
-            use_mount=self._create_entry("Use mount:", 0, 2, ("bot_config.sell.use_mount", bool)),
-            npc_name=self._create_entry("NPC name:", 1, 0, ("bot_config.sell.npc_name", str)),
-            mount_key=self._create_entry("Mount key:", 1, 2, ("bot_config.sell.mount_key", str)),
-            npc_search_spot=self._create_entry("NPC search spot:", 2, 0, ("bot_config.sell.npc_search_spot", str)),
-            npc_sell_click_spot=self._create_entry("NPC sell coords:", 3, 0, ("bot_config.sell.npc_sell_click_spot", str)),
-            interval_mins=self._create_entry("Interval mins:", 4, 0, ("bot_config.sell.interval_mins", str)),
+            item_pos=create_entry(self, "Start item pos:", 0, 0, ("bot_config.sell.item_pos", str)),
+            use_mount=create_entry(self, "Use mount:", 0, 2, ("bot_config.sell.use_mount", bool)),
+            npc_name=create_entry(self, "NPC name:", 1, 0, ("bot_config.sell.npc_name", str)),
+            mount_key=create_entry(self, "Mount key:", 1, 2, ("bot_config.sell.mount_key", str)),
+            npc_search_spot=create_entry(self, "NPC search spot:", 2, 0, ("bot_config.sell.npc_search_spot", str)),
+            npc_sell_click_spot=create_entry(self, "NPC sell coords:", 3, 0, ("bot_config.sell.npc_sell_click_spot", str)),
+            interval_mins=create_entry(self, "Interval mins:", 4, 0, ("bot_config.sell.interval_mins", str)),
         )
 
         ttk.Button(

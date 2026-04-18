@@ -1,15 +1,16 @@
 from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
 from GhostBot.config import Config, PetConfig
 from GhostBot.lib.var_or_none import var_or_none
+from UX.utils import create_entry
 
 
 class PetFrame(TabFrame):
     def _init(self, *args, **kwargs) -> None:
         self._vars = dict(
-            spawn_interval=self._create_entry("Spawn interval:", 0, 0, ("bot_config.pet.spawn_interval", str)),
-            spawn_key=self._create_entry("Spawn key:", 0, 2, ("bot_config.pet.spawn_key", str)),
-            food_interval=self._create_entry("Feed interval:", 1, 0, ("bot_config.pet.food_interval", str)),
-            food_key=self._create_entry("Feed key:",1, 2, ("bot_config.pet.food_key", str)),
+            spawn_interval=create_entry(self, "Spawn interval:", 0, 0, ("bot_config.pet.spawn_interval", str)),
+            spawn_key=create_entry(self, "Spawn key:", 0, 2, ("bot_config.pet.spawn_key", str)),
+            food_interval=create_entry(self, "Feed interval:", 1, 0, ("bot_config.pet.food_interval", str)),
+            food_key=create_entry(self, "Feed key:",1, 2, ("bot_config.pet.food_key", str)),
         )
 
     def display_config(self, config: Config):

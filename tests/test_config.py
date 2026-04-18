@@ -202,3 +202,30 @@ def test_config_upgrade():
         yaml.safe_load(_config_str)
     )
     assert _config.attack.spot == (100, 200)
+
+def test_autologin_config():
+    _config = LoginDetailsConfigLoader.LoginDetails(
+        dict(
+            char1=LoginDetailsConfigLoader.CharDetails(
+                char_name='char1',
+                username='username',
+                password='password',
+                server='light_in_the_darkness',
+                enabled=False,
+            )
+        )
+    )
+
+    assert _config.get('char1').username == 'username'
+    assert _config.get('char1').password == 'password'
+    assert _config.get('char1').server == 'light_in_the_darkness'
+    assert _config.get('char1').enabled == False
+
+    assert LoginDetailsConfigLoader().to_yaml(_config) == {
+        'char1': {
+            'username': 'username',
+            'password': 'password',
+            'server': 'light_in_the_darkness',
+            'enabled': False,
+        }
+    }

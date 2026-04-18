@@ -1,38 +1,34 @@
 import json
-from enum import Enum, EnumType
+from enum import Enum, EnumType, unique
 from json import JSONDecodeError
 from typing import Any, Generator
 
 from GhostBot import logger
 
 
+@unique
 class Command(Enum):
     ERROR = -2
     EXIT = -1
     INFO = 1
     INFO_CHAR = 2
+    INFO_AUTOLOGIN = 3
     START = 10
     STOP = 20
     CONFIG = 30
     CONFIG_GET = 31
     CONFIG_SET = 32
+    CONFIG_AUTOLOGIN_GET = 33
+    CONFIG_AUTOLOGIN_SET = 34
+    CONFIG_AUTOLOGIN_DELETE = 35
+    OPEN_CLIENT = 40
+    CLOSE_CLIENT = 41
     LOG = 100
     SERVER_HEARTBEAT = 200
 
     @classmethod
     def from_str(cls, command: str) -> "Command | None":
-        match command.upper():
-            case 'EXIT': return cls.EXIT
-            case 'INFO': return cls.INFO
-            case 'INFO_CHAR': return cls.INFO_CHAR
-            case 'START': return cls.START
-            case 'STOP': return cls.STOP
-            case 'CONFIG': return cls.CONFIG
-            case 'CONFIG_GET': return cls.CONFIG_GET
-            case 'CONFIG_SET': return cls.CONFIG_SET
-            case 'LOG': return cls.LOG
-            case 'SERVER_HEARTBEAT': return cls.SERVER_HEARTBEAT
-        return None
+        return cls.__members__.get(command.upper())
 
     def encode(self, inp):
         return str(self.value).encode(inp)
