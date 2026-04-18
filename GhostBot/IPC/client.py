@@ -40,7 +40,7 @@ class IPCClient:
             self.logger.exception(e)
             self.running = False
 
-    def _dispatch(self, data: str):
+    def _dispatch(self, data: bytes):
         """Override with your implementation"""
         _data = data.decode('utf8')
         try:
