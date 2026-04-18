@@ -23,6 +23,8 @@ from GhostBot.UX.tabbed_widget.pet_frame import PetFrame
 from GhostBot.UX.tabbed_widget.regen_frame import RegenFrame
 
 
+char_info_refresh_lock = threading.Lock()
+
 class GhostBot(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -67,6 +69,7 @@ class GhostBot(tk.Tk):
         self.tabbed_widget.place(x=177, y=9, width=508, height=230)
 
         _functions_frame = FunctionsFrame(master=self.tabbed_widget)
+        self._functions_frame = _functions_frame
         _attack_frame = AttackFrame(master=self.tabbed_widget)
         _buff_frame = BuffFrame(master=self.tabbed_widget)
         _fairy_frame = FairyFrame(master=self.tabbed_widget)
@@ -85,6 +88,9 @@ class GhostBot(tk.Tk):
         self.tabbed_widget.add(_delete_frame, text="Delete")
 
         def update_char_info_display(response):
+            char_info_refresh_lock.release_lock()
+            if response.get('name') != self.selected_char():
+                return
 
             self.tabbed_widget.setvar("char_info.name", response.get("name", 'loading.'))
             self.tabbed_widget.setvar("char_info.level", response.get("level", 'loading.'))
@@ -180,17 +186,17 @@ def main():
 
     def _on_char_change():
         if _selected := ghost_bot.selected_char():
+            char_info_refresh_lock.acquire_lock()
             ghost_bot.client.char_info(_selected)
             time.sleep(0.1)
             ghost_bot.client.get_config(_selected)
 
     def _refresh_char_info():
         while True:
+            time.sleep(1)
             if _selected := ghost_bot.selected_char():
+                char_info_refresh_lock.acquire_lock()
                 ghost_bot.client.char_info(_selected)
-            time.sleep(0.5)
-
-    #ghost_bot.after(1000, lambda : _refresh_char_info())
 
     ghost_bot.list_box.on_list_select(lambda _: _on_char_change())
     threading.Thread(target=_refresh_char_info, daemon=True).start()
