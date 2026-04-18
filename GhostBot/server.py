@@ -41,44 +41,47 @@ class GhostbotIPCServer(IPCServer):
 
     def _dispatch(self, conn, _data: str) -> Message | bool | None:
         for message in Message.from_json_handling_multiple(_data):
-            self.logger.debug("GhostBotIPCServer :: dispatching message: %s", message)
+            if not message:
+                self.logger.debug('empty message')
+                continue
+            self.logger.debug("dispatching message: %s", message)
             def _dispatch_message():
                 match message.command:
                     case Command.EXIT:
-                        self.logger.info('GhostBotIPCServer ::  exit command received')
+                        self.logger.info(' exit command received')
                         return
                     case Command.START:
-                        self.logger.debug("GhostBotIPCServer :: dispatching START")
+                        self.logger.debug("dispatching START")
                         self.bot_controller.start_bot(message.target)
                         return message
                     case Command.STOP:
-                        self.logger.debug("GhostBotIPCServer :: dispatching STOP")
+                        self.logger.debug("dispatching STOP")
                         self.bot_controller.stop_bot(message.target)
                         return message
                     case Command.INFO:
-                        self.vdebug("GhostBotIPCServer :: dispatching INFO")
+                        self.vdebug("dispatching INFO")
                         if message.target:
-                            self.vdebug("GhostBotIPCServer :: dispatching INFO containing for [%s]", message.target)
+                            self.vdebug("dispatching INFO containing for [%s]", message.target)
                             _target = self.bot_controller.get_client(message.target)
                             if _target:
                                 return Message(Command.INFO, _target.to_json())
                             return
                         return self.bot_controller_clients_message
                     case Command.CONFIG:
-                        self.vdebug("GhostBotIPCServer :: dispatching CONFIG")
+                        self.vdebug("dispatching CONFIG")
                         _client = self.bot_controller.get_client(message.target['char'])
                         match message.target.get('action'):
                             case "get":
-                                self.logger.info("GhostBotIPCServer :: dispatching CONFIG get")
+                                self.logger.info("dispatching CONFIG get")
                                 if _client.config is None:
                                     _client.load_config()
                                 return Message(Command.CONFIG, json.dumps(_client.config.to_yaml()))
                             case "set":
-                                self.vdebug("GhostBotIPCServer :: dispatching CONFIG set")
+                                self.vdebug("dispatching CONFIG set")
                                 if _client is not None:
-                                    self.vdebug("GhostBotIPCServer :: Setting config for %s", _client.name)
+                                    self.vdebug("Setting config for %s", _client.name)
                                     conf = Config.load_yaml(message.target.get('config'))
-                                    self.logger.info("GhostBotIPCServer :: char: %s - set config: %s", _client.name, conf)
+                                    self.logger.info("char: %s - set config: %s", _client.name, conf)
                                     ConfigLoader(_client).save(conf)
                                     _client.set_config(conf)
                                     return message
@@ -89,7 +92,6 @@ class GhostbotIPCServer(IPCServer):
                 conn.sendall(_dispatch_message().encode('utf8'))
             except Exception as e:
                 self.logger.exception(e)
-                raise e
 
 
 class GhostbotIPCClient(IPCClient):
@@ -119,6 +121,9 @@ class GhostbotIPCClient(IPCClient):
             pass
         try:
             for message in Message.from_json_handling_multiple(_data):
+                if message is None:
+                    self.logger.debug('received empty message')
+                    continue
                 self.logger.debug(f'dispatching callback for {message}')
                 if cb := self._callbacks.get(message.command):
                     return cb(message)
