@@ -3,46 +3,51 @@ import threading
 import time
 from typing import Callable
 
-from GhostBot import logger
+from GhostBot.IPC.server import IPCServerLogHandler
 from GhostBot.client_launcher import ClientLauncher
 from GhostBot.controller.bot_controller import BotController, BotClientWindow
 from GhostBot.controller.login_controller import LoginController
 from GhostBot.enums.bot_status import BotStatus
-from GhostBot.server import GhostbotIPCServer
 
 
 class ThreadedBotController(BotController):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, auto_login: bool = True, **kwargs):
+        super().__init__(**kwargs)
         self._tasks: dict[str, threading.Thread] = dict()
-        self._running = False
+        self.auto_login = auto_login
 
     def scan_for_clients(self):
         try:
             while self._running:
-                logger.debug("AsyncBotController :: uptime %ss", self._total_running_secs)
+                self.logger.debug("uptime %ss", self._total_running_secs)
                 self._remove_closed_pending_clients()
                 self._scan_for_clients()
-                self._process_login_queue()
-                time.sleep(10)
+
+                if self.auto_login:
+                    self._process_login_queue()
+
+                for i in range(0, 10):
+                    if not self._running:
+                        break
+                    time.sleep(1)
         except KeyboardInterrupt:
-            logger.info(f'AsyncBotController :: Exiting as requested...')
+            self.logger.info('Exiting as requested...')
             return
         except Exception as e:
-            logger.exception(e)
+            self.logger.exception(e)
             return
 
     def _process_login_queue(self):
 
         def callback(__client, result):
             if not result:
-                logger.debug('AsyncBotController :: [%s] Login failed, removing %s from self._pending_clients', __client.process_id, __client.name)
+                self.logger.debug('[%s] Login failed, removing %s from self._pending_clients', __client.process_id, __client.name)
                 try:
                     self._pending_clients.pop(__client.name)
                 except KeyError:
-                    logger.debug('AsyncBotController :: [%s] pending client not found.. possibly harmless', __client.name)
+                    self.logger.debug('[%s] pending client not found.. possibly harmless', __client.name)
             else:
-                logger.debug('AsyncBotController :: [%s] :: Login succeeded', __client.process_id)
+                self.logger.debug('[%s] :: Login succeeded', __client.process_id)
                 self._pending_clients.pop(__client.name)
                 self.add_client(__client)
 
@@ -53,9 +58,9 @@ class ThreadedBotController(BotController):
             try:
                 ClientLauncher().block_until_ready()
             except IndexError:
-                logger.debug('AsyncBotController :: game launcher process didnt launch, retrying')
+                self.logger.debug('game launcher process didnt launch, retrying')
             except KeyError:
-                logger.debug('AsyncBotController :: too many game launcher processes detected, there can only be one')
+                self.logger.debug('too many game launcher processes detected, there can only be one')
 
         for pid, _client in dict(self.login_queue).items():
 
@@ -65,27 +70,26 @@ class ThreadedBotController(BotController):
                 if lc.current_stage == LoginController.LoginStage.character_select:
                     time.sleep(5)  # fixes a race condition with the client window opening
 
-                char = _client.get_window_name()
+                __char = _client.get_window_name()
 
-                logger.debug('AsyncBotController :: self._eligible_logins :: %s', self._eligible_logins())
+                self.logger.debug('self._eligible_logins :: %s', self._eligible_logins())
 
-                if char in self._eligible_logins().keys() and _client.name is None:
-                    _conf = (char, self._eligible_logins().pop(char))
-                    logger.debug('AsyncBotController :: [%s|%s] resuming login procedure with config %s', pid, char, _conf)
+                if __char in self._eligible_logins() and _client.name is None:
+                    _conf = self._eligible_logins().pop(__char)
+                    self.logger.debug('[%s|%s] resuming login procedure with config %s', pid, _conf.char_name, _conf)
                 elif lc.current_stage == LoginController.LoginStage.enter_credentials:
-                    _conf = self._eligible_logins().popitem()
-                    logger.debug('AsyncBotController :: [%s|%s] starting login procedure with config %s', pid, char, _conf)
-                    char = _conf[0]
+                    _conf = self._eligible_logins().popitem()[1]
+                    self.logger.debug('[%s|%s] starting login procedure with config %s', pid, _conf.char_name, _conf)
                 else:
-                    logger.debug('AsyncBotController :: [%s|%s] skipping', pid, char)
+                    self.logger.debug('[%s|%s] skipping', pid, __char)
                     continue
 
-                self._pending_clients[char] = _client
+                self._pending_clients[_conf.char_name] = _client
 
-                logger.debug('AsyncBotController :: LoginStage of new pending client :: %s', lc.current_stage)
+                self.logger.debug('LoginStage of new pending client :: %s', lc.current_stage)
 
                 # if lc.current_stage == LoginController.LoginStage.enter_credentials:
-                logger.debug('AsyncBotController :: [%s|%s] setting config for LoginController', pid, char)
+                self.logger.debug('[%s|%s] setting config for LoginController', pid, _conf.char_name)
                 lc.set_config(_conf)
                 self._add_task(lc.handle_login, f"task{pid}", lambda result: callback(_client, result))
                 del self.login_queue[pid]
@@ -94,11 +98,11 @@ class ThreadedBotController(BotController):
         current_running_procs = self._pymem_process.list_clients()
         for k, v in list(self._pending_clients.items()):
             if (c_pid := v.proc.process_id) not in (p.process_id for p in current_running_procs):
-                logger.info("BotController :: removing [%s]", c_pid)
+                self.logger.info("BotController :: removing [%s]", c_pid)
                 try:
                     self._stop_task(f'task{self._pending_clients.pop(k).process_id}')
                 except Exception as e:
-                    logger.info(e)
+                    self.logger.info(e)
 
     def _add_task(self, target: Callable, task_name: str, *target_args, **target_kwargs):
         task = threading.Thread(target=target, args=target_args, kwargs=target_kwargs)
@@ -110,13 +114,14 @@ class ThreadedBotController(BotController):
 
     def _stop_all_tasks(self, timeout: int = 30):
         for _task_name, _task in self._tasks.items():
-            logger.info('ThreadedBotController :: stopping task %s', _task_name)
+            self.logger.info('stopping task %s', _task_name)
             _task.join(timeout=timeout)
 
     def start_bot(self, client: BotClientWindow | str) -> None:
         if isinstance(client, str):
+            _client = client
             if (client := self.get_client(client)) is None:
-                logger.warning(f'no client {client}')
+                self.logger.warning('no client %s', _client)
                 return
         self.reload_bot_config(client)
         client.start_bot()
@@ -124,75 +129,84 @@ class ThreadedBotController(BotController):
 
     def _run_bot(self, client: BotClientWindow) -> None:
         client.bot_status = BotStatus.started
+        self.logger.info("%s: Started.", client.name)
 
         functions = list(self._get_functions_for_client(client))
+        for function in functions:
+            if self._ipc_log_handler not in function.logger.handlers:
+                function.logger.addHandler(self._ipc_log_handler)
 
         while client.running:
             client.bot_status = BotStatus.running
             if client.disconnected:
-                logger.info(f"{client.name}: disconnected.")
+                self.logger.info("%s: disconnected.", client.name)
+                client.close_window()
                 break
             try:
                 for function in functions:
                     function.run()
 
             except Exception as e:
-                logger.exception(e)
+                self.logger.exception(e)
         client.bot_status = BotStatus.stopped
-        logger.info(f"{client.name}: Stopped.")
+        self.logger.info("%s: Stopped.", client.name)
 
     def stop_all_bots(self, timeout=30) -> None:
-        logger.info("stopping all bots...")
+        self.logger.info("stopping all bots...")
         _stopping = []
         for client in self.clients.values():
             if client.running:
-                logger.info(f'stopping client {client.name}')
+                self.logger.info('stopping client  %s', client.name)
                 client.stop_bot()
                 _stopping.append(client)
         for client in _stopping:
-            logger.debug(f'joining thread {client.name}')
+            self.logger.debug('joining thread %s', client.name)
             self._stop_task(client.name, timeout)
             client.bot_status = BotStatus.stopped
 
     def stop_bot(self, client: str | BotClientWindow, timeout=5) -> None:
         if isinstance(client, str):
-            if (client := self.get_client(client)) is None:
-                logger.warning(f'no client {client}')
+            client: BotClientWindow = self.get_client(client)
+            if client is None:
+                self.logger.warning('no client %s', client)
                 return
+
         if client.running:
             client.stop_bot()
             self._stop_task(client.name, timeout)
             client.bot_status = BotStatus.stopped
 
-    def listen(self, host=None, port=None):
+    def listen(self):
         self._running = True
         try:
             self._controller_start_time = time.time()
             self._add_task(self.scan_for_clients, "scan_for_clients")
-            server = GhostbotIPCServer(bot_controller=self, host=host, port=port)
-            server.listen()
+            self.server.run()
+            while self._running:
+                time.sleep(1)
         except KeyboardInterrupt:
-            logger.info('AsyncBotController :: Exiting...')
+            self.logger.info('Exiting...')
         except Exception as e:
-            logger.exception(e)
-        self.stop_all_bots()
-        self._stop_all_tasks()
+            self.logger.exception(e)
+        self.shutdown()
 
     def shutdown(self):
-        self._running = False
-        self.stop_all_bots(5)
+        super().shutdown()
+        self._stop_all_tasks()
 
 if __name__ == '__main__':
     import os
+    import logging
+    from GhostBot import logger as _logger
 
     if os.environ.get('PYCHARM_HOSTED'):
-        logger.setLevel(logging.DEBUG)
+        _logger.setLevel(logging.DEBUG)
 
     bot_controller = ThreadedBotController()
     try:
         bot_controller.listen()
     except KeyboardInterrupt:
-        logger.info('received signal, exiting')
+        _logger.info('received signal, exiting')
     finally:
-        logger.info('exiting...')
+        _logger.info('exiting...')
         bot_controller.shutdown()

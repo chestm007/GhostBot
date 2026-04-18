@@ -1,9 +1,10 @@
 import asyncio
 import inspect
+import threading
 import time
 from collections.abc import Callable
 from functools import partial
-from typing import Coroutine, Protocol
+from typing import Coroutine, Protocol, TypeVar, Any, ParamSpec, cast
 
 
 class TRetryCoroutine(Protocol):
@@ -42,6 +43,30 @@ async def asyncretry(func: RetryCoroutine, retries: int = 1, delay: float = 1) -
         await asyncio.sleep(delay)
     return False
 
+
+def recursive_subclasses(_clazz):
+    if not inspect.isabstract(_clazz):
+        yield _clazz
+    for _sub in _clazz.__subclasses__():
+        yield from recursive_subclasses(_sub)
+
+
+def subclasses_by_name(_clazz):
+    return {a.__name__: a for a in recursive_subclasses(_clazz)}
+
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+
+def with_timeout(_func: Callable[_P, _R], timeout: float = 1) -> _R:
+
+    _return: list[_R] = []
+    thread = threading.Thread(target=lambda: _return.append(_func()), name=f'{_func.__name__}:with_timeout')
+    thread.start()
+    thread.join(timeout=timeout)
+    if not _return:
+        raise TimeoutError('%s timed out', _func.__name__)
+    return _return.pop()
 
 if __name__ == "__main__":
 

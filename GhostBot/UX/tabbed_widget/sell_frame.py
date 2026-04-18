@@ -2,6 +2,7 @@ import time
 from tkinter import ttk
 
 from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
+from GhostBot.UX.utils import _format_spot
 from GhostBot.client_window import Win32ClientWindow
 from GhostBot.config import Config, SellConfig
 from GhostBot.lib.var_or_none import var_or_none
@@ -17,7 +18,6 @@ class SellFrame(TabFrame):
             npc_search_spot=self._create_entry("NPC search spot:", 2, 0, ("bot_config.sell.npc_search_spot", str)),
             npc_sell_click_spot=self._create_entry("NPC sell coords:", 3, 0, ("bot_config.sell.npc_sell_click_spot", str)),
             interval_mins=self._create_entry("Interval mins:", 4, 0, ("bot_config.sell.interval_mins", str)),
-            return_spot=self._create_entry("Return Spot:", 5, 0, ("bot_config.sell.return_spot", str)),
         )
 
         ttk.Button(
@@ -27,10 +27,6 @@ class SellFrame(TabFrame):
         ttk.Button(
             master=self, text="Current", command=lambda: self._set_var_to_mouse_pos('npc_sell_click_spot')
         ).grid(row=3, column=2)
-
-        ttk.Button(
-            master=self, text="Current", command=lambda: self._set_spot_as_current('return_spot')
-        ).grid(row=5, column=2)
 
     def _set_var_to_mouse_pos(self, field: str) -> None:
         window_pos = self.getvar('window_info.pos')
@@ -43,12 +39,6 @@ class SellFrame(TabFrame):
         self._vars[field].set(eval(self.master.getvar('char_info.position')))
 
     def display_config(self, config: Config):
-        def _format_spot(_spot):
-            if _spot:
-                if isinstance(_spot, str):
-                    return tuple(_spot.split(" "))
-                return f"{' '.join(map(str, _spot))}"
-            return ''
 
         if config.sell:
             mount_key = ''
@@ -59,7 +49,6 @@ class SellFrame(TabFrame):
             self.setvar('bot_config.sell.interval_mins', config.sell.sell_interval_mins or '')
             self.setvar('bot_config.sell.npc_search_spot', _format_spot(config.sell.npc_search_spot))
             self.setvar('bot_config.sell.npc_sell_click_spot', _format_spot(config.sell.npc_sell_click_spot))
-            self.setvar('bot_config.sell.return_spot', _format_spot(config.sell.return_spot))
             self.setvar('bot_config.sell.use_mount', bool(config.sell.use_mount))
             self.setvar('bot_config.sell.mount_key', mount_key)
 
@@ -78,5 +67,4 @@ class SellFrame(TabFrame):
             sell_interval_mins=var_or_none(self.getvar('bot_config.sell.interval_mins')),
             npc_search_spot=var_or_none(self.getvar('bot_config.sell.npc_search_spot')),
             npc_sell_click_spot=var_or_none(self.getvar('bot_config.sell.npc_sell_click_spot')),
-            return_spot=var_or_none(self.getvar('bot_config.sell.return_spot')),
         )

@@ -1,5 +1,3 @@
-from tkinter import ttk
-
 from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
 from GhostBot.controller.bot_controller import BotClientWindow
 from GhostBot.config import Config, RegenConfig
@@ -15,23 +13,9 @@ class RegenFrame(TabFrame):
             mp_low=self._create_entry("MP Low:", 1, 0, ("bot_config.regen.mp_low", str)),
             mp_key=self._create_entry("MP Key:", 1, 2, ("bot_config.regen.mp_key", str)),
             sit_key=self._create_entry("Sit Key:", 2, 0, ("bot_config.regen.sit_key", str)),
-            spot=self._create_entry("Spot:", 3, 0, ("bot_config.regen.spot", str)),
         )
 
-        ttk.Button(
-            master=self, text="Current", command=lambda: self._set_spot_as_current('spot')
-        ).grid(row=3, column=2)
-
-    def _set_spot_as_current(self, field: str):
-        self._vars[field].set(eval(self.master.getvar('char_info.position')))
-
     def display_config(self, config: Config):
-        def _format_spot(_spot):
-            if _spot:
-                if isinstance(_spot, str):
-                    return tuple(_spot.split(" "))
-                return f"{' '.join(map(str, _spot))}"
-            return ''
 
         if config.regen:
             hp_key = ''
@@ -47,7 +31,6 @@ class RegenFrame(TabFrame):
 
             self.setvar('bot_config.regen.hp_low', str(config.regen.hp_threshold or ''))
             self.setvar('bot_config.regen.mp_low', str(config.regen.mana_threshold or ''))
-            self.setvar('bot_config.regen.spot', _format_spot(config.regen.spot))
 
         else:
             self.clear()
@@ -62,5 +45,4 @@ class RegenFrame(TabFrame):
             bindings=self._populate_bindings(bindings),
             hp_threshold=var_or_none(self.getvar('bot_config.regen.hp_low')),
             mana_threshold=var_or_none(self.getvar('bot_config.regen.mp_low')),
-            spot=var_or_none(self.getvar('bot_config.regen.spot')),
         )

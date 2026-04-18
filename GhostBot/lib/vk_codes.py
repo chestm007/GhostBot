@@ -188,13 +188,13 @@ win32messages = AttrDict(
         WM_DESTROY=0x0002,
 )
 
-def get_with_case(_key: int | str) -> int | None:
+def get_with_case(_key: int | str | None) -> int:
     """Fetch the keycode for the key from our map"""
     try:
         if isinstance(_key, str) and len(_key) == 1:  # if `key` is [a-zA-Z]
             return vk_codes[_key.lower()] + 0x20 if _key.isupper() else vk_codes[_key.lower()]
         else:
             return vk_codes[_key]
-    except AttributeError:
+    except (AttributeError, KeyError) as e:
         logger.exception('vk_codes.py :: INTERNAL ERROR: %s not found in vk_codes', _key)
-        return
+        raise e

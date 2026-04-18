@@ -1,19 +1,27 @@
+__all__ = ['AbstractClientWindow']
+
 import time
 from abc import ABC, abstractmethod
-from collections import namedtuple
 from contextlib import contextmanager
 from typing import Self
 
-from GhostBot import logger
+from GhostBot import logger as _logger
+from GhostBot.image_finder import ImageFinder
+from GhostBot.lib.types import Location
 from GhostBot.lib.talisman_ui_locations import UI_locations
-
-Location = namedtuple('Location', ['x', 'y'])
 
 
 class AbstractClientWindow(ABC):
     """
     Abstract Class containing all methods expected to interact with the Talisman Online client window.
     """
+    def __init__(self):
+        self.logger = _logger.getChild(self.__class__.__name__)
+        self._image_finder = ImageFinder(self)
+
+    @property
+    @abstractmethod
+    def identifier(self) -> str: ...
 
     @property
     @abstractmethod
@@ -21,6 +29,17 @@ class AbstractClientWindow(ABC):
 
     @abstractmethod
     def set_window_name(self) -> Self: ...
+
+    @property
+    def has_alive_target(self):
+        try:
+            if self.target_hp < 0:
+                return False
+        except TypeError:
+            return False
+        if self.target_name == self.name:
+            return False
+        return True
 
     def new_target(self, _key='tab') -> Self:
         self.press_key(_key)
@@ -61,7 +80,7 @@ class AbstractClientWindow(ABC):
             self.press_key(_key)
             time.sleep(4)
         if attempts == 3:
-            logger.error("Failed to mount up")
+            self.logger.error("Failed to mount up")
 
     def dismount(self, _key=None):
         if _key is None:
@@ -73,10 +92,10 @@ class AbstractClientWindow(ABC):
             self.press_key(_key)
             time.sleep(4)
         if attempts == 3:
-            logger.error("Failed to dismount")
+            self.logger.error("Failed to dismount")
 
     @abstractmethod
-    def capture_window(self, color: bool): ...
+    def capture_window(self, color: bool = False): ...
 
     @abstractmethod
     def press_key(self, key: int | str, char_only: bool = False) -> None: ...
@@ -108,13 +127,31 @@ class AbstractClientWindow(ABC):
         self.left_click(UI_locations.minimap_surroundings)
         time.sleep(0.5)
 
+    def map_open(self) -> bool:
+        return self._image_finder.is_map_open()
+
+    @contextmanager
+    def map(self):
+        self.open_map()
+        yield
+        self.close_map()
+
+    def open_map(self):
+        while not self.map_open():
+            self.press_key('m')
+
+    def close_map(self):
+        while self.map_open():
+            self.press_key('m')
+
     @property
     @abstractmethod
     def inventory_open(self) -> bool: ...
 
     @contextmanager
     def inventory(self):
-        yield self.open_inventory()
+        self.open_inventory()
+        yield
         self.close_inventory()
 
     def open_inventory(self):

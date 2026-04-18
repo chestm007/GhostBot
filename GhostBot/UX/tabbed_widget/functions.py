@@ -69,21 +69,24 @@ class FunctionsFrame(tk.Frame):
         ttk.Label(master=char_info_frame, textvariable=self._vars['status'], width=10).grid(row=0, column=3)
 
     def save_config(self):
+        def _function_enabled(f):
+            return int(self.getvar(f'bot_config.{f}.enabled')) == 1
+        
         _config = Config()
 
         for child in (c for c in self.master.children.values() if isinstance(c, tk.Frame)):
-            if isinstance(child, AttackFrame) and self.getvar('bot_config.attack.enabled'):
+            if isinstance(child, AttackFrame) and _function_enabled('attack'):
                 _config.attack = child.extract_config()
-            elif isinstance(child, BuffFrame) and self.getvar('bot_config.buff.enabled'):
+            elif isinstance(child, BuffFrame) and _function_enabled('buff'):
                 _config.buff = child.extract_config()
-            elif isinstance(child, RegenFrame) and self.getvar('bot_config.regen.enabled'):
+            elif isinstance(child, RegenFrame) and _function_enabled('regen'):
                 _config.regen = child.extract_config()
-            elif isinstance(child, PetFrame) and self.getvar('bot_config.pet.enabled'):
+            elif isinstance(child, PetFrame) and _function_enabled('pet'):
                 _config.pet = child.extract_config()
-            elif isinstance(child, FairyFrame) and self.getvar('bot_config.fairy.enabled'):
+            elif isinstance(child, FairyFrame) and _function_enabled('fairy'):
                 _config.fairy = child.extract_config()
-            elif isinstance(child, SellFrame) and self.getvar('bot_config.sell.enabled'):
+            elif isinstance(child, SellFrame) and _function_enabled('sell'):
                 _config.sell = child.extract_config()
-            elif isinstance(child, DeleteFrame) and self.getvar('bot_config.delete.enabled'):
+            elif isinstance(child, DeleteFrame) and _function_enabled('delete'):
                 _config.delete = child.extract_config()
         return _config

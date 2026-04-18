@@ -36,8 +36,3 @@ class Delete(Runner):
                 ok_pos = self._image_finder.dialog_ok_location
                 if ok_pos:
                     self._client.left_click(ok_pos)
-
-if __name__ == "__main__":
-    import os
-    for k, v in os.environ.items():
-        print(k, v)

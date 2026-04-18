@@ -3,18 +3,19 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from GhostBot.config import RegenConfig
 from GhostBot.functions.runner import Locational
 from GhostBot.lib.math import seconds
 
 if TYPE_CHECKING:
+    from GhostBot.config import RegenConfig
     from GhostBot.controller.bot_controller import BotClientWindow
 
 
 class Regen(Locational):
-    def __init__(self, client: BotClientWindow):
+    def __init__(self, client: BotClientWindow, fairy_activated: bool = False):
         super().__init__(client=client)
 
+        self._fairy_activated = fairy_activated
         self.config: RegenConfig = self._client.config.regen
         self._mana_threshold = float(self.config.mana_threshold or 0.75)
         self._hp_threshold = float(self.config.hp_threshold or 0.75)
@@ -38,13 +39,15 @@ class Regen(Locational):
 
             if self.config.bindings:
                 # mana/hp pots\
-                if self._client.hp_percent < self._hp_threshold:
-                    self._use_hp_pot()
-                if self._client.mana_percent < self._mana_threshold:
-                    self._use_mana_pot()
+                self._use_hp_pot()
+                self._use_mana_pot()
 
             hp = int(self._client.hp)
-            while (self._client.hp < self._client.max_hp or self._client.mana < self._client.max_mana) and self._client.running:
+            if self._fairy_activated:
+                _wait_condition = lambda : (self._client.mana < self._client.max_mana)
+            else:
+                _wait_condition = lambda : (self._client.mana < self._client.max_mana or self._client.hp < self._client.max_hp)
+            while _wait_condition() and self._client.running:
                 self._log_debug(f'healing')
                 time.sleep(2)
                 if self._client.in_battle or self._client.hp < hp:
@@ -59,17 +62,21 @@ class Regen(Locational):
         return self._client.mana_percent < self._mana_threshold
 
     def _hp_low(self) -> int:
+        if self._fairy_activated:
+            return False
         return self._client.hp_percent < self._hp_threshold
 
     def _use_hp_pot(self) -> None:
-        if self.config.bindings.get('hp_pot') is not None:
-            self._goto_spot_and_sit()
-            self._client.press_key(self.config.bindings.get('hp_pot'))
+        if self._client.hp_percent < self._hp_threshold:
+            if self.config.bindings.get('hp_pot') is not None:
+                self._goto_spot_and_sit()
+                self._client.press_key(self.config.bindings.get('hp_pot'))
 
     def _use_mana_pot(self) -> None:
-        if self.config.bindings.get('mana_pot') is not None:
-            self._goto_spot_and_sit()
-            self._client.press_key(self.config.bindings.get('mana_pot'))
+        if self._client.mana_percent < self._mana_threshold:
+            if self.config.bindings.get('mana_pot') is not None:
+                self._goto_spot_and_sit()
+                self._client.press_key(self.config.bindings.get('mana_pot'))
 
     def _goto_spot_and_sit(self) -> None:
         self._goto_start_location()

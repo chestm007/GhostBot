@@ -1,6 +1,7 @@
 import json
-from enum import Enum
+from enum import Enum, EnumType
 from json import JSONDecodeError
+from typing import Any, Generator
 
 from GhostBot import logger
 
@@ -12,6 +13,8 @@ class Command(Enum):
     START = 1
     STOP = 2
     CONFIG = 3
+    LOG = 100
+    SERVER_HEARTBEAT = 200
 
     @classmethod
     def from_str(cls, command: str) -> "Command | None":
@@ -21,7 +24,16 @@ class Command(Enum):
             case 'START': return cls.START
             case 'STOP': return cls.STOP
             case 'CONFIG': return cls.CONFIG
+            case 'LOG': return cls.LOG
+            case 'SERVER_HEARTBEAT': return cls.SERVER_HEARTBEAT
         return None
+
+    def encode(self, inp):
+        return str(self.value).encode(inp)
+
+    @classmethod
+    def from_value(cls, value):
+        return cls(int(value))
 
 class Message:
     def __init__(self, command: str | Command, target: str | dict = None):
@@ -43,11 +55,16 @@ class Message:
         return str(self).encode(inp)
 
     @classmethod
-    def from_json(cls, data: str) -> "Message | None":
+    def from_json(cls, data: str) -> 'Message':
         try:
             return cls(**json.loads(data))
         except JSONDecodeError as e:
-            logger.error(f"Error decoding message to JSON: message: type({type(data)} {data}")
+            logger.error(f"Error decoding message to JSON: message: type({type(data)} [{data}]")
+            logger.exception(e)
+
+    @classmethod
+    def from_json_handling_multiple(cls, data: str) -> Generator['Message', None, None]:
+        yield from (cls.from_json(n) for n in data.replace('}{', '}<<>>{').split('<<>>'))
 
 if __name__ == '__main__':
     message = Message('exit')

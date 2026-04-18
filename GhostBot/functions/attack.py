@@ -4,16 +4,15 @@ import time
 
 from typing import TYPE_CHECKING
 
-from GhostBot import logger
-from GhostBot.config import AttackConfig
-from GhostBot.functions.runner import Locational
+from GhostBot.functions.runner import Locational, InjectedLoggingMixin
 from GhostBot.lib.math import linear_distance
 
 if TYPE_CHECKING:
     from GhostBot.controller.bot_controller import BotClientWindow
+    from GhostBot.config import AttackConfig
 
 
-class AttackContext:
+class AttackContext(InjectedLoggingMixin):
     """
     Object to track changes between now ald last check.
 
@@ -21,21 +20,12 @@ class AttackContext:
     false until they change again
     """
     def __init__(self, client: BotClientWindow, stuck_interval: int) -> None:
-        self._client = client
+        super().__init__(client)
         self._location = self._location = tuple(self._client.location)
         self._target_hp = self._client.target_hp
         self._last_changed_time = time.time()
         self._stuck_interval = stuck_interval
         #self._check_stuck = self._client.config.unstuck
-
-    def _log_err(self, msg: str) -> None:
-        logger.error("AttackContext :: %s :: %s", self._client.identifier, msg)
-
-    def _log_info(self, msg: str) -> None:
-        logger.info("AttackContext :: %s :: %s", self._client.identifier, msg)
-
-    def _log_debug(self, msg: str) -> None:
-        logger.debug("AttackContext :: %s :: %s", self._client.identifier, msg)
 
     @property
     def location_changed(self) -> bool:
@@ -110,15 +100,11 @@ class Attack(Locational):
             self._client.new_target()
             return True
 
-        if (self._client.target_hp is None
-            or self._client.target_name == self._client.name
-            or self._client.target_hp < 0
-            #or (self._distance_to_target() or 0) > self.roam_distance
-        ):
+        if not self._client.has_alive_target:# or (self._distance_to_target() or 0) > self.roam_distance:
             self._client.new_target()
             return True
 
-        while (self._client.target_hp is not None) and int(self._client.target_hp) >= 0 and self._client.running:
+        while self._client.target_hp is not None and self._client.target_hp >= 0 and self._client.running:
             if self._client.target_name == self._client.name:  # if were targeting ourselves, get a new target
                 return True
 
@@ -149,7 +135,7 @@ class Attack(Locational):
                     self._client.press_key(self.config.bindings.get('battle_hp_pot'))
 
     def _distance_to_target(self) -> int | None:
-        if self._client.has_target:
+        if self._client.has_alive_target:
             if (tgt_loc := self._client.target_location) is not None:
                 return linear_distance(self.start_location, tgt_loc)
         return None

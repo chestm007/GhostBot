@@ -3,10 +3,12 @@ from __future__ import annotations
 import functools
 import json
 import socket
-from asyncio import Server
-from typing import TYPE_CHECKING
+import threading
+from _thread import start_new_thread
+from typing import TYPE_CHECKING, Any, Callable
 
-from GhostBot import logger
+from GhostBot.IPC.client import IPCClient
+from GhostBot.IPC.server import IPCServer
 from GhostBot.config import Config, ConfigLoader
 from GhostBot.rpc.message import Message, Command
 
@@ -14,188 +16,153 @@ if TYPE_CHECKING:
     from GhostBot.controller.bot_controller import BotController
 
 
-class GhostbotIPCServer:
-    logger = logger
-    vdebug = lambda msg, *args: None
+class GhostbotIPCServer(IPCServer):
+    vdebug = (lambda msg, *args: None)
 
     def __init__(
         self,
         bot_controller: BotController,
         host: str | None = None,
-        port: int = None,
+        port: int | None = None,
         verbose_logging: bool = False
     ):
         if verbose_logging:
             self.vdebug = self.logger.debug
-        self.host = host or ''
-        self.port = port or 64057
+        super().__init__(host=host or 'localhost', port=port or 64057, heartbeat_interval=10)
         self.bot_controller = bot_controller
-        self.server: Server | None = None
 
-    def listen(self):
-        """
-        Start and run the sync version of the IPC Server until requested to stop.
-        """
-        while True:
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.bind((self.host, self.port))
-                    s.listen(1)
-                    s.settimeout(1)
-                    try:
-                        conn, addr = s.accept()
-                    except TimeoutError:
-                        continue
+    @property
+    def bot_controller_clients_message(self) -> Message:
+        return Message(Command.INFO, ' '.join(k for k, v in self.bot_controller.clients.items() if not v.disconnected))
 
-                    with conn:
-                        data = Message.from_json(conn.recv(1024).decode('utf8'))
-                        # data = pickle.loads(conn.recv(1024))
-                        if data.command == Command.EXIT:
-                            logger.info('GhostBotIPCServer ::  exit command received')
+    def accept(self, sock):
+        super().accept(sock)
+        self.send_to_all(self.bot_controller_clients_message)
+
+    def _dispatch(self, conn, _data: str) -> Message | bool | None:
+        for message in Message.from_json_handling_multiple(_data):
+            if not message:
+                self.logger.debug('empty message')
+                continue
+            self.logger.debug("dispatching message: %s", message)
+            def _dispatch_message():
+                match message.command:
+                    case Command.EXIT:
+                        self.logger.info(' exit command received')
+                        return
+                    case Command.START:
+                        self.logger.debug("dispatching START")
+                        self.bot_controller.start_bot(message.target)
+                        return message
+                    case Command.STOP:
+                        self.logger.debug("dispatching STOP")
+                        self.bot_controller.stop_bot(message.target)
+                        return message
+                    case Command.INFO:
+                        self.vdebug("dispatching INFO")
+                        if message.target:
+                            self.vdebug("dispatching INFO containing for [%s]", message.target)
+                            _target = self.bot_controller.get_client(message.target)
+                            if _target:
+                                return Message(Command.INFO, _target.to_json())
                             return
-                        result = self._dispatch(data)
-                        conn.sendall(result.encode('utf8'))
-                        # conn.sendall(pickle.dumps(result))
-            except KeyboardInterrupt:
-                logger.info("GhostBotIPCServer :: Exiting due to keyboard interrupt")
-                break
-            except Exception as e:
-                logger.exception(e)
-
-
-    # async def _handle_client(self, reader, writer):
-    #     request = None
-    #     while request != 'quit':
-    #         result = await reader.read(1024)
-    #         if reader._eof:
-    #             await asyncio.sleep(0.5)
-    #             continue
-    #         self.vdebug("GhostBotIPCServer :: received data: %s", result)
-    #         data = Message.from_json(result.decode('utf8'))
-    #         if data.command == Command.EXIT:
-    #             logger.info(f'exit command received')
-    #             self.server.close()
-    #             await self.server.wait_closed()
-    #             return
-    #         result = await self._dispatch(data)
-    #         writer.write(result.encode('utf8'))
-    #         self.vdebug("GhostBotIPCServer :: sending data: %s", result)
-    #         await writer.drain()
-    #     writer.close()
-    #
-    # async def run_server(self):
-    #     logger.info('GhostBotIPCServer :: Starting server...')
-    #     self.server = await asyncio.start_server(self._handle_client, self.host, self.port)
-    #     async with self.server:
-    #         try:
-    #             try:
-    #                 self.logger.info('GhostBotIPCServer :: Serving forever...')
-    #                 await self.server.serve_forever()
-    #             except CancelledError:
-    #                 return
-    #         except KeyboardInterrupt:
-    #             self.logger.info("GhostBotIPCServer :: Exiting due to keyboard interrupt")
-    #             return
-    #         except Exception as e:
-    #             logger.exception(e)
-    #             return
-
-    def _dispatch(self, message: Message) -> Message | bool | None:
-        self.vdebug("GhostBotIPCServer :: dispatching message: %s", message)
-        match message.command:
-            case Command.START:
-                self.logger.debug("GhostBotIPCServer :: dispatching START")
-                self.bot_controller.start_bot(message.target)
-                return message
-            case Command.STOP:
-                self.logger.debug("GhostBotIPCServer :: dispatching STOP")
-                self.bot_controller.stop_bot(message.target)
-                return message
-            case Command.INFO:
-                self.vdebug("GhostBotIPCServer :: dispatching INFO")
-                if message.target:
-                    self.vdebug("GhostBotIPCServer :: dispatching INFO containing for [%s]", message.target)
-                    return Message(Command.INFO, self.bot_controller.get_client(message.target).to_json())
-                return Message(Command.INFO, ' '.join(k for k, v in self.bot_controller.clients.items() if not v.disconnected))
-            case Command.CONFIG:
-                self.vdebug("GhostBotIPCServer :: dispatching CONFIG")
-                match message.target.get('action'):
-                    case "get":
-                        self.logger.info("GhostBotIPCServer :: dispatching CONFIG get")
-                        return Message(Command.CONFIG, json.dumps(self.bot_controller.get_client(message.target['char']).config.to_yaml()))
-                    case "set":
-                        self.vdebug("GhostBotIPCServer :: dispatching CONFIG set")
+                        return self.bot_controller_clients_message
+                    case Command.CONFIG:
+                        self.vdebug("dispatching CONFIG")
                         _client = self.bot_controller.get_client(message.target['char'])
-                        if _client is not None:
-                            self.vdebug("GhostBotIPCServer :: Setting config for %s", _client.name)
-                            conf = Config.load_yaml(message.target.get('config'))
-                            self.logger.info("GhostBotIPCServer :: char: %s - set config: %s", _client.name, conf)
-                            ConfigLoader(_client).save(conf)
-                            _client.set_config(conf)
-                            return message
-                        return False
+                        match message.target.get('action'):
+                            case "get":
+                                self.logger.info("dispatching CONFIG get")
+                                if _client.config is None:
+                                    _client.load_config()
+                                return Message(Command.CONFIG, json.dumps(_client.config.to_yaml()))
+                            case "set":
+                                self.vdebug("dispatching CONFIG set")
+                                if _client is not None:
+                                    self.vdebug("Setting config for %s", _client.name)
+                                    conf = Config.load_yaml(message.target.get('config'))
+                                    self.logger.info("char: %s - set config: %s", _client.name, conf)
+                                    ConfigLoader(_client).save(conf)
+                                    _client.set_config(conf)
+                                    return message
+                                return False
 
-        return None
+                return None
+            try:
+                conn.sendall(_dispatch_message().encode('utf8'))
+            except Exception as e:
+                self.logger.exception(e)
 
 
-def handle_no_server(func):
-    @functools.wraps
-    def inner(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except ConnectionRefusedError:
-            logger.info("Cant connect to Server.")
-            return Message(command=Command.ERROR)
-    return inner
-
-class IPCClient:
-    def __init__(self, host: str = '127.0.0.1', port: int = 64057):
-        self.host = host
-        self.port = port
+class GhostbotIPCClient(IPCClient):
+    def __init__(self, host: str = 'localhost', port: int = 64057):
+        super().__init__(host=host, port=port)
+        self._callbacks: dict[Command, Callable[Message], Any] = {}
 
     def send(self, data: Message) -> Message:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect((self.host, self.port))
-            #s.sendall(data.encode('utf-8'))
-            s.sendall(data.encode('utf8'))
-            recv = s.recv(1024)
+        try:
+            self.logger.debug(f'sending {data}')
+            self.send_message(data)
+        except ConnectionRefusedError:
+            self.logger.error('server offline?')
+        except Exception as e:
+            self.logger.exception(e)
 
-            try:
-                return Message.from_json(recv.decode('utf8'))
-            except EOFError as e:  # Thrown when server crashes, or is shutdown
-                if data.command != Command.EXIT:
-                    raise e from e
+    def add_callback(self, command: Command, callback: Callable[Message, Any]):
+        self._callbacks[command] = callback
+
+    def _dispatch(self, data: bytes):
+        _data = data.decode('utf8')
+        try:
+            if Command.from_value(_data) == Command.SERVER_HEARTBEAT:
+                self.logger.debug('received HEARTBEAT')
+                return
+        except ValueError as e:
+            pass
+        try:
+            for message in Message.from_json_handling_multiple(_data):
+                if message is None:
+                    self.logger.debug('received empty message')
+                    continue
+                self.logger.debug(f'dispatching callback for {message}')
+                if cb := self._callbacks.get(message.command):
+                    return cb(message)
+                self.logger.debug('No callback set for %s', message.command)
+        except EOFError as e:  # Thrown when server crashes, or is shutdown
+            if data.command != Command.EXIT:
+                self.logger.exception(e)
+                raise e from e
+            self.logger.exception(e)
+        except Exception as e:
+            self.logger.exception(e)
+            raise e
 
     def shutdown_server(self):
         return self.send(Message(Command.EXIT))
 
     def list_chars(self) -> list[str]:
-        logger.info(f"{self.__class__.__name__}: sending list chars message")
+        self.logger.info(f"{self.__class__.__name__}: sending list chars message")
         response = self.send(Message(Command.INFO))
         if response:
             return response.target.split(' ')
         return []
 
     def start_bot(self, target: str):
-        logger.info(f"{self.__class__.__name__}: sending start bot message for :{target}")
+        self.logger.info(f"{self.__class__.__name__}: sending start bot message for :{target}")
         return self.send(Message(Command.START, target))
 
     def stop_bot(self, target: str):
-        logger.info(f"{self.__class__.__name__}: sending stop bot message for :{target}")
+        self.logger.info(f"{self.__class__.__name__}: sending stop bot message for :{target}")
         return self.send(Message(Command.STOP, target))
 
     def char_info(self, target: str):
-        logger.info(f"{self.__class__.__name__}: sending char info message for :{target}")
+        self.logger.info(f"{self.__class__.__name__}: sending char info message for :{target}")
         return self.send(Message(Command.INFO, target)) or ''
 
     def get_config(self, target: str):
-        logger.info(f"{self.__class__.__name__}: sending get config message for :{target}")
-        _config = self.send(Message(Command.CONFIG, dict(action="get", char=target))).target
-        return Config.load_yaml(
-            json.loads(_config)
-        )
+        self.logger.info(f"{self.__class__.__name__}: sending get config message for :{target}")
+        self.send(Message(Command.CONFIG, dict(action="get", char=target)))
 
     def set_config(self, target: str, config: Config):
-        logger.info(f"{self.__class__.__name__}: sending set config message for :{target} :: {config}")
+        self.logger.info(f"{self.__class__.__name__}: sending set config message for :{target} :: {config}")
         return self.send(Message(Command.CONFIG, dict(action="set",char=target, config=config.to_yaml())))
-

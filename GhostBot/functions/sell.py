@@ -3,13 +3,13 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from GhostBot.config import SellConfig
 from GhostBot.functions import Locational
 from GhostBot.functions.runner import run_at_interval
 from GhostBot.lib.math import seconds, item_coordinates_from_pos, linear_distance
 from GhostBot.lib.talisman_ui_locations import UI_locations
 
 if TYPE_CHECKING:
+    from GhostBot.config import SellConfig
     from GhostBot.controller.bot_controller import BotClientWindow
 
 
@@ -20,9 +20,7 @@ class Sell(Locational):
         self.config: SellConfig = self._client.config.sell
         self._interval = seconds(minutes=int(self._client.config.sell.sell_interval_mins))
 
-        if (_return_spot := self.config.return_spot) is None:
-            _return_spot = self.determine_start_location()
-        self._return_spot = _return_spot
+        self._return_spot = self.determine_start_location()
 
         try:
             self._use_mount = client.config.sell.use_mount
@@ -57,10 +55,14 @@ class Sell(Locational):
         try:
             first_result = self._client.pointers.get_sur_info()
             if self.config.sell_npc_name in first_result.get('name'):
-                npc_location  = tuple(map(float, first_result.get('coords').split(',')))
+                coords = first_result.get('coords').split(',')
+                npc_location: tuple[int, int] = (int(coords[0]), int(coords[1]))
                 self._client.goto_first_surrounding_result()
+                self._log_info('Going to npc location %s', str(npc_location))
                 while (linear_distance(self._client.location, npc_location)) > 2 and self._client.running:
                     time.sleep(0.5)
+            else:
+                self._log_info('No npc location found')
         except (AttributeError, TypeError):
             self._log_info("Memory access failed to get npc location, falling back to movement detection :(")
             self._client.goto_first_surrounding_result()
@@ -69,6 +71,7 @@ class Sell(Locational):
         return True
 
     def _sell_items(self):
+        self._log_info('Selling...')
         self._client.reset_camera()
         time.sleep(2)
         self._client.click_npc()
@@ -86,11 +89,12 @@ class Sell(Locational):
 
     def _path_to_npc_search_spot(self):
         if self.config.npc_search_spot is not None:
+            self._log_info('going to npc search location %s', str(self.config.npc_search_spot))
             self._client.move_to_pos(self.config.npc_search_spot)
 
     def _path_to_attack_spot(self):
-        if self.config.return_spot is not None:
-            self._log_info(f'returning to {self._return_spot}')
+        if self._return_spot is not None:
+            self._log_info('returning to %s', str(self._return_spot))
             # TODO: loop trying to move via map until the char moves.
             self._client.move_to_pos(self._return_spot)
             self._goto_start_location()

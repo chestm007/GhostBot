@@ -18,7 +18,7 @@ class MockConfig(Config):
         pass
 
 
-def MockClient() -> BotClientWindow:
+def MockClient(proc=None) -> BotClientWindow:
     with patch('GhostBot.client_window.Pointers', spec_set=True):
         with patch('GhostBot.controller.bot_controller.ConfigLoader', spec_set=True):
             class MockClientWindow(BotClientWindow):
@@ -33,9 +33,10 @@ def MockClient() -> BotClientWindow:
                     return cv2.imread(self._image, cv2.IMREAD_GRAYSCALE)
 
                 @classmethod
-                def new_mocked_client(cls):
-                    mocked = cls(MagicMock(spec=pymem.Pymem)())
-                    return mocked
+                def new_mocked_client(cls, proc=None):
+                    if proc:
+                        return cls(MagicMock(spec=pymem.Pymem)(proc))
+                    return cls(MagicMock(spec=pymem.Pymem)())
 
                 def initialize_pointers(self, force_reload: bool = False):
                     class Pointers:
@@ -48,6 +49,8 @@ def MockClient() -> BotClientWindow:
                         is_bag_open = lambda _: None
                     self.pointers = Pointers()
 
+            if proc:
+                return MockClientWindow.new_mocked_client(proc)
             return MockClientWindow.new_mocked_client()
 
 

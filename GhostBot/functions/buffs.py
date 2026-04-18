@@ -3,12 +3,12 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from GhostBot.config import BuffConfig
 from GhostBot.functions.runner import Runner, run_at_interval
 from GhostBot.lib.math import seconds
 
 if TYPE_CHECKING:
     from GhostBot.controller.bot_controller import BotClientWindow
+    from GhostBot.config import BuffConfig
 
 
 @run_at_interval(run_on_start=True)

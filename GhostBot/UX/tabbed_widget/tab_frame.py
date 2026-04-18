@@ -6,7 +6,7 @@ from typing import final
 from GhostBot.config import Config, FunctionConfig
 
 
-VarConfig = tuple[str, str | bool]
+type VarConfig = tuple[str, type[str | bool]]
 
 class TabFrame(tk.Frame, ABC):
 
@@ -28,7 +28,7 @@ class TabFrame(tk.Frame, ABC):
             row: int,
             column: int,
             var_config: VarConfig = None,
-    ) -> tk.Variable | None:
+    ) -> tk.Variable:
 
         v_name, v_type = var_config
         if v_type is str:  # Entry
