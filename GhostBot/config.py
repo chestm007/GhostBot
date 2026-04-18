@@ -19,7 +19,7 @@ import logging
 import os
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import TypedDict, NotRequired, Any, TYPE_CHECKING, Sized, TypeVar
+from typing import TypedDict, NotRequired, Any, TYPE_CHECKING, Sized, TypeVar, Self
 
 import yaml
 
