@@ -109,6 +109,7 @@ class AttackConfig(FunctionConfig):
     battle_mana_threshold: float = None
     battle_hp_threshold: float = None
     roam_distance: int = None
+    spot: tuple[int, int] = None
 
 @dataclass
 class RegenConfig(FunctionConfig):
@@ -119,7 +120,6 @@ class RegenConfig(FunctionConfig):
     bindings: Bindings = field(default_factory=lambda: dict(sit= 'x'))
     hp_threshold: float = None
     mana_threshold: float = None
-    spot: tuple[int, int] = None
 
     def __post_init__(self):
         if self.bindings is None:
@@ -160,7 +160,6 @@ class SellConfig(FunctionConfig):
     sell_item_pos: int = 1
     sell_interval_mins: int = 60
     npc_search_spot: tuple[int, int] = None
-    return_spot: tuple[int, int] = None
     use_mount: bool = None
     npc_sell_click_spot: tuple[int, int] = None
 
