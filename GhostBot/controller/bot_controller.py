@@ -173,6 +173,8 @@ class BotController(ABC):
     login_config = None
 
     def __init__(self, host=None, port = None, close_disconnected_clients: bool = True):
+        self.server = GhostbotIPCServer(bot_controller=self, host=host, port=port)
+        self._ipc_log_handler = IPCServerLogHandler(self.server)
         self._close_disconnected_clients = close_disconnected_clients
         self.logger = _logger.getChild(self.__class__.__name__)
         self._running = False
@@ -181,8 +183,7 @@ class BotController(ABC):
         self._pending_clients: dict[str, BotClientWindow] = dict()
         self.login_queue: dict[int, BotClientWindow] = dict()
         self._seen_clients = []
-        self.server = GhostbotIPCServer(bot_controller=self, host=host, port=port)
-        self.logger.addHandler(IPCServerLogHandler(self.server))
+        self.logger.addHandler(self._ipc_log_handler)
 
         GhostBotServerConfigLoader().load()
         self._load_login_config()

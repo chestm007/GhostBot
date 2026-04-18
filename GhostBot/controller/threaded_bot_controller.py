@@ -133,7 +133,8 @@ class ThreadedBotController(BotController):
 
         functions = list(self._get_functions_for_client(client))
         for function in functions:
-            function.logger.addHandler(IPCServerLogHandler(self.server))
+            if self._ipc_log_handler not in function.logger.handlers:
+                function.logger.addHandler(self._ipc_log_handler)
 
         while client.running:
             client.bot_status = BotStatus.running
@@ -193,9 +194,9 @@ class ThreadedBotController(BotController):
         super().shutdown()
         self._stop_all_tasks()
 
-
 if __name__ == '__main__':
     import os
+    import logging
     from GhostBot import logger as _logger
 
     if os.environ.get('PYCHARM_HOSTED'):
