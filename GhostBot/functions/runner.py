@@ -102,9 +102,9 @@ class Locational(Runner, ABC):
 
     def determine_start_location(self):
         """Returns either the config stored attack_spot, or the current location of the char as the `start_location`"""
-        if (regen := self._client.config.regen) is not None:
-            if regen.spot is not None:
-                return tuple(map(int, regen.spot))
+        if (attack := self._client.config.attack) is not None:
+            if attack.spot is not None:
+                return int(attack.spot[0]), int(attack.spot[1])
         return self._client.location
 
     def _goto_start_location(self):

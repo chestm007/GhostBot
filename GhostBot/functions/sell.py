@@ -20,7 +20,7 @@ class Sell(Locational):
         self.config: SellConfig = self._client.config.sell
         self._interval = seconds(minutes=int(self._client.config.sell.sell_interval_mins))
 
-        if (_return_spot := self.config.return_spot) is None:
+        if (_return_spot := self._client.config.attack.spot) is None:
             _return_spot = self.determine_start_location()
         self._return_spot = _return_spot
 
@@ -94,7 +94,7 @@ class Sell(Locational):
             self._client.move_to_pos(self.config.npc_search_spot)
 
     def _path_to_attack_spot(self):
-        if self.config.return_spot is not None:
+        if self._return_spot is not None:
             self._log_info('returning to %s', str(self._return_spot))
             # TODO: loop trying to move via map until the char moves.
             self._client.move_to_pos(self._return_spot)
