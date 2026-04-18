@@ -100,7 +100,7 @@ class Attack(Locational):
             self._client.new_target()
             return True
 
-        if not self._client.has_alive_target or (self._distance_to_target() or 0) > self.roam_distance:
+        if not self._client.has_alive_target:# or (self._distance_to_target() or 0) > self.roam_distance:
             self._client.new_target()
             return True
 
