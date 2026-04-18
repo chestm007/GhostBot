@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 _T = TypeVar('_T')
 
-class FunctionConfig(ABC):
+class TypedConfig(ABC):
     logger = _logger.getChild('FunctionConfig')
     @staticmethod
     def _try_change_type(__val, __type: _T) -> _T:
@@ -93,6 +93,10 @@ class FunctionConfig(ABC):
                 else:
                     self.logger.debug(f'Skipping {self.__class__.__name__}.{_attr}: [{_expected_type.__name__}]')
 
+
+@dataclass
+class FunctionConfig(TypedConfig, ABC):
+    pass
 
 @dataclass
 class AttackConfig(FunctionConfig):
@@ -217,8 +221,13 @@ class Config:
 
 
 class BaseConfigLoader:
+class BaseConfigLoader(ABC):
+    config_filename: str
+
     def __init__(self):
         self.logger = _logger.getChild(self.__class__.__name__)
+        self.config_filepath = os.path.join(self._detect_path(), f'{self.config_filename}')
+
     @staticmethod
     def _detect_path():
         data_path = os.environ.get('HOME', os.environ.get('LOCALAPPDATA'))
@@ -236,9 +245,10 @@ class BaseConfigLoader:
 
 class ConfigLoader(BaseConfigLoader):
     def __init__(self, client: BotClientWindow):
-        super().__init__()
         self.client = client
-        self.config_filepath = os.path.join(self._detect_path(), f'{self.client.name}.yml')
+        self.config_filename = f'{self.client.name}.yml'
+        super().__init__()
+
 
     def load(self) -> Config:
         self.logger.debug('ConfigLoader :: %s :: loading config', self.client.identifier)
@@ -259,6 +269,8 @@ class ConfigLoader(BaseConfigLoader):
 
 
 class LoginDetailsConfigLoader(BaseConfigLoader):
+    config_filename = 'login_details.yml'
+
     @dataclass
     class CharDetails:
         char_name: str
@@ -272,10 +284,6 @@ class LoginDetailsConfigLoader(BaseConfigLoader):
 
         def items(self):
             return self.chars.items()
-
-    def __init__(self):
-        super().__init__()
-        self.config_filepath = os.path.join(self._detect_path(), f'login_details.yml')
 
     def load(self) -> 'LoginDetailsConfigLoader.LoginDetails':
         """
@@ -308,16 +316,17 @@ class LoginDetailsConfigLoader(BaseConfigLoader):
             return {}
 
 class GhostBotServerConfigLoader(BaseConfigLoader):
+    config_filename = 'ghostbot_server.yml'
+
     @dataclass
     class GhostBotConfig:
         function_debugging: dict[str, str]
 
     def __init__(self):
         super().__init__()
-        self.config_filepath = os.path.join(self._detect_path(), f'ghostbot_server.yml')
         self._config: GhostBotServerConfigLoader.GhostBotConfig | None = None
 
-    def load(self):
+    def load(self) -> Self:
         try:
             with open(self.config_filepath, 'r') as c:
                 _config: dict[str, dict[str, str]] = yaml.safe_load(c.read())
@@ -326,18 +335,18 @@ class GhostBotServerConfigLoader(BaseConfigLoader):
 
         except FileNotFoundError:
             self.logger.debug('%s :: no server config file found at %s', self.config_filepath, self.__class__.__name__)
-            return
+            return self
 
         for k in subclasses_by_name(InjectedLoggingMixin).keys():
             self.logger.info('setting loglevel of [%s] to [%s]', k, logging.INFO)
             logging.getLogger(f'GhostBot.{k}').setLevel(logging.INFO)
 
         if self._config.function_debugging is None:
-            return
+            return self
         for k, v in self._config.function_debugging.items():
             self.logger.info('setting loglevel of [%s] to [%s]', k, getattr(logging, v.upper()))
             logging.getLogger(f'GhostBot.{k}').setLevel(getattr(logging, v.upper()))
-
+        return self
 
 
 if __name__ == "__main__":
