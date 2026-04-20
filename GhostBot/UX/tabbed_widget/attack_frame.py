@@ -67,6 +67,7 @@ class AttackFrame(TabFrame):
             battle_mana_threshold=var_or_none(self.getvar('bot_config.attack.battle_mp_low')),
             battle_hp_threshold=var_or_none(self.getvar('bot_config.attack.battle_hp_low')),
             roam_distance=var_or_none(self.getvar('bot_config.attack.battle_roam')),
+            spot=var_or_none(self.getvar('bot_config.attack.spot')),
         )
 
     def _clear(self):

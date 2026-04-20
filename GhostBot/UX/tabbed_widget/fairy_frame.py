@@ -46,4 +46,5 @@ class FairyFrame(TabFrame):
             bindings=self._populate_bindings(bindings),
             heal_team_threshold=var_or_none(self.getvar('bot_config.fairy.heal_team')),
             heal_self_threshold=var_or_none(self.getvar('bot_config.fairy.heal_self')),
+            spot=var_or_none(self.getvar('bot_config.fairy.spot')),
         )
