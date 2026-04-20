@@ -5,8 +5,8 @@ import yaml
 
 from GhostBot import logger
 from GhostBot.config import *
-from GhostBot.rpc.message import Message
-from GhostBot.server import IPCClient, GhostbotIPCServer, GhostbotIPCClient
+from GhostBot.IPC.message import Message
+from GhostBot.server import GhostbotIPCServer, GhostbotIPCClient
 
 
 def _config():

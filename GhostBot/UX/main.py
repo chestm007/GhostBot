@@ -1,4 +1,4 @@
-import json
+import os
 import threading
 import time
 import tkinter as tk
@@ -8,7 +8,7 @@ from GhostBot import logger
 from GhostBot.UX.tabbed_widget.delete_frame import DeleteFrame
 from GhostBot.UX.tabbed_widget.sell_frame import SellFrame
 from GhostBot.config import Config
-from GhostBot.rpc.message import Command, Message
+from GhostBot.IPC.message import Command
 from GhostBot.server import GhostbotIPCClient
 
 from GhostBot.UX.pyuiWidgets.logWindow import LogWindow
@@ -50,13 +50,9 @@ class GhostBot(tk.Tk):
 
         self._char_list = tk.Variable(master=self)
 
-        def _info_callback(message):
-            if isinstance(message.target, str):
-                self.set_char_list(message.target.split(' '))
-            elif isinstance(message.target, dict):
-                update_char_info_display(message.target)
+        self.client.add_callback(Command.INFO, lambda message: self.set_char_list(message.target.split(' ')))
+        self.client.add_callback(Command.INFO_CHAR, lambda message: update_char_info_display(message.target))
 
-        self.client.add_callback(Command.INFO, _info_callback)
         # TODO: implement multi select-start
         # list_box = ScrollableListbox(parent=ghost_bot, scrollx=False, scrolly=True, listvariable=_char_list, selectmode=tk.MULTIPLE)
         self.list_box = ScrollableListbox(parent=self, scrollx=False, scrolly=True, listvariable=self._char_list)
@@ -104,27 +100,6 @@ class GhostBot(tk.Tk):
             self.tabbed_widget.setvar("window_info.pos", response.get("window_pos", ''))
             self.tabbed_widget.setvar("window_info.size", response.get("window_size", ''))
 
-        def _update_char_config(message):
-            bot_config = Config.load_yaml(json.loads(message.target))
-
-            self.tabbed_widget.setvar("bot_config.attack.enabled", bool(bot_config.attack))
-            self.tabbed_widget.setvar("bot_config.pet.enabled", bool(bot_config.pet))
-            self.tabbed_widget.setvar("bot_config.buff.enabled", bool(bot_config.buff))
-            self.tabbed_widget.setvar("bot_config.regen.enabled", bool(bot_config.regen))
-            self.tabbed_widget.setvar("bot_config.fairy.enabled", bool(bot_config.fairy))
-            self.tabbed_widget.setvar('bot_config.sell.enabled', bool(bot_config.sell))
-            self.tabbed_widget.setvar('bot_config.delete.enabled', bool(bot_config.delete))
-
-            _attack_frame.display_config(bot_config)
-            _buff_frame.display_config(bot_config)
-            _fairy_frame.display_config(bot_config)
-            _pet_frame.display_config(bot_config)
-            _regen_frame.display_config(bot_config)
-            _sell_frame.display_config(bot_config)
-            _delete_frame.display_config(bot_config)
-
-        self.client.add_callback(Command.CONFIG, _update_char_config)
-
         def save_config():
             self.client.set_config(
                 target=_functions_frame.getvar('char_info.name'),
@@ -139,15 +114,12 @@ class GhostBot(tk.Tk):
         ).place(x=500, y=450)
 
         ttk.Button(master=self, text="Save", width=10, command=save_config).place(x=590, y=450)
-        def _config_callback(message: Message):
-            if message.target:
 
-                if isinstance(message.target, dict) and message.target.get('action') == 'set':
-                    self.log.insert_log(f'Config set for {message.target.get("char")}')
-                else:
-                    _update_char_config(message)
+        self.client.add_callback(Command.CONFIG_GET, lambda message: self._update_char_config(Config.load_yaml(message.target)))
 
-        self.client.add_callback(Command.CONFIG, _config_callback)
+        self.client.add_callback(
+            Command.CONFIG_SET, lambda message: self.log.insert_log(f'Config set for {message.target.get("char")}')
+        )
 
         self.client.run()
 

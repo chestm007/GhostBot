@@ -1,23 +1,21 @@
 from __future__ import annotations
 
-import functools
+import contextlib
 import json
-import socket
-import threading
-from _thread import start_new_thread
 from typing import TYPE_CHECKING, Any, Callable
 
 from GhostBot.IPC.client import IPCClient
 from GhostBot.IPC.server import IPCServer
 from GhostBot.config import Config, ConfigLoader
-from GhostBot.rpc.message import Message, Command
+from GhostBot.IPC.message import Message, Command
 
 if TYPE_CHECKING:
     from GhostBot.controller.bot_controller import BotController
+    from controller.bot_controller import BotClientWindow
 
 
 class GhostbotIPCServer(IPCServer):
-    vdebug = (lambda msg, *args: None)
+    vdebug = lambda msg, *args: None
 
     def __init__(
         self,
@@ -26,9 +24,9 @@ class GhostbotIPCServer(IPCServer):
         port: int | None = None,
         verbose_logging: bool = False
     ):
-        if verbose_logging:
-            self.vdebug = self.logger.debug
         super().__init__(host=host or 'localhost', port=port or 64057, heartbeat_interval=10)
+        if verbose_logging:
+            self.vdebug = self.logger.info
         self.bot_controller = bot_controller
 
     @property
@@ -40,6 +38,7 @@ class GhostbotIPCServer(IPCServer):
         self.send_to_all(self.bot_controller_clients_message)
 
     def _dispatch(self, conn, _data: str) -> Message | bool | None:
+        self.vdebug('dispatching %s', _data)
         for message in Message.from_json_handling_multiple(_data):
             if not message:
                 self.logger.debug('empty message')
@@ -60,32 +59,32 @@ class GhostbotIPCServer(IPCServer):
                         return message
                     case Command.INFO:
                         self.vdebug("dispatching INFO")
+                        return self.bot_controller_clients_message
+                    case Command.INFO_CHAR:
+                        self.vdebug("dispatching INFO_CHAR")
                         if message.target:
                             self.vdebug("dispatching INFO containing for [%s]", message.target)
                             _target = self.bot_controller.get_client(message.target)
                             if _target:
-                                return Message(Command.INFO, _target.to_json())
+                                return Message(Command.INFO_CHAR, _target.to_json())
                             return
-                        return self.bot_controller_clients_message
-                    case Command.CONFIG:
-                        self.vdebug("dispatching CONFIG")
-                        _client = self.bot_controller.get_client(message.target['char'])
-                        match message.target.get('action'):
-                            case "get":
-                                self.logger.info("dispatching CONFIG get")
-                                if _client.config is None:
-                                    _client.load_config()
-                                return Message(Command.CONFIG, json.dumps(_client.config.to_yaml()))
-                            case "set":
-                                self.vdebug("dispatching CONFIG set")
-                                if _client is not None:
-                                    self.vdebug("Setting config for %s", _client.name)
-                                    conf = Config.load_yaml(message.target.get('config'))
-                                    self.logger.info("char: %s - set config: %s", _client.name, conf)
-                                    ConfigLoader(_client).save(conf)
-                                    _client.set_config(conf)
-                                    return message
-                                return False
+                    case Command.CONFIG_GET:
+                        self.logger.info("dispatching CONFIG get")
+                        _client: BotClientWindow = self.bot_controller.get_client(message.target['char'])
+                        if _client.config is None:
+                            _client.load_config()
+                        return Message(Command.CONFIG_GET, json.dumps(_client.config.to_yaml()))
+                    case Command.CONFIG_SET:
+                        self.vdebug("dispatching CONFIG set")
+                        _client: BotClientWindow = self.bot_controller.get_client(message.target['char'])
+                        if _client is not None:
+                            self.vdebug("Setting config for %s", _client.name)
+                            conf = Config.load_yaml(message.target.get('config'))
+                            self.logger.info("char: %s - set config: %s", _client.name, conf)
+                            ConfigLoader(_client).save(conf)
+                            _client.set_config(conf)
+                            return message
+                        return False
 
                 return None
             try:
@@ -97,7 +96,7 @@ class GhostbotIPCServer(IPCServer):
 class GhostbotIPCClient(IPCClient):
     def __init__(self, host: str = 'localhost', port: int = 64057):
         super().__init__(host=host, port=port)
-        self._callbacks: dict[Command, Callable[Message], Any] = {}
+        self._callbacks: dict[Command, Callable[[Message], Any]] = {}
 
     def send(self, data: Message) -> Message:
         try:
@@ -108,17 +107,15 @@ class GhostbotIPCClient(IPCClient):
         except Exception as e:
             self.logger.exception(e)
 
-    def add_callback(self, command: Command, callback: Callable[Message, Any]):
+    def add_callback(self, command: Command, callback: Callable[[Message], Any]):
         self._callbacks[command] = callback
 
     def _dispatch(self, data: bytes):
         _data = data.decode('utf8')
-        try:
+        with contextlib.suppress(ValueError):
             if Command.from_value(_data) == Command.SERVER_HEARTBEAT:
                 self.logger.debug('received HEARTBEAT')
                 return
-        except ValueError as e:
-            pass
         try:
             for message in Message.from_json_handling_multiple(_data):
                 if message is None:
@@ -156,13 +153,13 @@ class GhostbotIPCClient(IPCClient):
         return self.send(Message(Command.STOP, target))
 
     def char_info(self, target: str):
-        self.logger.info(f"{self.__class__.__name__}: sending char info message for :{target}")
-        return self.send(Message(Command.INFO, target)) or ''
+        self.logger.debug(f"{self.__class__.__name__}: sending char info message for :{target}")
+        return self.send(Message(Command.INFO_CHAR, target)) or ''
 
     def get_config(self, target: str):
         self.logger.info(f"{self.__class__.__name__}: sending get config message for :{target}")
-        self.send(Message(Command.CONFIG, dict(action="get", char=target)))
+        self.send(Message(Command.CONFIG_GET, dict(action="get", char=target)))
 
     def set_config(self, target: str, config: Config):
         self.logger.info(f"{self.__class__.__name__}: sending set config message for :{target} :: {config}")
-        return self.send(Message(Command.CONFIG, dict(action="set",char=target, config=config.to_yaml())))
+        return self.send(Message(Command.CONFIG_SET, dict(action="set",char=target, config=config.to_yaml())))

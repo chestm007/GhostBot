@@ -9,10 +9,13 @@ from GhostBot import logger
 class Command(Enum):
     ERROR = -2
     EXIT = -1
-    INFO = 0
-    START = 1
-    STOP = 2
-    CONFIG = 3
+    INFO = 1
+    INFO_CHAR = 2
+    START = 10
+    STOP = 20
+    CONFIG = 30
+    CONFIG_GET = 31
+    CONFIG_SET = 32
     LOG = 100
     SERVER_HEARTBEAT = 200
 
@@ -21,9 +24,12 @@ class Command(Enum):
         match command.upper():
             case 'EXIT': return cls.EXIT
             case 'INFO': return cls.INFO
+            case 'INFO_CHAR': return cls.INFO_CHAR
             case 'START': return cls.START
             case 'STOP': return cls.STOP
             case 'CONFIG': return cls.CONFIG
+            case 'CONFIG_GET': return cls.CONFIG_GET
+            case 'CONFIG_SET': return cls.CONFIG_SET
             case 'LOG': return cls.LOG
             case 'SERVER_HEARTBEAT': return cls.SERVER_HEARTBEAT
         return None

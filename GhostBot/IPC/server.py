@@ -7,7 +7,7 @@ import time
 from logging import LogRecord
 
 from GhostBot import logger as _logger
-from GhostBot.rpc.message import Command, Message
+from GhostBot.IPC.message import Command, Message
 
 
 class IPCServer:
