@@ -221,6 +221,15 @@ class Config:
         _config.validate()
         return _config
 
+    @classmethod
+    def load_file(cls, path: str) -> Config:
+        with open(path, 'r') as f:
+            return cls.load_yaml(yaml.safe_load(f.read()))
+
+    def save_file(self, path: str) -> None:
+        with open(path, 'w') as f:
+            f.write(yaml.safe_dump(self.to_yaml()))
+
     def functions(self):
         return (k for k, v in self.__dict__.items() if v is not None)
 
@@ -266,18 +275,16 @@ class ConfigLoader(BaseConfigLoader):
     def load(self) -> Config:
         self.logger.debug('ConfigLoader :: %s :: loading config', self.client.identifier)
         try:
-            with open(self.config_filepath, 'r') as c:
-                _config = Config.load_yaml(yaml.safe_load(c.read()))  # overwrite config defaults with whats in the loaded config
-                self.logger.debug('ConfigLoader :: %s :: config loaded', self.client.identifier)
-                return _config
+            _config = Config.load_file(self.config_filepath)
+            self.logger.debug('ConfigLoader :: %s :: config loaded', self.client.identifier)
+            return _config
         except FileNotFoundError:
             self.logger.debug('ConfigLoader :: %s :: config not found, using defaults', self.client.identifier)
             _config = Config()
             return self.save(_config)
 
     def save(self, _config: Config) -> Config:
-        with open(self.config_filepath, 'w') as c:
-            c.write(yaml.safe_dump(_config.to_yaml()))
+        _config.save_file(self.config_filepath)
         return _config
 
 
