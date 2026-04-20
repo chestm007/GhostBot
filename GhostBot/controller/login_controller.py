@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 import pywintypes
 
 from GhostBot import logger as _logger
-from GhostBot.config import LoginDetailsConfigLoader
 from GhostBot.image_finder import ImageFinder
 from GhostBot.lib.decorators import classproperty
 from GhostBot.lib.talisman_ui_locations import UI_locations
@@ -17,6 +16,7 @@ from GhostBot.lib.utils import retry
 if TYPE_CHECKING:
     from GhostBot.controller.bot_controller import BotClientWindow
     from collections.abc import Callable
+    from GhostBot.config import LoginDetailsConfigLoader
 
 
 class LoginLock:

@@ -1,24 +1,29 @@
+from __future__ import annotations
+
 import itertools
 import math
 import threading
 import time
 from abc import abstractmethod, ABC
-from typing import Generator
+from typing import Generator, TYPE_CHECKING
 
 from operator import mul, add
 
 from GhostBot import logger as _logger
 from GhostBot.IPC.server import IPCServerLogHandler
 from GhostBot.client_window import Win32ClientWindow
-from GhostBot.config import Config, ConfigLoader, LoginDetailsConfigLoader, GhostBotServerConfigLoader
+from GhostBot.config import ConfigLoader, LoginDetailsConfigLoader, GhostBotServerConfigLoader
 from GhostBot.enums.bot_status import BotStatus
 from GhostBot.functions import Attack, Buffs, Fairy, Petfood, Regen, Runner, Sell, Delete
-from GhostBot.image_finder import ImageFinder
 from GhostBot.lib.math import linear_distance, position_difference, scale_minimap_move_distance, coords_to_map_screen_pos
 from GhostBot.lib.talisman_ui_locations import UI_locations
 from GhostBot.lib.win32.process import PymemProcess
 from GhostBot.map_navigation import location_to_zone_map, zones
 from GhostBot.server import GhostbotIPCServer
+
+
+if TYPE_CHECKING:
+    from GhostBot.config import Config
 
 lock = threading.Lock()
 

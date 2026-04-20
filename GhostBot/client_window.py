@@ -1,5 +1,4 @@
 import math
-import threading
 import time
 from ctypes.wintypes import LPARAM, WPARAM
 
