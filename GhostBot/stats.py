@@ -12,12 +12,12 @@ class Stats:
         self.kills: int = 0
         self.xp_gained: int = 0
         self.time_running: int = 0
-        self.pet_spawn_countdown: int = 0
         self.pet_feed_countdown: int = 0
         self.buffs_countdown: int = 0
 
     def refresh(self, function: Runner | None) -> None:
-        if function is None:
+        if function is None: ...
 
     @property
     def pet_spawn_countdown(self) -> int:
+        raise NotImplementedError
