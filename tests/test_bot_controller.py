@@ -55,6 +55,7 @@ def test_get_functions_for_client(monkeypatch, client):
             bindings=fairy_bindings,
             heal_self_threshold=0.75,
             heal_team_threshold=0.5,
+            spot=(123, 456),
         ), attack=AttackConfig(
             bindings=attack_bindings,
             attacks=[
@@ -65,6 +66,7 @@ def test_get_functions_for_client(monkeypatch, client):
             battle_mana_threshold=0.56,
             battle_hp_threshold=0.75,
             roam_distance=40,
+            spot=(123, 456),
         ), buff=BuffConfig(
             buffs=[
                 [7, 2000]
@@ -78,13 +80,11 @@ def test_get_functions_for_client(monkeypatch, client):
             bindings=regen_bindings,
             hp_threshold=0.75,
             mana_threshold=0.75,
-            spot=(123, 456),
         ), sell=SellConfig(
             sell_npc_name='Mr Guy Man',
             use_mount=False,
             npc_sell_click_spot=(100, 200),
             npc_search_spot=(123, 456),
-            return_spot=(123, 456),
         ),
     )
     client.set_config(config)

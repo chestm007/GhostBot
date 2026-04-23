@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
+from GhostBot.UX.utils import _format_spot, create_entry
 from GhostBot.config import Config, AttackConfig
 from GhostBot.lib.var_or_none import var_or_none
 
@@ -9,17 +10,25 @@ from GhostBot.lib.var_or_none import var_or_none
 class AttackFrame(TabFrame):
     def _init(self, *args, **kwargs) -> None:
         self._vars = dict(
-            hp_low=self._create_entry("BattleHP Low:", 0, 0, ("bot_config.attack.battle_hp_low", str)),
-            hp_key=self._create_entry("BattleHP Key:", 0, 2, ("bot_config.attack.battle_hp_key", str)),
-            mp_low=self._create_entry("BattleMP Low:", 1, 0, ("bot_config.attack.battle_mp_low", str)),
-            mp_key=self._create_entry("BattleMP Key:", 1, 2, ("bot_config.attack.battle_mp_key", str)),
-            stuck=self._create_entry("Stuck Sec:", 2, 0, ("bot_config.attack.battle_stuck", str)),
-            roam=self._create_entry("Roam Distance:", 3, 0, ("bot_config.attack.battle_roam", str))
+            hp_low=create_entry(self, "BattleHP Low:", 0, 0, ("bot_config.attack.battle_hp_low", str)),
+            hp_key=create_entry(self, "BattleHP Key:", 0, 2, ("bot_config.attack.battle_hp_key", str)),
+            mp_low=create_entry(self, "BattleMP Low:", 1, 0, ("bot_config.attack.battle_mp_low", str)),
+            mp_key=create_entry(self, "BattleMP Key:", 1, 2, ("bot_config.attack.battle_mp_key", str)),
+            stuck=create_entry(self, "Stuck Sec:", 2, 0, ("bot_config.attack.battle_stuck", str)),
+            roam=create_entry(self, "Roam Distance:", 3, 0, ("bot_config.attack.battle_roam", str)),
+            spot=create_entry(self, "Spot:", 5, 0, ("bot_config.attack.spot", str)),
         )
+
+        ttk.Button(
+            master=self, text="Current", command=lambda: self._set_spot_as_current('spot')
+        ).grid(row=5, column=2)
 
         ttk.Label(master=self, text="Attacks:", width=15).grid(row=4, column=0)
         self.attacks = tk.Text(master=self, width=11, height=5, takefocus=False)
         self.attacks.grid(row=4, column=1)
+
+    def _set_spot_as_current(self, field: str):
+        self._vars[field].set(eval(self.master.getvar('char_info.position')))
 
     def display_config(self, config: Config):
         if config.attack:
@@ -35,6 +44,7 @@ class AttackFrame(TabFrame):
             self.setvar('bot_config.attack.battle_mp_low', str(config.attack.battle_mana_threshold or ''))
             self.setvar('bot.config.attack.battle_stuck', str(config.attack.stuck_interval or ''))
             self.setvar('bot_config.attack.battle_roam', str(config.attack.roam_distance or ''))
+            self.setvar('bot_config.attack.spot', _format_spot(config.attack.spot))
             self.attacks.delete(1.0, tk.END)
             try:
                 self.attacks.insert(tk.END, "\n".join(f"{key} {delay}" for key, delay in config.attack.attacks))
@@ -57,6 +67,7 @@ class AttackFrame(TabFrame):
             battle_mana_threshold=var_or_none(self.getvar('bot_config.attack.battle_mp_low')),
             battle_hp_threshold=var_or_none(self.getvar('bot_config.attack.battle_hp_low')),
             roam_distance=var_or_none(self.getvar('bot_config.attack.battle_roam')),
+            spot=var_or_none(self.getvar('bot_config.attack.spot')),
         )
 
     def _clear(self):

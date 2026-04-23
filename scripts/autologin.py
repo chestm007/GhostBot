@@ -1,4 +1,5 @@
 import sys
+from traceback import print_exception
 
 from GhostBot.client_launcher import ClientLauncher
 from GhostBot.controller.bot_controller import BotClientWindow
@@ -24,13 +25,17 @@ def autologin(char_name: str, username: str, password: str, server: str):
     _login_controller.handle_login(callback=callback)
 
 if __name__ == "__main__":
+    import time
+
     _servers = [_sn for _sn in UI_locations.server_select.keys() if _sn != 'ok']
     try:
         args = sys.argv[1:]
         if args[-1] not in _servers:
             raise KeyError
+        time.sleep(1)
         autologin(*args)
-    except:
+    except Exception as e:
+        print_exception(e)
         print(f'\nError: wrong args passed.\n python .\\autologin.py char_name username pass server_name')
         print(f'where server_name is one of:')
         for _sn in _servers:

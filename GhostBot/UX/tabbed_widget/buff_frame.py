@@ -4,12 +4,13 @@ from tkinter import ttk
 from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
 from GhostBot.config import Config, BuffConfig
 from GhostBot.lib.var_or_none import var_or_none
+from UX.utils import create_entry
 
 
 class BuffFrame(TabFrame):
     def _init(self, *args, **kwargs) -> None:
         self._vars = dict(
-            interval=self._create_entry("Interval:", 0, 0, ("bot_config.buff.interval", str)),
+            interval=create_entry(self, "Interval:", 0, 0, ("bot_config.buff.interval", str)),
         )
 
         ttk.Label(master=self, text="Buffs:", width=15).grid(row=4, column=0)

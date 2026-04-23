@@ -2,13 +2,14 @@ from GhostBot import logger
 from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
 from GhostBot.config import Config, DeleteConfig
 from GhostBot.lib.var_or_none import var_or_none
+from UX.utils import create_entry
 
 
 class DeleteFrame(TabFrame):
     def _init(self, *args, **kwargs) -> None:
         self._vars = dict(
-            delete_trash=self._create_entry("Delete trash:", 0, 0, ("bot_config.delete.delete_trash", bool)),
-            interval=self._create_entry("Interval:", 0, 2, ("bot_config.delete.interval", str)),
+            delete_trash=create_entry(self, "Delete trash:", 0, 0, ("bot_config.delete.delete_trash", bool)),
+            interval=create_entry(self, "Interval:", 0, 2, ("bot_config.delete.interval", str)),
         )
 
     def _set_spot_as_current(self):

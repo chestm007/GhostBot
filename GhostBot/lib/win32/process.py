@@ -27,7 +27,7 @@ class PymemProcess:
         games = list(cls.get_proc_matching(b'game.exe'))
         if len(games) > 1:
             if not auto_cleanup:
-                raise KeyError
+                raise KeyError()
 
             from GhostBot.client_launcher import ClientLauncher
             for game in games[:2]:

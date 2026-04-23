@@ -1,13 +1,12 @@
-import logging
 import threading
 import time
 from typing import Callable
 
-from GhostBot.IPC.server import IPCServerLogHandler
 from GhostBot.client_launcher import ClientLauncher
 from GhostBot.controller.bot_controller import BotController, BotClientWindow
 from GhostBot.controller.login_controller import LoginController
 from GhostBot.enums.bot_status import BotStatus
+from GhostBot.lib.win32.process import PymemProcess
 
 
 class ThreadedBotController(BotController):
@@ -51,12 +50,19 @@ class ThreadedBotController(BotController):
                 self._pending_clients.pop(__client.name)
                 self.add_client(__client)
 
-        if not self._eligible_logins():
+        eligible_logins = self._eligible_logins()
+
+        if not eligible_logins:
+            self.logger.debug('no eligible logins...')
             return
 
         elif len(self.login_queue) < 1:
             try:
-                ClientLauncher().block_until_ready()
+                if len(list(PymemProcess.get_proc_matching(b'game.exe'))) == 0:
+                    self.logger.debug('spawning game launcher')
+                    ClientLauncher().block_until_ready()
+                else:
+                    self.logger.debug('game launcher already running')
             except IndexError:
                 self.logger.debug('game launcher process didnt launch, retrying')
             except KeyError:
@@ -65,24 +71,27 @@ class ThreadedBotController(BotController):
         for pid, _client in dict(self.login_queue).items():
 
             if f"task{pid}" not in self._tasks.keys():
-                lc = LoginController(_client)
+                lc = LoginController(_client, self)
 
                 if lc.current_stage == LoginController.LoginStage.character_select:
                     time.sleep(5)  # fixes a race condition with the client window opening
 
                 __char = _client.get_window_name()
 
-                self.logger.debug('self._eligible_logins :: %s', self._eligible_logins())
+                self.logger.debug('self._eligible_logins :: %s', eligible_logins)
 
-                if __char in self._eligible_logins() and _client.name is None:
-                    _conf = self._eligible_logins().pop(__char)
-                    self.logger.debug('[%s|%s] resuming login procedure with config %s', pid, _conf.char_name, _conf)
+                if __char in eligible_logins and _client.name is None:
+                    _conf = eligible_logins.pop(__char)
+                    self.logger.info('[%s|%s] resuming login procedure with config %s', pid, _conf.char_name, _conf)
                 elif lc.current_stage == LoginController.LoginStage.enter_credentials:
-                    _conf = self._eligible_logins().popitem()[1]
-                    self.logger.debug('[%s|%s] starting login procedure with config %s', pid, _conf.char_name, _conf)
+                    __char, _conf = eligible_logins.popitem()
+                    self.logger.info('[%s|%s] starting login procedure with config %s', pid, _conf.char_name, _conf)
                 else:
-                    self.logger.debug('[%s|%s] skipping', pid, __char)
+                    self.logger.info('[%s|%s] skipping', pid, __char)
                     continue
+
+                if __char in self.requested_logins:
+                    self.requested_logins.remove(__char)
 
                 self._pending_clients[_conf.char_name] = _client
 
@@ -194,7 +203,7 @@ class ThreadedBotController(BotController):
         super().shutdown()
         self._stop_all_tasks()
 
-if __name__ == '__main__':
+def main():
     import os
     import logging
     from GhostBot import logger as _logger
@@ -210,3 +219,6 @@ if __name__ == '__main__':
     finally:
         _logger.info('exiting...')
         bot_controller.shutdown()
+
+if __name__ == '__main__':
+    main()

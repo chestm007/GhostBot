@@ -1,3 +1,4 @@
+import contextlib
 import math
 import time
 from ctypes.wintypes import LPARAM, WPARAM
@@ -70,15 +71,17 @@ class Win32ClientWindow(AbstractClientWindow):
 
         self.initialize_pointers()
 
-        try:
+        with contextlib.suppress(TypeError):
             self.set_window_name()
-        except TypeError:
-            pass
         # FIXME: wrap all getters in a retry DC check loop
 
     @property
     def identifier(self):
         return f"{self.name or ''}[{self.process_id}]"
+
+    def post_login_setup(self):
+        self.set_window_name()
+        self.initialize_pointers(force_reload=True)
 
     def initialize_pointers(self, force_reload: bool = False):
         try:
@@ -112,7 +115,8 @@ class Win32ClientWindow(AbstractClientWindow):
 
     @property
     def disconnected(self):
-        return bool(self.pointers.get_dc()) and not self.hp == 0
+        with contextlib.suppress(Exception):
+            return self.hp is None
 
     @property
     def on_mount(self) -> bool:

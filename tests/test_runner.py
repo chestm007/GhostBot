@@ -20,6 +20,9 @@ def test_mock_runner_run_at_interval(monkeypatch):
         def run(self):
             self.should_exist = not self.should_exist
 
+        def _log_debug(self, msg, *args):
+            print(msg % args)
+
     monkeypatch.setattr(BotClientWindow, 'in_battle', property(lambda self: False))
 
     mr = MockRunner()

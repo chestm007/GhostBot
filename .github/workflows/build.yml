@@ -1,0 +1,15 @@
+name: Build
+
+on:
+  workflow_call:
+
+jobs:
+  build-client:
+    uses: ./.github/workflows/build-executable.yml
+    with:
+      executable_kind: client
+
+  build-server:
+    uses: ./.github/workflows/build-executable.yml
+    with:
+      executable_kind: server

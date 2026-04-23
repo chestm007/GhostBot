@@ -1,6 +1,5 @@
 from collections import namedtuple
 
-
 Zone = namedtuple('Zone', ['location', 'boundary', 'centre', 'scale'])  #, 'fay'])
 zones = (
     {
@@ -155,8 +154,8 @@ _zones_map = {
 location_to_zone_map = {sv: k for k, v in _zones_map.items() for sv in v}
 
 def _goto_centre_of_map():
-    import logging
     import time
+    import logging
     from GhostBot import logger
     from GhostBot.lib.win32.process import PymemProcess
     from GhostBot.controller.bot_controller import BotClientWindow
@@ -164,7 +163,9 @@ def _goto_centre_of_map():
     logger.setLevel(logging.INFO)
     for proc in PymemProcess.list_clients():
         client = BotClientWindow(proc)
-        if client.name == "FkYouUp1":
+        if client.name == "1dollarsucky":
+            time.sleep(3)
+            print('#######################', client.press_key('i'))
 
             # uncomment to find centre
             # with client.map():
@@ -172,8 +173,8 @@ def _goto_centre_of_map():
             #     client.right_click((int(wx/2), int(wy/2)))
 
             # uncomment to test offset calibrations
-            time.sleep(2)
-            client._move_to_pos_via_map((150, 604))
+            # time.sleep(2)
+            # client._move_to_pos_via_map((150, 604))
 
 if __name__ == '__main__':
     _goto_centre_of_map()

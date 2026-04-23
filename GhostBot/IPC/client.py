@@ -6,7 +6,7 @@ from traceback import print_exception
 
 from GhostBot import logger as _logger
 from GhostBot.lib.utils import retry
-from GhostBot.rpc.message import Command
+from GhostBot.IPC.message import Command
 
 
 class IPCClient:

@@ -26,10 +26,11 @@ import yaml
 from GhostBot import logger as _logger
 from GhostBot.functions.runner import InjectedLoggingMixin
 from GhostBot.lib.utils import subclasses_by_name
+from GhostBot.upgrades.config import all_upgrades
 
 if TYPE_CHECKING:
-    from GhostBot.controller.bot_controller import BotClientWindow
-    from GhostBot.functions.runner import Runner
+    from ghostbot.controller.bot_controller import botclientwindow
+    from ghostbot.functions.runner import runner
 
 _T = TypeVar('_T')
 
@@ -109,6 +110,7 @@ class AttackConfig(FunctionConfig):
     battle_mana_threshold: float = None
     battle_hp_threshold: float = None
     roam_distance: int = None
+    spot: tuple[int, int] = None
 
 @dataclass
 class RegenConfig(FunctionConfig):
@@ -119,7 +121,6 @@ class RegenConfig(FunctionConfig):
     bindings: Bindings = field(default_factory=lambda: dict(sit= 'x'))
     hp_threshold: float = None
     mana_threshold: float = None
-    spot: tuple[int, int] = None
 
     def __post_init__(self):
         if self.bindings is None:
@@ -150,6 +151,7 @@ class FairyConfig(FunctionConfig):
     bindings: Bindings = None
     heal_team_threshold: float = None
     heal_self_threshold: float = None
+    spot: tuple[int, int] = None
 
 @dataclass
 class SellConfig(FunctionConfig):
@@ -160,7 +162,6 @@ class SellConfig(FunctionConfig):
     sell_item_pos: int = 1
     sell_interval_mins: int = 60
     npc_search_spot: tuple[int, int] = None
-    return_spot: tuple[int, int] = None
     use_mount: bool = None
     npc_sell_click_spot: tuple[int, int] = None
 
@@ -175,6 +176,8 @@ class DeleteConfig(FunctionConfig):
 
 @dataclass
 class Config:
+    logger = _logger.getChild('Config')
+
     attack: AttackConfig = None
     buff: BuffConfig = None
     fairy: FairyConfig = None
@@ -205,10 +208,12 @@ class Config:
         }
 
     @classmethod
-    def load_yaml(cls, data: dict[str, Any]) -> Config:
+    def load_yaml(cls, data: dict[str, Any] | str) -> Config:
+        if isinstance(data, str):
+            data = yaml.safe_load(data)
         _config = cls()
         _confs = cls._sub_configs_by_name()
-        for k, v in data.items():
+        for k, v in cls.upgrade(data).items():
             if (_clazz := _confs.get(k)) is not None:
                 setattr(_config, k, _clazz(**{vk: vv for vk, vv in v.items() if v}))
             else:
@@ -216,11 +221,27 @@ class Config:
         _config.validate()
         return _config
 
+    @classmethod
+    def load_file(cls, path: str) -> Config:
+        with open(path, 'r') as f:
+            return cls.load_yaml(yaml.safe_load(f.read()))
+
+    def save_file(self, path: str) -> None:
+        with open(path, 'w') as f:
+            f.write(yaml.safe_dump(self.to_yaml()))
+
     def functions(self):
         return (k for k, v in self.__dict__.items() if v is not None)
 
+    @classmethod
+    def upgrade(cls, data: dict[str, Any]) -> dict[str, Any]:
+        for i, _func in enumerate(all_upgrades):
+            cls.logger.debug('Running config upgrade :: %s', i)
+            data = _func(data)
+        return data
 
-class BaseConfigLoader:
+
+
 class BaseConfigLoader(ABC):
     config_filename: str
 
@@ -253,18 +274,16 @@ class ConfigLoader(BaseConfigLoader):
     def load(self) -> Config:
         self.logger.debug('ConfigLoader :: %s :: loading config', self.client.identifier)
         try:
-            with open(self.config_filepath, 'r') as c:
-                _config = Config.load_yaml(yaml.safe_load(c.read()))  # overwrite config defaults with whats in the loaded config
-                self.logger.debug('ConfigLoader :: %s :: config loaded', self.client.identifier)
-                return _config
+            _config = Config.load_file(self.config_filepath)
+            self.logger.debug('ConfigLoader :: %s :: config loaded', self.client.identifier)
+            return _config
         except FileNotFoundError:
             self.logger.debug('ConfigLoader :: %s :: config not found, using defaults', self.client.identifier)
             _config = Config()
             return self.save(_config)
 
     def save(self, _config: Config) -> Config:
-        with open(self.config_filepath, 'w') as c:
-            c.write(yaml.safe_dump(_config.to_yaml()))
+        _config.save_file(self.config_filepath)
         return _config
 
 
@@ -277,6 +296,7 @@ class LoginDetailsConfigLoader(BaseConfigLoader):
         username: str
         password: str
         server: str
+        enabled: bool
 
     @dataclass
     class LoginDetails:
@@ -284,6 +304,9 @@ class LoginDetailsConfigLoader(BaseConfigLoader):
 
         def items(self):
             return self.chars.items()
+
+        def get(self, item: str):
+            return self.chars.get(item)
 
     def load(self) -> 'LoginDetailsConfigLoader.LoginDetails':
         """
@@ -305,15 +328,29 @@ class LoginDetailsConfigLoader(BaseConfigLoader):
             with open(self.config_filepath, 'r') as c:
                 _config: dict[str, dict[str, str]] = yaml.safe_load(c.read())
                 self.logger.debug('LoginDetailsConfigLoader :: login config loaded')
-                return LoginDetailsConfigLoader.LoginDetails(
+                return self.LoginDetails(
                     chars = {
-                        _name: LoginDetailsConfigLoader.CharDetails(char_name=_name, **_details)
+                        _name: self.CharDetails(char_name=_name, **_details)
                         for _name, _details in _config.items()
                     }
                 )
         except FileNotFoundError:
             self.logger.debug('LoginDetailsConfigLoader :: no login config file found at %s', self.config_filepath)
             return {}
+
+    def to_yaml(self, login_details: LoginDetails) -> dict:
+        _config = {k: self.CharDetails(**v.__dict__).__dict__ for k, v in login_details.chars.items()}
+        return {_char_name: {k: v for k, v in _conf.items() if k != 'char_name'} for _char_name, _conf in _config.items()}
+
+    def save(self, login_details: LoginDetails):
+        self.logger.debug('LoginDetailsConfigLoader :: saving login config')
+        with open(self.config_filepath, 'w') as c:
+            c.write(
+                yaml.safe_dump(
+                    self.to_yaml(login_details),
+                )
+            )
+
 
 class GhostBotServerConfigLoader(BaseConfigLoader):
     config_filename = 'ghostbot_server.yml'
@@ -375,11 +412,16 @@ if __name__ == "__main__":
             food_interval_mins=55,
         ), regen=RegenConfig(
             bindings=regen_bindings,
+        ), sell=SellConfig(
+            sell_npc_name='foo'
         )
     )
     yaml_config = yaml.safe_dump(config.to_yaml())
     assert (processed_config := Config.load_yaml(yaml.safe_load(yaml_config)) == config)
     pprint.pprint(config)
+    config.regen.spot = (100, 200)
+    config.sell.return_spot = (200,300)
+    pprint.pprint(ConfigLoader.upgrade(config.to_yaml()))
 
     print("####################")
 

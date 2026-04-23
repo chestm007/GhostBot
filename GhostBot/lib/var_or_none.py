@@ -14,23 +14,13 @@ def var_or_none(val: _T, expected_type: type = None) -> _T:
         elif expected_type == int:
             return int(val)
         elif expected_type == bool:
-            if isinstance(val, int):
-                if val == 1:
-                    return True
-                elif val == 0:
-                    return False
-                raise TypeError(f'{val} not a valid {expected_type}')
-
-            if isinstance(val, str):
-                if val.lower() == 'true':
-                    return True
-                elif val.lower() == 'false':
-                    return False
-                elif val.lower() == 'none':
-                    return None
-                raise TypeError(f'{val} not a valid {expected_type}')
-
-            return bool(val)
+            if val in (1, '1', 'True', 'true', True):
+                return True
+            elif val in (0, '0', 'False', 'false', False):
+                return False
+            elif val in ('None', 'none'):
+                return None
+            raise TypeError(f'{val} not a valid {expected_type}')
 
         elif expected_type == float:
             return float(val)

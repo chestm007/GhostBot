@@ -60,7 +60,16 @@ class BotClientWindow(Win32ClientWindow):
             mounted=self.on_mount,
             window_pos=self.get_window_pos(),
             window_size=self.get_window_size(),
+            notification=self.notification,
+            confirm=self.pointers.confirm_box(),
+            dialog=self.pointers.get_dialog(),
+            dc=self.pointers.get_dc()
         )
+
+    def post_login_setup(self):
+        super().post_login_setup()
+        self.bot_status = BotStatus.created
+        self.load_config()
 
     def mount(self, _key=0):
         if self.config.sell is not None and self.config.sell.use_mount:
@@ -187,6 +196,7 @@ class BotController(ABC):
         self.clients: dict[str, BotClientWindow] = dict()
         self._pending_clients: dict[str, BotClientWindow] = dict()
         self.login_queue: dict[int, BotClientWindow] = dict()
+        self.requested_logins: list[str] = []
         self._seen_clients = []
         self.logger.addHandler(self._ipc_log_handler)
 
@@ -206,11 +216,14 @@ class BotController(ABC):
         self.login_config = LoginDetailsConfigLoader().load()
 
     def _eligible_logins(self):
+        def _eligible_login_generator():
+            logged_in_clients = self.client_keys + list(self._pending_clients.keys())
+            for k, v in self.login_config.items():
+                if k not in logged_in_clients:
+                    if (k in self.requested_logins) or v.enabled:
+                        yield k, v
         with lock:
-            if not self._cached_eligible_logins:
-                logged_in_clients = list(itertools.chain(self.client_keys, self._pending_clients.keys()))
-                self._cached_eligible_logins = {k: v for k, v in self.login_config.items() if k not in logged_in_clients}
-            return self._cached_eligible_logins
+            return {k: v for k, v in _eligible_login_generator()}
 
     def _scan_for_clients(self):
         current_running_procs = self._pymem_process.list_clients()
