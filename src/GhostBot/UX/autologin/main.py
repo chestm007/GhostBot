@@ -9,11 +9,11 @@ from tkinter import ttk
 
 from GhostBot.UX.pyuiWidgets.listBox import ScrollableListbox
 from GhostBot.IPC.message import Message
-from IPC.message import Command
-from UX.utils import create_entry
-from config import LoginDetailsConfigLoader
-from lib.var_or_none import var_or_none
-from server import GhostbotIPCClient
+from GhostBot.IPC.message import Command
+from GhostBot.UX.utils import create_entry
+from GhostBot.config import LoginDetailsConfigLoader
+from GhostBot.lib.var_or_none import var_or_none
+from GhostBot.server import GhostbotIPCClient
 
 
 

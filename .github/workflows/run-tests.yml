@@ -1,14 +1,15 @@
 name: Test
 
 on:
+  workflow_dispatch:
+  workflow_call:
   push:
-    branches: [master, staging]
+    branches: ['*']
+    tags-ignore: ['*']
   pull_request:
-    branches: [master]
 
 jobs:
   test:
-
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -28,11 +29,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install --upgrade pip
-        pip install ".[test]"
-    - name: Test with pytest
-      run: |
-        pytest
+        pip install tox
 
-  build:
-    needs: [test]
-    uses: ./.github/workflows/build.yml
+    - name: Run Tests
+      run: tox -e py${{ matrix.python-version }}

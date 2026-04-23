@@ -9,7 +9,7 @@
 GhostBot/__pycache__/
 
 *.pyc
-/bin/build/
+/build/
 /bin/dist/
 /bin/bot_controller.build/
 /bin/bot_controller.dist/
@@ -29,3 +29,7 @@ run_server.dist/
 nuitka-crash-report.xml
 
 pytest.log
+
+dist/
+
+src/GhostBot.egg-info/

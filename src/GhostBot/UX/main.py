@@ -221,6 +221,11 @@ class GhostBotMenu (tk.Menu):
         )
 
 def main():
+    import logging
+
+    if os.environ.get('PYCHARM_HOSTED'):
+        logger.setLevel(logging.DEBUG)
+
     ghost_bot = GhostBot()
 
     def _on_char_change():
@@ -243,9 +248,4 @@ def main():
     ghost_bot.mainloop()
 
 if __name__ == '__main__':
-    import logging
-
-    if os.environ.get('PYCHARM_HOSTED'):
-        logger.setLevel(logging.DEBUG)
-
     main()

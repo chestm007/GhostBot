@@ -1,7 +1,7 @@
 import json
-from enum import Enum, EnumType, unique
+from enum import Enum, unique
 from json import JSONDecodeError
-from typing import Any, Generator
+from typing import Generator
 
 from GhostBot import logger
 

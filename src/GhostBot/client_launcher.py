@@ -9,7 +9,7 @@ from GhostBot.lib.win32.process import PymemProcess
 
 
 class ClientLauncher(Win32ClientWindow):
-    path = 'C:\Program Files (x86)\TalismanOnline'
+    path = 'C:\\Program Files (x86)\\TalismanOnline'
     exe = 'game.exe'
     orig_dir = os.getcwd()
 
