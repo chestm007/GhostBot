@@ -8,7 +8,7 @@ from GhostBot.IPC.client import IPCClient
 from GhostBot.IPC.server import IPCServer
 from GhostBot.config import Config, ConfigLoader
 from GhostBot.IPC.message import Message, Command
-from config import LoginDetailsConfigLoader
+from GhostBot.config import LoginDetailsConfigLoader
 
 if TYPE_CHECKING:
     from GhostBot.controller.bot_controller import BotController

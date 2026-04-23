@@ -26,7 +26,8 @@ setup(
     extras_require={
         'test': [
             "pytest",
-            "pytest-asyncio"
+            "pytest-asyncio",
+            "tox"
         ]
     },
     entry_points={

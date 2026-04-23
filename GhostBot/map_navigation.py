@@ -1,7 +1,5 @@
 from collections import namedtuple
 
-from image_finder import ImageFinder
-
 Zone = namedtuple('Zone', ['location', 'boundary', 'centre', 'scale'])  #, 'fay'])
 zones = (
     {

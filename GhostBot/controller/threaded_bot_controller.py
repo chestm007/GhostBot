@@ -6,7 +6,7 @@ from GhostBot.client_launcher import ClientLauncher
 from GhostBot.controller.bot_controller import BotController, BotClientWindow
 from GhostBot.controller.login_controller import LoginController
 from GhostBot.enums.bot_status import BotStatus
-from lib.win32.process import PymemProcess
+from GhostBot.lib.win32.process import PymemProcess
 
 
 class ThreadedBotController(BotController):
