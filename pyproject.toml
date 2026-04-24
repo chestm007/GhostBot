@@ -1,0 +1,60 @@
+[build-system]
+    requires = [
+        "setuptools",
+        'setuptools-scm'
+    ]
+    build-backend = "setuptools.build_meta"
+
+[project]
+    name = "GhostBot"
+    version = "0.0.2"
+    description = ""
+    readme = {file = "README.md", content-type = "text/markdown"}
+    license = "GPL-2.0"
+    requires-python = '>=3.11,<3.14'
+    authors = [
+        {name = "Max Chesterfield", email = "chestm007@hotmail.com"}
+    ]
+    dependencies = [
+        'pymem',
+        'npyscreen',
+        'windows-curses',
+        'pywin32',
+        'attrdict',
+        'pyyaml',
+        'pillow',
+        'numpy',
+        'opencv-python',
+        'pyyaml',
+    ]
+    classifiers = [
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.14",
+        "Operating System :: Win32"
+    ]
+
+[project.scripts]
+    ghost-bot-client = "GhostBot.run_client:main"
+    ghost-bot-server = "GhostBot.run_server:main"
+
+[project.urls]
+    Repository = 'https://github.com/chestm007/GhostBot'
+    Homepage = 'https://github.com/chestm007/GhostBot'
+
+[project.optional-dependencies]
+    test = [
+        "pytest",
+        "pytest-asyncio",
+        "tox"
+    ]
+    build = [
+        'nuitka'
+    ]
+
+[tool.setuptools.package-data]
+    "*" = ["*.bmp"]
+
+[tool.setuptools.packages.find]
+    where = ["src/"]

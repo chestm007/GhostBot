@@ -4,12 +4,10 @@ on:
   workflow_call:
 
 jobs:
-  build-client:
+  build-executables:
     uses: ./.github/workflows/build-executable.yml
+    strategy:
+      matrix:
+        executable-kind: [client, server]
     with:
-      executable_kind: client
-
-  build-server:
-    uses: ./.github/workflows/build-executable.yml
-    with:
-      executable_kind: server
+      executable_kind: ${{ matrix.executable-kind }}

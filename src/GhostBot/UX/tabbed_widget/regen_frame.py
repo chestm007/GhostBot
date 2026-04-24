@@ -2,7 +2,7 @@ from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
 from GhostBot.controller.bot_controller import BotClientWindow
 from GhostBot.config import Config, RegenConfig
 from GhostBot.lib.var_or_none import var_or_none
-from UX.utils import create_entry
+from GhostBot.UX.utils import create_entry
 
 
 class RegenFrame(TabFrame):

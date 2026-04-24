@@ -1,34 +1,58 @@
-name: Releases
+name: Release
 
 on:
+  workflow_dispatch:
   push:
-    tags:
-    - '*'
+    branches:
+      - master
+    tags: ['*']
 
 jobs:
+  test:
+    uses: ./.github/workflows/run-tests.yml
+
   build:
+    needs:
+      - test
+    uses: ./.github/workflows/build.yml
+
+  release:
+    needs:
+      - build
     runs-on: windows-latest
     permissions:
       contents: write
+
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: "recursive"
 
-      - name: Build
-        uses: ./.github/workflows/build.yml
+      - name: Debug contexts
+        run: |
+          echo "github.ref: ${{ github.ref }}"
+          echo "github.event.ref_type: ${{ github.event.ref_type }}"
+          echo "github.event.created: ${{ github.event.created }}" 
 
-      - name: Download server artifact
-        uses: actions/download-artifact@v5
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v8
         with:
-          name: server.exe
+          pattern: "*.exe"
+          merge-multiple: true
 
-      - name: Download client artifact
-        uses: actions/download-artifact@v5
+      - name: Release
+        uses: ncipollo/release-action@v1
+        if: github.event_name == 'push' && github.event.ref_type == 'tag'
         with:
-          name: client.exe
+          artifacts: "run_server.exe,run_client.exe"
+          artifactErrorsFailBuild: true
+          body: ${{ github.ref }}
 
-      - uses: ncipollo/release-action@v1
+      - name: Pre-Release
+        uses: ncipollo/release-action@v1
+        if: github.event_name == 'push' && github.event.ref_type != 'tag'
         with:
-          artifacts: "GhostBot/server.exe,GhostBot/client.exe"
-          bodyFile: "body.md"
+          artifacts: "run_server.exe,run_client.exe"
+          artifactErrorsFailBuild: true
+          name: latest
+          body: pre-release

@@ -29,8 +29,7 @@ from GhostBot.lib.utils import subclasses_by_name
 from GhostBot.upgrades.config import all_upgrades
 
 if TYPE_CHECKING:
-    from ghostbot.controller.bot_controller import botclientwindow
-    from ghostbot.functions.runner import runner
+    from GhostBot.controller.bot_controller import BotClientWindow
 
 _T = TypeVar('_T')
 
@@ -384,50 +383,3 @@ class GhostBotServerConfigLoader(BaseConfigLoader):
             self.logger.info('setting loglevel of [%s] to [%s]', k, getattr(logging, v.upper()))
             logging.getLogger(f'GhostBot.{k}').setLevel(getattr(logging, v.upper()))
         return self
-
-
-if __name__ == "__main__":
-    import pprint
-
-    attack_bindings: AttackConfig.Bindings = {'battle_hp_pot': 'F1'}
-    fairy_bindings: FairyConfig.Bindings = {'heal': 6}
-    pet_bindings: PetConfig.Bindings = {'spawn': 'E', 'food': 9}
-    regen_bindings: RegenConfig.Bindings = {'hp_pot': 'Q', 'mana_pot': 'W', 'sit': 'X'}
-    config = Config(
-        fairy=FairyConfig(
-            bindings=fairy_bindings,
-            heal_self_threshold=0.75,
-        ), attack=AttackConfig(
-            bindings=attack_bindings,
-            attacks=[
-                [1, 1000],
-                [2, 1400]
-            ]
-        ), buff=BuffConfig(
-            buffs=[
-                [7, 2000]
-            ], interval=10
-        ), pet=PetConfig(
-            bindings=pet_bindings,
-            food_interval_mins=55,
-        ), regen=RegenConfig(
-            bindings=regen_bindings,
-        ), sell=SellConfig(
-            sell_npc_name='foo'
-        )
-    )
-    yaml_config = yaml.safe_dump(config.to_yaml())
-    assert (processed_config := Config.load_yaml(yaml.safe_load(yaml_config)) == config)
-    pprint.pprint(config)
-    config.regen.spot = (100, 200)
-    config.sell.return_spot = (200,300)
-    pprint.pprint(ConfigLoader.upgrade(config.to_yaml()))
-
-    print("####################")
-
-    for char, details in LoginDetailsConfigLoader().load().items():
-
-        print(char, details)
-
-    print(GhostBotServerConfigLoader().load().apply_function_debugging_levels())
-
