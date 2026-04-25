@@ -17,17 +17,17 @@ _path_base = pathlib.Path(__file__).parent.resolve()
 if "NUITKA_ONEFILE_DIRECTORY" in os.environ:
     _path_base = os.path.join(_path_base, "GhostBot")
 
-image_folder = os.path.join(_path_base, "Images", "SELL")
-misc_folder = os.path.join(_path_base, "Images", "misc")
-
-if 'dialog_ok.bmp' not in os.listdir(misc_folder):
-    raise AssertionError("dialog_ok.bmp not found in misc_folder")
-if 'greenid.bmp' not in os.listdir(image_folder):
-    raise AssertionError("greenid.bmp not found in image_folder")
-
-print("Images path detected...")
 
 class ImageFinder:
+    image_folder = os.path.join(_path_base, "Images", "SELL")
+    misc_folder = os.path.join(_path_base, "Images", "misc")
+
+    if 'dialog_ok.bmp' not in os.listdir(misc_folder):
+        raise AssertionError("dialog_ok.bmp not found in misc_folder")
+    if 'greenid.bmp' not in os.listdir(image_folder):
+        raise AssertionError("greenid.bmp not found in image_folder")
+
+    print("Images path detected...")
     items = {}
 
     def __init__(self, client: AbstractClientWindow):
@@ -91,18 +91,18 @@ class ImageFinder:
         return to_delete
 
     def _get_destroy_item_location(self) -> tuple[int, int] | None:
-        return self.find_ui_element(os.path.join(misc_folder, "destroy-item.bmp"), threshold=0.8)
+        return self.find_ui_element(os.path.join(self.misc_folder, "destroy-item.bmp"), threshold=0.8)
 
     @property
     def dialog_ok_location(self) -> tuple[int, int] | None:
-        return self.find_ui_element("Images/misc/dialog_ok.bmp", threshold=0.6)
+        return self.find_ui_element(os.path.join(self.misc_folder, "dialog_ok.bmp"), threshold=0.6)
 
     def is_map_open(self) -> bool:
-        return bool(self.find_ui_element(os.path.join(misc_folder, 'map_open.bmp')))
+        return bool(self.find_ui_element(os.path.join(self.misc_folder, 'map_open.bmp')))
 
     def _sell_item_npc_location(self, stage=0) -> tuple[int, int] | None:
         stage_path = ['npc_sell', 'item_sell_window_header', 'item_sell']
-        return self.find_ui_element(f"Images/misc/{stage_path[stage - 1]}.bmp", threshold=0.62)
+        return self.find_ui_element(os.path.join(self.misc_folder, f"{stage_path[stage - 1]}.bmp"), threshold=0.62)
 
     def find_ui_element(self, bitmap_path: str, threshold=0.8) -> tuple[int, int] | None:
         _image = cv2.imread(bitmap_path, cv2.IMREAD_GRAYSCALE)
