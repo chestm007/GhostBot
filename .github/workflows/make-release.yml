@@ -46,13 +46,27 @@ jobs:
         with:
           artifacts: "run_server.exe,run_client.exe"
           artifactErrorsFailBuild: true
+          makeLatest: true
           body: ${{ github.ref }}
 
       - name: Pre-Release
         uses: ncipollo/release-action@v1
-        if: "github.event_name == 'push' && startsWith('github.ref', 'refs/heads')"
+        if: github.event_name == 'push' && github.ref == refs/heads/master
+        with:
+          artifacts: "run_server.exe,run_client.exe"
+          artifactErrorsFailBuild: true
+          name: pre-release
+          body: pre-release build
+          prerelease: true
+          makeLatest: false
+
+      - name: Development Release
+        uses: ncipollo/release-action@v1
+        if: github.event_name == 'push' && github.ref == refs/heads/staging
         with:
           artifacts: "run_server.exe,run_client.exe"
           artifactErrorsFailBuild: true
           name: latest
-          body: pre-release
+          body: development build
+          prerelease: true
+          makeLatest: false
