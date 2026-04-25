@@ -51,7 +51,7 @@ jobs:
 
       - name: Pre-Release
         uses: ncipollo/release-action@v1
-        if: github.event_name == 'push' && github.ref == refs/heads/master
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         with:
           artifacts: "run_server.exe,run_client.exe"
           artifactErrorsFailBuild: true
@@ -62,7 +62,7 @@ jobs:
 
       - name: Development Release
         uses: ncipollo/release-action@v1
-        if: github.event_name == 'push' && github.ref == refs/heads/staging
+        if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
         with:
           artifacts: "run_server.exe,run_client.exe"
           artifactErrorsFailBuild: true
