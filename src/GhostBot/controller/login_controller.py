@@ -15,7 +15,7 @@ from GhostBot.lib.utils import retry
 
 if TYPE_CHECKING:
     from GhostBot.controller.bot_controller import BotClientWindow
-    from controller.bot_controller import BotController
+    from GhostBot.controller.bot_controller import BotController
     from collections.abc import Callable
     from GhostBot.config import LoginDetailsConfigLoader
 

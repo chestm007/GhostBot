@@ -11,8 +11,7 @@ from GhostBot.IPC.message import Message, Command
 from GhostBot.config import LoginDetailsConfigLoader
 
 if TYPE_CHECKING:
-    from GhostBot.controller.bot_controller import BotController
-    from controller.bot_controller import BotClientWindow
+    from GhostBot.controller.bot_controller import BotController, BotClientWindow
 
 
 class GhostbotIPCServer(IPCServer):

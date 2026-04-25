@@ -13,11 +13,21 @@ from GhostBot import logger
 if TYPE_CHECKING:
     from GhostBot.abstract_client_window import AbstractClientWindow
 
+_path_base = pathlib.Path(__file__).parent.resolve()
+if "NUITKA_ONEFILE_DIRECTORY" in os.environ:
+    _path_base = os.path.join(_path_base, "GhostBot")
+
 
 class ImageFinder:
-    _path_base = pathlib.Path(__file__).parent.resolve()
     image_folder = os.path.join(_path_base, "Images", "SELL")
     misc_folder = os.path.join(_path_base, "Images", "misc")
+
+    if 'dialog_ok.bmp' not in os.listdir(misc_folder):
+        raise AssertionError("dialog_ok.bmp not found in misc_folder")
+    if 'greenid.bmp' not in os.listdir(image_folder):
+        raise AssertionError("greenid.bmp not found in image_folder")
+
+    print("Images path detected...")
     items = {}
 
     def __init__(self, client: AbstractClientWindow):
@@ -56,7 +66,10 @@ class ImageFinder:
         window_img = self._client.capture_window()
         #window_gray = cv2.cvtColor(window_img, cv2.COLOR_BGR2GRAY)
 
-        for offset in self._get_bag_coords():
+        if not (bag_coords := self._get_bag_coords()):
+            logger.error("ImageFinder :: _get_bag_coords :: bag_coords returned None")
+            return []
+        for offset in bag_coords:
             x1, y1, width, height = offset
 
             bag_area = window_img[y1:y1 + height, x1:x1 + width]
@@ -82,14 +95,14 @@ class ImageFinder:
 
     @property
     def dialog_ok_location(self) -> tuple[int, int] | None:
-        return self.find_ui_element("Images/misc/dialog_ok.bmp", threshold=0.6)
+        return self.find_ui_element(os.path.join(self.misc_folder, "dialog_ok.bmp"), threshold=0.6)
 
     def is_map_open(self) -> bool:
         return bool(self.find_ui_element(os.path.join(self.misc_folder, 'map_open.bmp')))
 
     def _sell_item_npc_location(self, stage=0) -> tuple[int, int] | None:
         stage_path = ['npc_sell', 'item_sell_window_header', 'item_sell']
-        return self.find_ui_element(f"Images/misc/{stage_path[stage - 1]}.bmp", threshold=0.62)
+        return self.find_ui_element(os.path.join(self.misc_folder, f"{stage_path[stage - 1]}.bmp"), threshold=0.62)
 
     def find_ui_element(self, bitmap_path: str, threshold=0.8) -> tuple[int, int] | None:
         _image = cv2.imread(bitmap_path, cv2.IMREAD_GRAYSCALE)
@@ -106,8 +119,11 @@ class ImageFinder:
             self._destroy_item_location = (time.time(), self._get_destroy_item_location())
         return self._destroy_item_location[1]
 
-    def _get_bag_coords(self):
-        destroy_x, destroy_y = self.destroy_item_location
+    def _get_bag_coords(self) -> list[tuple[int, int, int, int]]:
+        if (destroy_location := self.destroy_item_location) is None:
+            logger.error("ImageFinder :: _get_bag_coords :: destroy_item_location returned None")
+            return []
+        destroy_x, destroy_y = destroy_location
 
         bag_cords = [
             (destroy_x - 5, destroy_y - 200, destroy_x + 220, destroy_y - 15),
