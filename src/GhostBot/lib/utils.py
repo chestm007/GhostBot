@@ -4,7 +4,7 @@ import threading
 import time
 from collections.abc import Callable
 from functools import partial
-from typing import Coroutine, Protocol, TypeVar, Any, ParamSpec, cast
+from typing import Coroutine, Protocol, TypeVar, ParamSpec
 
 
 class TRetryCoroutine(Protocol):

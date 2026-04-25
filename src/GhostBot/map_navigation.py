@@ -87,7 +87,7 @@ _zones_map = {
     'laurel_mountain': (
         'Ancient Laurel Grounds',
         'Laurel Road',
-        'Laural Room',
+        'Laurel Room',
         'Red Flower Cave',
         'Fencing Room',
         'Red Flower Alley',

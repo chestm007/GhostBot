@@ -1,6 +1,6 @@
 import math
 import re
-from typing import cast, overload, LiteralString, Literal
+from typing import overload, Literal
 
 import pymem
 
