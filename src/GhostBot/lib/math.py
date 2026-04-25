@@ -66,7 +66,7 @@ def item_coordinates_from_pos(pos: int, base_pos: tuple[int, int] = None) -> tup
     else:
         return tuple(map(add, base_pos, _pos))
 
-max_minimap_move = 35
+max_minimap_move = 30
 def scale_minimap_move_distance(_pos: tuple[int, int]) -> tuple[int, int]:
     if linear_distance(_pos, (0, 0)) <= max_minimap_move:
         return _pos
@@ -78,4 +78,10 @@ def scale_minimap_move_distance(_pos: tuple[int, int]) -> tuple[int, int]:
     ratio = calculate_ratio()
     scaled_pos = tuple(map(truediv, _pos, (ratio, ratio)))
     logger.debug(f'raw: {_pos} | capped: {scaled_pos}')
-    return scaled_pos
+    print(scaled_pos)
+    return round_coordinates(scaled_pos)
+
+def round_coordinates(_pos: tuple[float, float]) -> tuple[int, int]:
+    def _round(x: float) -> int:
+        return int(math.ceil(x) if x >= 0 else math.floor(x))
+    return tuple(map(_round, _pos))

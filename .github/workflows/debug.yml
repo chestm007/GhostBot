@@ -1,0 +1,24 @@
+name: Debug
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["*"]
+    tags: ['*']
+
+jobs:
+  debug:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Debug contexts
+        run: |
+          echo "github.ref: ${{ github.ref }}"
+          echo "github.event.ref_type: ${{ github.event.ref_type }}"
+          echo "github.event.created: ${{ github.event.created }}" 
+          echo "github.event_name: ${{ github.event_name }}"
+          echo "github.ref_name: ${{ github.ref_name }}"
+          echo "github.ref_type: ${{ github.ref_type }}"
+          echo "runner.os: ${{ runner.os }}"

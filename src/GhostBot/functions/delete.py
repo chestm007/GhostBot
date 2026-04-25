@@ -17,6 +17,7 @@ class Delete(Runner):
     def __init__(self, client: BotClientWindow):
         super().__init__(client)
         self._image_finder = ImageFinder(client)
+        print(self._image_finder.dialog_ok_location)
         self._interval = seconds(minutes=int(self._client.config.delete.interval) or 10)
         self._delete_trash = self._client.config.delete.delete_trash or False
 

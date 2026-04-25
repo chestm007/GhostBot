@@ -172,11 +172,13 @@ class BotClientWindow(Win32ClientWindow):
     def block_while_moving(self, destination=None):
         while self.running:
             _location = self.location
-            time.sleep(3)
+            time.sleep(1)
             if destination is not None:
                 if linear_distance(destination, self.location) < 40:  # if we're close enough, no point overshooting.
+                    self.logger.debug("block_while_moving: unblocking due to proximity")
                     break
             if linear_distance(self.location, _location) < 1:
+                self.logger.debug("block_while_moving: unblocking due to no movement")
                 break
 
 

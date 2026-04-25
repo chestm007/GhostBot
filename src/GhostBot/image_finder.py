@@ -6,28 +6,32 @@ from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
-import pathlib
 
 from GhostBot import logger
 
 if TYPE_CHECKING:
     from GhostBot.abstract_client_window import AbstractClientWindow
 
-_path_base = pathlib.Path(__file__).parent.resolve()
-if "NUITKA_ONEFILE_DIRECTORY" in os.environ:
-    _path_base = os.path.join(_path_base, "GhostBot")
+_path_base = os.path.dirname(__file__)
 
 
 class ImageFinder:
-    image_folder = os.path.join(_path_base, "Images", "SELL")
+    
     misc_folder = os.path.join(_path_base, "Images", "misc")
-
     if 'dialog_ok.bmp' not in os.listdir(misc_folder):
-        raise AssertionError("dialog_ok.bmp not found in misc_folder")
-    if 'greenid.bmp' not in os.listdir(image_folder):
-        raise AssertionError("greenid.bmp not found in image_folder")
+        misc_folder = os.path.join(_path_base, "GhostBot", "Images", "misc")
+        if 'dialog_ok.bmp' not in os.listdir(misc_folder):
+            logger.error("images not found in %s", misc_folder)
+            raise AssertionError("dialog_ok.bmp not found in misc_folder")
 
-    print("Images path detected...")
+    image_folder = os.path.join(_path_base, "Images", "SELL")
+    if 'greenid.bmp' not in os.listdir(image_folder):
+        image_folder = os.path.join(_path_base, "GhostBot", "Images", "SELL")
+        if 'greenid.bmp' not in os.listdir(image_folder):
+            logger.error(image_folder)
+            raise AssertionError("greenid.bmp not found in image_folder")
+
+    logger.info("Images path detected...")
     items = {}
 
     def __init__(self, client: AbstractClientWindow):

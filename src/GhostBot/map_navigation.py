@@ -3,7 +3,7 @@ from collections import namedtuple
 Zone = namedtuple('Zone', ['location', 'boundary', 'centre', 'scale'])  #, 'fay'])
 zones = (
     {
-        'simen_mountain': Zone('simen_mountain', ((1270, 1800), (2030, 1280)), (1667, 1544), (-1, 1.2)),
+        'simen_mountain': Zone('simen_mountain', ((1270, 1800), (2030, 1280)), (1667, 1544), (-1.05, 1.2)),
         'barbarian_mountain': Zone('barbarian_mountain', ((1281, 1280), (2050, 510)), (1667, 902), (-1, 1.2)),
         'green_scarp': Zone('green_scarp', ((280, 1500), (500, 760)), (456, 1164), (-1.05, 1.65)),
         'sky_village': Zone('sky_village', ((250, 760), (515, 0)), (150, 404), (-1.5, 1.85)),
@@ -160,12 +160,11 @@ def _goto_centre_of_map():
     from GhostBot.lib.win32.process import PymemProcess
     from GhostBot.controller.bot_controller import BotClientWindow
 
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     for proc in PymemProcess.list_clients():
         client = BotClientWindow(proc)
-        if client.name == "1dollarsucky":
-            time.sleep(3)
-            print('#######################', client.press_key('i'))
+        client.running = True
+        if client.name == "LilithIsGorgeous":
 
             # uncomment to find centre
             # with client.map():
@@ -173,8 +172,10 @@ def _goto_centre_of_map():
             #     client.right_click((int(wx/2), int(wy/2)))
 
             # uncomment to test offset calibrations
-            # time.sleep(2)
-            # client._move_to_pos_via_map((150, 604))
+            target = (1540, 1500)
+            while client.location != target:
+                print('moving')
+                client.move_to_pos(target)
 
 if __name__ == '__main__':
     _goto_centre_of_map()

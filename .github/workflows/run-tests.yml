@@ -4,7 +4,9 @@ on:
   workflow_dispatch:
   workflow_call:
   push:
-    branches: ['*']
+    branches-ignore:
+      - master
+      - staging
     tags-ignore: ['*']
   pull_request:
 
@@ -33,3 +35,13 @@ jobs:
 
     - name: Run Tests
       run: tox -e py${{ matrix.python-version }}
+
+    - name: compile ${{ inputs.executable_kind }} with nuitka
+      uses: Nuitka/Nuitka-Action@main
+      with:
+        nuitka-version: main
+        script-name: src/GhostBot/test_image_dir_compiled.py
+        mode: app
+
+    - name: Run extra tests
+      run: build/test_image_dir_compiled.exe

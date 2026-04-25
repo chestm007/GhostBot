@@ -59,8 +59,8 @@ def test_seconds_function():
 def test_scale_minimap_move_distance():
     assert scale_minimap_move_distance((10, 10)) == (10, 10)
     assert scale_minimap_move_distance((-10, 10)) == (-10, 10)
-    assert scale_minimap_move_distance((70, 70)) == (35, 35)
-    assert scale_minimap_move_distance((-70, -70)) == (-35, -35)
-    assert scale_minimap_move_distance((-70, 70)) == (-35, 35)
-    assert scale_minimap_move_distance((70, -70)) == (35, -35)
-    assert scale_minimap_move_distance((35, -70)) == (17.5, -35)
+    assert scale_minimap_move_distance((70, 70)) == (30, 30)
+    assert scale_minimap_move_distance((-70, -70)) == (-30, -30)
+    assert scale_minimap_move_distance((-70, 70)) == (-30, 30)
+    assert scale_minimap_move_distance((70, -70)) == (30, -30)
+    assert scale_minimap_move_distance((30, -70)) == (13, -30)

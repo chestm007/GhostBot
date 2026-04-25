@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - master
+      - staging
     tags: ['*']
 
 jobs:
@@ -33,6 +34,10 @@ jobs:
           echo "github.ref: ${{ github.ref }}"
           echo "github.event.ref_type: ${{ github.event.ref_type }}"
           echo "github.event.created: ${{ github.event.created }}" 
+          echo "github.event_name: ${{ github.event_name }}"
+          echo "github.ref_name: ${{ github.ref_name }}"
+          echo "github.ref_type: ${{ github.ref_type }}"
+          echo "runner.os: ${{ runner.os }}"
 
       - name: Download All Artifacts
         uses: actions/download-artifact@v8
@@ -46,13 +51,29 @@ jobs:
         with:
           artifacts: "run_server.exe,run_client.exe"
           artifactErrorsFailBuild: true
+          makeLatest: true
           body: ${{ github.ref }}
 
       - name: Pre-Release
         uses: ncipollo/release-action@v1
-        if: "github.event_name == 'push' && startsWith('github.ref', 'refs/heads')"
+        if: github.event_name == 'push' && github.ref_name == 'master'
+        with:
+          artifacts: "run_server.exe,run_client.exe"
+          artifactErrorsFailBuild: true
+          name: pre-release
+          body: pre-release build
+          prerelease: true
+          makeLatest: false
+          tag: pre-release
+
+      - name: Development Release
+        uses: ncipollo/release-action@v1
+        if: github.event_name == 'push' && github.ref_name == 'staging'
         with:
           artifacts: "run_server.exe,run_client.exe"
           artifactErrorsFailBuild: true
           name: latest
-          body: pre-release
+          body: development build
+          prerelease: true
+          makeLatest: false
+          tag: development
