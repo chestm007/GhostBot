@@ -42,7 +42,7 @@ jobs:
 
       - name: Release
         uses: ncipollo/release-action@v1
-        if: github.event_name == 'push' && github.event.ref_type == 'tag'
+        if: github.event_name == 'push' && startsWith('github.ref', "refs/tags")
         with:
           artifacts: "run_server.exe,run_client.exe"
           artifactErrorsFailBuild: true
@@ -50,7 +50,7 @@ jobs:
 
       - name: Pre-Release
         uses: ncipollo/release-action@v1
-        if: github.event_name == 'push' && github.event.ref_type != 'tag'
+        if: github.event_name == 'push' && startsWith('github.ref', "refs/heads")
         with:
           artifacts: "run_server.exe,run_client.exe"
           artifactErrorsFailBuild: true
