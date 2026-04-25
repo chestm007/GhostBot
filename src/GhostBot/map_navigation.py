@@ -5,6 +5,7 @@ zones = (
     {
         'simen_mountain': Zone('simen_mountain', ((1270, 1800), (2030, 1280)), (1667, 1544), (-1.05, 1.2)),
         'barbarian_mountain': Zone('barbarian_mountain', ((1281, 1280), (2050, 510)), (1667, 902), (-1, 1.2)),
+
         'green_scarp': Zone('green_scarp', ((280, 1500), (500, 760)), (456, 1164), (-1.05, 1.65)),
         'sky_village': Zone('sky_village', ((250, 760), (515, 0)), (150, 404), (-1.5, 1.85)),
         'cloud_mountain': Zone('cloud_mountain', ((-200, 220), (760, -266)), (257, 45), (-1.4, 1.5)),  #(274, -116)),
@@ -19,7 +20,12 @@ zones = (
 )
 
 _zones_map = {
-    'peace_island': ('Moon Dragon Harbor', 'Black Turtle Palace', 'Coconut Woods', 'Peace Village'),
+    'peace_island': (
+        'Moon Dragon Harbor',
+        'Black Turtle Palace',
+        'Coconut Woods',
+        'Peace Village'
+    ),
     'simen_mountain': (
         'Bandit Lair',
         'Bandit Fort',
@@ -28,7 +34,11 @@ _zones_map = {
         'Outskirt of Village',
         'South of Simen Mountain',
     ),
-    'west_simen_mountain': ('Dry Woods', 'Old Site of Village', 'West of Simen Mountain'),
+    'west_simen_mountain': (
+        'Dry Woods',
+        'Old Site of Village',
+        'West of Simen Mountain'
+    ),
     'green_scarp': (
         'Green Scarp',
         'Piedmont of Green Scarp',
