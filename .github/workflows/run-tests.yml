@@ -33,3 +33,9 @@ jobs:
 
     - name: Run Tests
       run: tox -e py${{ matrix.python-version }}
+
+    - name: Compile extra tests
+      run: tox -e build-image-path-test -r
+
+    - name: Run extra tests
+      run: build/test_image_dir_compiled.exe
