@@ -4,7 +4,7 @@ import math
 import threading
 import time
 from abc import abstractmethod, ABC
-from typing import Generator, TYPE_CHECKING
+from typing import Generator, TYPE_CHECKING, Self
 
 from operator import mul, add
 
@@ -291,7 +291,7 @@ class BotController(ABC):
 
     def add_client(self, client: BotClientWindow) -> BotClientWindow:
         with lock:
-            self.clients[client.name] = client
+            self.clients[client.name] = client.with_bot_controller(self)
             self.server.send_to_all(self.server.bot_controller_clients_message)
             return client
 
