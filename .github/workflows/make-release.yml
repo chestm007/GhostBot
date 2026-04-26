@@ -28,6 +28,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: "recursive"
+          fetch_depth: 0
 
       - name: Debug contexts
         run: |
@@ -45,13 +46,28 @@ jobs:
           pattern: "*.exe"
           merge-multiple: true
 
+      - name: 'Get Previous tag'
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        id: previoustag
+        uses: "WyriHaximus/github-action-get-previous-tag@v2"
+        with:
+          pattern: "*[0-9].*[0-9].*[0-9]"
+
+#      - name: Detect previous SimVer release
+#        id: vars
+#        run: |
+#           git fetch -a
+#           echo ::set-output name=previous_major::$(git tag --sort "-committerdate" | grep -E "[0-9]" | cut -d$"\n" -f2)
+
       - name: Release
         uses: ncipollo/release-action@v1
-        if: "github.event_name == 'push' && startsWith('github.ref', 'refs/tags')"
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         with:
           artifacts: "run_server.exe,run_client.exe"
           artifactErrorsFailBuild: true
           makeLatest: true
+          generateReleaseNotes: true
+          generateReleaseNotesPreviousTag: ${{ steps.previoustag.outputs.tag }}
           body: ${{ github.ref }}
 
       - name: Pre-Release
