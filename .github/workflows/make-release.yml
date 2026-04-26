@@ -80,6 +80,8 @@ jobs:
           body: pre-release build
           prerelease: true
           makeLatest: false
+          allowUpdates: true
+          replacesArtifacts: true
           tag: pre-release
 
       - name: Development Release
@@ -92,4 +94,6 @@ jobs:
           body: development build
           prerelease: true
           makeLatest: false
+          allowUpdates: true
+          replacesArtifacts: true
           tag: development
