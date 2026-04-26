@@ -1,6 +1,8 @@
 import os
 
 import pytest
+from GhostBot.controller.threaded_bot_controller import ThreadedBotController
+
 from mocks.mock_client import client
 
 from GhostBot.image_finder import ImageFinder
@@ -41,3 +43,12 @@ def test_inventory_context_manager(monkeypatch, client):
     with client.inventory():
         assert _calls == ["open_inventory"]
     assert _calls == ["open_inventory", "close_inventory"]
+
+@pytest.mark.skip("local testing only for now")
+def test_team_members():
+    bc = ThreadedBotController()
+    bc._running = True
+    bc._scan_for_clients()
+    wyp = bc.clients.get('bot_name')
+    print(wyp.team_size)
+    assert not [t.team_members[0].name for t in wyp.team_members]

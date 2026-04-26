@@ -54,6 +54,6 @@ class Fairy(Locational):
         """
         return {
             k: v for k, v in {
-                i: self._bot_controller.clients.get(name) for i, name in enumerate(self._client.team_members)
+                i: client for i, client in enumerate(self._client.team_members)
             }.items() if v and not v.disconnected
         }

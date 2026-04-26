@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import contextlib
 import math
 import time
 from ctypes.wintypes import LPARAM, WPARAM
+from typing import Self
 
 import cv2
 import numpy as np
@@ -13,6 +16,7 @@ import win32con
 import win32gui
 import win32process
 import win32ui
+from PIL.ImageTk import TYPE_CHECKING
 
 from pymem.exception import MemoryReadError, ProcessError
 from win32con import SM_CYCAPTION
@@ -25,6 +29,9 @@ from GhostBot.map_navigation import location_to_zone_map
 
 TARGET_MAX_HP=597
 TARGET_MIN_HP=461
+
+if TYPE_CHECKING:
+    from GhostBot.controller.bot_controller import BotController
 
 
 def get_pointer(self, base, offsets):
@@ -73,7 +80,13 @@ class Win32ClientWindow(AbstractClientWindow):
 
         with contextlib.suppress(TypeError):
             self.set_window_name()
+        self._bot_controller: BotController | None = None
         # FIXME: wrap all getters in a retry DC check loop
+
+    def with_bot_controller(self, _bot_controller: BotController) -> Self:
+        self.logger.debug("%s :: setting bot controller [%s]", self.name, _bot_controller.__class__.__name__)
+        self._bot_controller = _bot_controller
+        return self
 
     @property
     def identifier(self):
@@ -216,7 +229,7 @@ class Win32ClientWindow(AbstractClientWindow):
         return self.pointers.get_team_size()
 
     @property
-    def team_members(self) -> list[str]:  # TODO: this should return a list of references to ClientWindow
+    def team_members(self) -> list[Self]:
         check = [
             self.pointers.team_name_1,
             self.pointers.team_name_2,
@@ -224,7 +237,7 @@ class Win32ClientWindow(AbstractClientWindow):
             self.pointers.team_name_4,
         ]
 
-        return [check[m]() for m in range(self.team_size - 1)]
+        return [self._bot_controller.clients.get(check[m]() or "") for m in range(self.team_size - 1)]
 
     @property
     def pet_active(self) -> bool:
