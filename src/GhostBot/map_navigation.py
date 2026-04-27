@@ -113,7 +113,7 @@ _zones_map = {
         'Alchemical Room'
     ),
     'snow_mountain': (
-        'Snow Forrest',
+        'Snow Forest',
         'Snow Village',
         'Ghost Shadow Swamp',
         'Ghost Wind Valley',
