@@ -209,7 +209,7 @@ class Config:
     @classmethod
     def load_yaml(cls, data: dict[str, Any] | str) -> Config:
         if isinstance(data, str):
-            data = yaml.safe_load(data)
+            data: dict[str, Any] = yaml.safe_load(data)
         _config = cls()
         _confs = cls._sub_configs_by_name()
         for k, v in cls.upgrade(data).items():
