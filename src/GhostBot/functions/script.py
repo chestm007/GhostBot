@@ -20,6 +20,7 @@ from GhostBot.map_navigation import location_to_zone_map_capwords
 
 _T = TypeVar('_T')
 
+
 class ScriptAction(Enum):
     UNSET = 0
     MOVE = 1
@@ -27,14 +28,28 @@ class ScriptAction(Enum):
     WAIT = 3
     LEFT_CLICK = 4
     RIGHT_CLICK = 5
-    CONDITIOINAL_LOOP = 6
+    CONDITIONAL_LOOP = 6
     LOOP = 7
 
     @classmethod
-    def from_yaml(cls, _name, params = None):
+    def from_yaml(cls, step):
+        if isinstance(step, str):
+            return cls._from_yaml(step)
+        elif isinstance(step, dict):
+            step, step_cfg = step.popitem()
+            return cls._from_yaml(step, step_cfg)
+        elif isinstance(step, ScriptStep):
+            return step
+        else:
+            raise TypeError('step must be str, dict, or ScriptStep %s', step)
+
+    @classmethod
+    def _from_yaml(cls, _name, params = None):
         if _name in ('move', 'left_click', 'right_click'):
             x, y = params.split(' ')
             params = (int(x), int(y))
+        if isinstance(params, dict):
+            return getattr(cls, _name)(**params)
         if isinstance(params, Iterable):
             return getattr(cls, _name)(*params)
         elif params is None:
@@ -75,8 +90,19 @@ class ScriptAction(Enum):
         return LoopScriptStep(count, steps)
 
     @classmethod
-    def conditional_loop(cls, actions: list[ScriptStep]) -> 'ScriptStep[list[ScriptStep[_T]]]':
-        return ScriptStep[list[ScriptStep[_T]]](actions)
+    def conditional_loop(
+            cls,
+            steps: list[ScriptStep[_T]] | str | dict,
+            conditions: list[ScriptCondition] | None = None,
+            pre_conditions: list[ScriptCondition] | None = None,
+            handler: ConditionalScriptStepFailedHandler | None = None,
+    ) -> ConditionalScriptStep:
+        return ConditionalScriptStep(
+            steps=steps,
+            conditions=conditions,
+            pre_conditions=pre_conditions,
+            handler=handler,
+        )
 
 
 class ScriptStep(Generic[_T], ABC):
@@ -95,7 +121,6 @@ class MoveScriptStep(ScriptStep[Location]):
         def _move_and_verify():
             client.move_to_pos(self.parameters)
             return client.location == self.parameters
-        logger.info('move_script')
         return retry(_move_and_verify, 5, delay=0.1)
 
 
@@ -143,12 +168,10 @@ class RightClickScriptStep(ClickScriptStep):
 class LoopScriptStep(ScriptStep[_T]):
     action = ScriptAction.LOOP
     def __init__(self, count: int, steps: list[ScriptStep]):
-        print(count)
         super().__init__(count)
-        print(steps)
         self.steps: list[ScriptStep[_T]] = []
         for step in steps:
-            self.steps.append(ScriptAction.from_yaml(*step.popitem()))
+            self.steps.append(ScriptAction.from_yaml(step))
 
     def execute(self, client: BotClientWindow):
         for i in range(self.parameters):
@@ -171,34 +194,43 @@ class ScriptCondition:
             return not match
         return cls(_condition)
 
+    @classmethod
+    def from_yaml(cls, condition) -> Self:
+        if isinstance(condition, dict):
+            return cls._from_yaml(*condition.popitem())
+        raise TypeError('condition must be a dict')
+    @classmethod
+    def _from_yaml(cls, condition_name: str, parameter) -> Self:
+        return getattr(cls, condition_name)(parameter)
+
 
 class ConditionalScriptStep(Generic[_T]):
     def __init__(
             self,
             steps: list[ScriptStep[_T]] | str | dict,
-            conditions: list[ScriptCondition],
+            pre_conditions: list[ScriptCondition] | None = None,
+            conditions: list[ScriptCondition] | None = None,
             handler: ConditionalScriptStepFailedHandler | None = None,
     ):
         self.steps: list[ScriptStep[_T]] = []
         for step in steps:
-            print(type(step))
-            if isinstance(step, str):
-                self.steps.append(ScriptAction.from_yaml(step))
-            elif isinstance(step, dict):
-                step, step_cfg = step.popitem()
-                print(step, step_cfg)
-                if isinstance(step_cfg, dict):
-                    step_cfg = step_cfg.values()
-                self.steps.append(ScriptAction.from_yaml(step, step_cfg))
-            elif isinstance(step, ScriptStep):
-                self.steps.append(step)
-            else:
-                raise TypeError('step must be str, dict, or ScriptStep %s', step)
-        self.conditions = conditions
+            self.steps.append(ScriptAction.from_yaml(step))
+
+        self.conditions: list[ScriptCondition] = []
+        for condition in conditions or []:
+            self.conditions.append(ScriptCondition.from_yaml(condition))
+
+        self.pre_conditions: list[ScriptCondition] = []
+        for pre_condition in pre_conditions or []:
+            self.pre_conditions.append(ScriptCondition.from_yaml(pre_condition))
+
         self.handler: ConditionalScriptStepFailedHandler = handler or ConditionalScriptStepFailedHandler.restart
 
 
     def execute(self, client: BotClientWindow):
+        if not any(c(client) for c in self.pre_conditions):
+            return False
+
         for step in self.steps:
             step.execute(client)
 
@@ -245,14 +277,7 @@ class ScriptDefinition:
         self.steps = []
         for script_name, steps in script.items():
             for step in steps:
-                match type(step):
-                    case dict:
-                        step, step_cfg = step.popitem()
-                        match step:
-                            case 'conditional_loop':
-                                self.steps.append(ConditionalScriptStep(**step_cfg))
-                            case _:
-                                raise TypeError("Unknown step type %s", step)
+                self.steps.append(ScriptAction.from_yaml(step))
 
     @classmethod
     def from_yaml(cls, yaml_str: str) -> Self:

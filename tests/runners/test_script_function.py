@@ -39,7 +39,7 @@ def test_jc_rep_script():
     script_str = """
     jc_rep_daily:
     - conditional_loop:
-        conditions:
+        pre_conditions:
         - client_location_name: Stone City
         handler: ignore
         steps:
@@ -88,4 +88,4 @@ def test_jc_rep_script():
     wyp.running = True
     script_runner = Script(wyp, script_str)
     pprint.pprint(script_runner.script.steps[0].steps)
-    script_runner.run()
+    assert script_runner.run()
