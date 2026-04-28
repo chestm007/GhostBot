@@ -88,6 +88,8 @@ class ThreadedBotController(BotController):
                     self.logger.info('[%s|%s] starting login procedure with config %s', pid, _conf.char_name, _conf)
                 else:
                     self.logger.info('[%s|%s] skipping', pid, __char)
+                    if __char in self.requested_logins:
+                        self.requested_logins.remove(__char)
                     continue
 
                 if __char in self.requested_logins:
