@@ -4,6 +4,8 @@ from collections import namedtuple
 Zone = namedtuple('Zone', ['location', 'boundary', 'centre', 'scale'])  #, 'fay'])
 zones = (
     {
+        'jade_city': Zone('jade_city', ((180, 2050), (650, 1800)), (422, 1919), (-0.67, 1)),
+
         'simen_mountain': Zone('simen_mountain', ((1270, 1800), (2030, 1280)), (1667, 1544), (-1.05, 1.2)),
         'barbarian_mountain': Zone('barbarian_mountain', ((1281, 1280), (2050, 510)), (1667, 902), (-1, 1.2)),
 
@@ -21,6 +23,16 @@ zones = (
 )
 
 _zones_map = {
+    # Jade City
+    'jade_city': (
+        'Jade City Market',
+        'Jade city Harbor',
+        'Front Hall',
+        'Holy Spirit Temple',
+        'Jade City Guard'
+    ),
+
+    # West Continent
     'peace_island': (
         'Moon Dragon Harbor',
         'Black Turtle Palace',
@@ -40,6 +52,8 @@ _zones_map = {
         'Old Site of Village',
         'West of Simen Mountain'
     ),
+
+    # East Continent
     'green_scarp': (
         'Green Scarp',
         'Piedmont of Green Scarp',

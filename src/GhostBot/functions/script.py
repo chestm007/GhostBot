@@ -78,6 +78,10 @@ class ScriptAction(Enum):
         return RightClickScriptStep(UI_locations.npc_location)
 
     @classmethod
+    def select_npc(cls) -> ScriptStep[Location]:
+        return SelectNPCScriptStep(UI_locations.npc_location)
+
+    @classmethod
     def left_click(cls, x: int, y: int) -> 'ScriptStep[Location]':
         return LeftClickScriptStep(Location(x, y))
 
@@ -165,6 +169,14 @@ class RightClickScriptStep(ClickScriptStep):
     action = ScriptAction.RIGHT_CLICK
 
 
+class SelectNPCScriptStep(RightClickScriptStep):
+    def execute(self, client: BotClientWindow):
+        def _select_npc_and_verify() -> bool:
+            client.right_click(self.parameters)
+            return client.target_name is not None
+        return retry(_select_npc_and_verify, 10, 2)
+
+
 class LoopScriptStep(ScriptStep[_T]):
     action = ScriptAction.LOOP
     def __init__(self, count: int, steps: list[ScriptStep]):
@@ -189,8 +201,11 @@ class ScriptCondition:
     @classmethod
     def client_location_name(cls, zone_name: str, *, match: bool = True):
         def _condition(client: BotClientWindow):
+            logger.debug('checking location')
             if location_to_zone_map_capwords(client.location_name) == zone_name:
+                logger.debug('location matches')
                 return match
+            logger.debug('location doesnt match')
             return not match
         return cls(_condition)
 
@@ -300,5 +315,5 @@ class Script(Runner):
             raise TypeError("script must be of type ScriptDefinition or str")
 
     def _run(self) -> bool:
-        for step in self.script.steps:
-            step.execute(self._client)
+        self._client.reset_camera()
+        return all([step.execute(self._client) for step in self.script.steps])
