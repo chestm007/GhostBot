@@ -7,7 +7,7 @@ from GhostBot.enums.bot_status import BotStatus
 
 from tests.mocks.mock_client import client
 from GhostBot.functions.script import Script, ScriptDefinition, ScriptAction, ConditionalScriptStep, \
-    ScriptCondition
+    ScriptCondition, MoveScriptStep
 
 from GhostBot import logger
 logger.setLevel(logging.DEBUG)
@@ -15,29 +15,25 @@ logger.setLevel(logging.DEBUG)
 
 @pytest.mark.usefixtures('client')
 def test_script_definition(client):
-    script = ScriptDefinition(
-        script={'test': [
-            ScriptAction.move(100, 100),
-            ScriptAction.move(100, 200),
-            ScriptAction.move(200, 200),
-            ScriptAction.attack('Rabbit'),
-            ScriptAction.wait(1.5),
-            ConditionalScriptStep(
-                steps=[
-                    ScriptAction.left_click(100, 100),
-                    ScriptAction.right_click(100, 200),
-                ],
-                conditions=[
-                    ScriptCondition(lambda client: client.location == (300, 400))
-                ]
-            )
-        ]}
-    )
-    client.bot_status = BotStatus.running
-
+    script = """
+    jc_rep_daily:
+    - conditional_loop:
+        pre_conditions:
+        - client_location_name: Stone City
+        # - client_location_name: Sky Village  # uncomment to test failure
+        handler: ignore
+        steps:
+        # Goto Immortal Lee
+        - move: 278 -522
+        - wait: 2
+        - click_npc
+        - wait: 2
+    """
 
     script_runner = Script(client, script)
-    script_runner.run()
+    assert script_runner.script.script_name == 'jc_rep_daily'
+    assert isinstance((conditional_loop := script_runner.script.steps[0]), ConditionalScriptStep)
+    assert isinstance(conditional_loop.steps[0], MoveScriptStep)
 
 @pytest.mark.skip("local testing only")
 def test_jc_rep_script():
@@ -93,7 +89,7 @@ def test_jc_rep_script():
     script_runner = Script(wyp, script_str)
     assert script_runner.run()
 
-
+@pytest.mark.skip("local testing only")
 def test_jc_manager_congcan_daily():
     logger.debug = print
     script_str = """

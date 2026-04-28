@@ -57,7 +57,7 @@ def test_team_members():
     print(wyp.team_size)
     assert not [t.team_members[0].name for t in wyp.team_members]
 
-# @pytest.mark.skip("local testing only for now")
+@pytest.mark.skip("local testing only for now")
 def test_char_location():
     bc = ThreadedBotController()
     bc._running = True
