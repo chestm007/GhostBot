@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import TypeVar, Self, Generic, Callable, Iterable
+from typing import TypeVar, Self, Generic, Callable, Iterable, TYPE_CHECKING
 
 import yaml
 import time
@@ -12,11 +12,13 @@ from GhostBot import logger
 from GhostBot.lib.talisman_ui_locations import UI_locations
 
 from GhostBot.lib.utils import retry
-from GhostBot.controller.bot_controller import BotClientWindow
 
 from GhostBot.lib.types import Location
 from GhostBot.functions import Runner
 from GhostBot.map_navigation import location_to_zone_map_capwords
+
+if TYPE_CHECKING:
+    from GhostBot.controller.bot_controller import BotClientWindow
 
 _T = TypeVar('_T')
 
@@ -214,6 +216,7 @@ class ScriptCondition:
         if isinstance(condition, dict):
             return cls._from_yaml(*condition.popitem())
         raise TypeError('condition must be a dict')
+
     @classmethod
     def _from_yaml(cls, condition_name: str, parameter) -> Self:
         return getattr(cls, condition_name)(parameter)
@@ -289,8 +292,10 @@ class ScriptDefinition:
 
     """
     def __init__(self, *, script: dict[str, list[ScriptStep[_T] | ConditionalScriptStep[_T]]]):
+        # TODO: this can handle multiple scripts per file, maybe we should support this.
         self.steps = []
         for script_name, steps in script.items():
+            self.script_name = script_name
             for step in steps:
                 self.steps.append(ScriptAction.from_yaml(step))
 
@@ -301,7 +306,10 @@ class ScriptDefinition:
     @classmethod
     def from_file(cls, yaml_file: str) -> Self:
         with open(yaml_file) as f:
-            return cls.from_yaml(yaml.safe_load(f))
+            return cls.from_yaml(f)
+
+    # def to_yaml(self) -> dict:
+    #     return {self.script_name: [s.to_yaml() for s in self.steps]}
 
 class Script(Runner):
 

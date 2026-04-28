@@ -12,6 +12,7 @@ __all__ = [
     'ConfigLoader',
     'LoginDetailsConfigLoader',
     'GhostBotServerConfigLoader',
+    'ScriptFunctionConfigLoader',
 ]
 
 import inspect
@@ -19,9 +20,10 @@ import logging
 import os
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import TypedDict, NotRequired, Any, TYPE_CHECKING, Sized, TypeVar, Self
+from typing import TypedDict, NotRequired, Any, TYPE_CHECKING, Sized, TypeVar, Self, overload
 
 import yaml
+from GhostBot.functions.script import ScriptDefinition
 
 from GhostBot import logger as _logger
 from GhostBot.functions.runner import InjectedLoggingMixin
@@ -349,6 +351,52 @@ class LoginDetailsConfigLoader(BaseConfigLoader):
                     self.to_yaml(login_details),
                 )
             )
+
+
+class ScriptFunctionConfigLoader(BaseConfigLoader):
+    def __init__(self):
+        super().__init__()
+        self.config_filepath = os.path.join(self._detect_path(), 'script_function_configs')
+        self.scripts: list[ScriptDefinition] = []
+
+    def _load_script_definition_from_file(self, _script_name) -> ScriptDefinition:
+        return ScriptDefinition.from_file(os.path.join(self.config_filepath, _script_name))
+
+    @overload
+    def load(self) -> Self: ...
+    @overload
+    def load(self, script_name: str) -> ScriptDefinition: ...
+
+    def load(self, script_name = None):
+        """
+        reads a Script function config file.
+        """
+        if script_name is None:
+            try:
+                _scripts = os.listdir(self.config_filepath)
+            except FileNotFoundError:
+                self.logger.info('script function config directory not found, creating at %s', self.config_filepath)
+                os.mkdir(self.config_filepath)
+                return self
+            for _script_name in _scripts:
+                self.logger.debug('loading login config %s', _script_name)
+                if _script_name.endswith('.yml'):
+                    self.scripts.append(self._load_script_definition_from_file(_script_name))
+            return self
+
+        self.logger.debug('loading login config %s', script_name)
+        _script = self._load_script_definition_from_file(f'{script_name}.yml')
+        self.scripts.append(_script)
+        return _script
+
+    # def save(self, script_definition: ScriptDefinition):
+    #     self.logger.debug('loading login config %s', script_definition.script_name)
+    #     with open(os.path.join(self.config_filepath, f'{script_definition.script_name}.yml'), 'w') as c:
+    #         c.write(
+    #             yaml.safe_dump(
+    #                 script_definition.to_yaml(),
+    #             )
+    #         )
 
 
 class GhostBotServerConfigLoader(BaseConfigLoader):
