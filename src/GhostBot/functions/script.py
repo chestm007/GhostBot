@@ -1,17 +1,22 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, TypeVar, Self, Generic
+from typing import TypeVar, Self, Generic, Callable, Iterable
 
 import yaml
 import time
+
+from GhostBot import logger
+
+from GhostBot.lib.talisman_ui_locations import UI_locations
+
 from GhostBot.lib.utils import retry
 from GhostBot.controller.bot_controller import BotClientWindow
 
 from GhostBot.lib.types import Location
 from GhostBot.functions import Runner
+from GhostBot.map_navigation import location_to_zone_map_capwords
 
 _T = TypeVar('_T')
 
@@ -23,6 +28,18 @@ class ScriptAction(Enum):
     LEFT_CLICK = 4
     RIGHT_CLICK = 5
     CONDITIOINAL_LOOP = 6
+    LOOP = 7
+
+    @classmethod
+    def from_yaml(cls, _name, params = None):
+        if _name in ('move', 'left_click', 'right_click'):
+            x, y = params.split(' ')
+            params = (int(x), int(y))
+        if isinstance(params, Iterable):
+            return getattr(cls, _name)(*params)
+        elif params is None:
+            return getattr(cls, _name)()
+        return getattr(cls, _name)(params)
 
     @classmethod
     def move(cls, x: int, y: int) -> 'ScriptStep[Location]':
@@ -38,12 +55,24 @@ class ScriptAction(Enum):
         return WaitScriptStep(timeout)
 
     @classmethod
+    def goto_npc(cls, npc_name: str) -> 'ScriptStep[str]':
+        return GotoNPC(npc_name)
+
+    @classmethod
+    def click_npc(cls) -> ScriptStep[Location]:
+        return RightClickScriptStep(UI_locations.npc_location)
+
+    @classmethod
     def left_click(cls, x: int, y: int) -> 'ScriptStep[Location]':
         return LeftClickScriptStep(Location(x, y))
 
     @classmethod
     def right_click(cls, x: int, y: int) -> 'ScriptStep[Location]':
         return RightClickScriptStep(Location(x, y))
+
+    @classmethod
+    def loop(cls, count: int, steps: list[ScriptStep[_T]]) -> LoopScriptStep[_T]:
+        return LoopScriptStep(count, steps)
 
     @classmethod
     def conditional_loop(cls, actions: list[ScriptStep]) -> 'ScriptStep[list[ScriptStep[_T]]]':
@@ -66,6 +95,7 @@ class MoveScriptStep(ScriptStep[Location]):
         def _move_and_verify():
             client.move_to_pos(self.parameters)
             return client.location == self.parameters
+        logger.info('move_script')
         return retry(_move_and_verify, 5, delay=0.1)
 
 
@@ -81,6 +111,14 @@ class WaitScriptStep(ScriptStep[float]):
     def execute(self, client: BotClientWindow):
         time.sleep(self.parameters)
         return True
+
+
+class GotoNPC(ScriptStep[str]):
+    action = ScriptAction.MOVE
+    def execute(self, client: BotClientWindow):
+        client.search_surroundings(self.parameters)
+        client.goto_first_surrounding_result()
+        client.block_while_moving()
 
 
 class ClickScriptStep(ScriptStep[Location]):
@@ -102,22 +140,60 @@ class RightClickScriptStep(ClickScriptStep):
     action = ScriptAction.RIGHT_CLICK
 
 
+class LoopScriptStep(ScriptStep[_T]):
+    action = ScriptAction.LOOP
+    def __init__(self, count: int, steps: list[ScriptStep]):
+        print(count)
+        super().__init__(count)
+        print(steps)
+        self.steps: list[ScriptStep[_T]] = []
+        for step in steps:
+            self.steps.append(ScriptAction.from_yaml(*step.popitem()))
+
+    def execute(self, client: BotClientWindow):
+        for i in range(self.parameters):
+            for step in self.steps:
+                step.execute(client)
+
+
 class ScriptCondition:
-    def __init__(self, condition: Callable[[], bool]):
+    def __init__(self, condition: Callable[[BotClientWindow], bool]):
         self.condition: Callable[[BotClientWindow], bool] = condition
 
     def __call__(self, client: BotClientWindow) -> bool:
         return self.condition(client)
 
+    @classmethod
+    def client_location_name(cls, zone_name: str, *, match: bool = True):
+        def _condition(client: BotClientWindow):
+            if location_to_zone_map_capwords(client.location_name) == zone_name:
+                return match
+            return not match
+        return cls(_condition)
+
 
 class ConditionalScriptStep(Generic[_T]):
     def __init__(
             self,
-            steps: list[ScriptStep[_T]],
+            steps: list[ScriptStep[_T]] | str | dict,
             conditions: list[ScriptCondition],
             handler: ConditionalScriptStepFailedHandler | None = None,
     ):
-        self.steps: list[ScriptStep[_T]] = steps
+        self.steps: list[ScriptStep[_T]] = []
+        for step in steps:
+            print(type(step))
+            if isinstance(step, str):
+                self.steps.append(ScriptAction.from_yaml(step))
+            elif isinstance(step, dict):
+                step, step_cfg = step.popitem()
+                print(step, step_cfg)
+                if isinstance(step_cfg, dict):
+                    step_cfg = step_cfg.values()
+                self.steps.append(ScriptAction.from_yaml(step, step_cfg))
+            elif isinstance(step, ScriptStep):
+                self.steps.append(step)
+            else:
+                raise TypeError('step must be str, dict, or ScriptStep %s', step)
         self.conditions = conditions
         self.handler: ConditionalScriptStepFailedHandler = handler or ConditionalScriptStepFailedHandler.restart
 
@@ -135,7 +211,7 @@ class ConditionalScriptStepFailedHandler:
     def __init__(self, handler: Callable[[], bool]):
         self.handler: Callable[[], bool] = handler
 
-    def handle(self) -> bool:
+    def __call__(self) -> bool:
         return not self.handler()
 
     @staticmethod
@@ -145,6 +221,7 @@ class ConditionalScriptStepFailedHandler:
     @staticmethod
     def ignore():
         True
+
 
 class ScriptDefinition:
     """
@@ -164,19 +241,38 @@ class ScriptDefinition:
           - right_click: [375, 81]
 
     """
-    def __init__(self, *, steps: list[ScriptStep[_T] | ConditionalScriptStep[_T]]):
-        self.steps = steps
+    def __init__(self, *, script: dict[str, list[ScriptStep[_T] | ConditionalScriptStep[_T]]]):
+        self.steps = []
+        for script_name, steps in script.items():
+            for step in steps:
+                match type(step):
+                    case dict:
+                        step, step_cfg = step.popitem()
+                        match step:
+                            case 'conditional_loop':
+                                self.steps.append(ConditionalScriptStep(**step_cfg))
+                            case _:
+                                raise TypeError("Unknown step type %s", step)
 
     @classmethod
-    def from_yaml(cls, yaml_file: str) -> Self:
+    def from_yaml(cls, yaml_str: str) -> Self:
+        return cls(script=yaml.safe_load(yaml_str))
+
+    @classmethod
+    def from_file(cls, yaml_file: str) -> Self:
         with open(yaml_file) as f:
-            return cls(steps=yaml.safe_load(f))
+            return cls.from_yaml(yaml.safe_load(f))
 
 class Script(Runner):
 
-    def __init__(self, client, script: ScriptDefinition):
+    def __init__(self, client, script: ScriptDefinition | str):
         super().__init__(client)
-        self.script: ScriptDefinition = script
+        if isinstance(script, ScriptDefinition):
+            self.script: ScriptDefinition = script
+        elif isinstance(script, str):
+            self.script: ScriptDefinition = ScriptDefinition.from_yaml(script)
+        else:
+            raise TypeError("script must be of type ScriptDefinition or str")
 
     def _run(self) -> bool:
         for step in self.script.steps:

@@ -1,3 +1,4 @@
+import string
 from collections import namedtuple
 
 Zone = namedtuple('Zone', ['location', 'boundary', 'centre', 'scale'])  #, 'fay'])
@@ -162,9 +163,10 @@ _zones_map = {
 }
 
 location_to_zone_map = {sv: k for k, v in _zones_map.items() for sv in v}
+zone_to_capwords = {k: string.capwords(k, '_').replace('_', ' ') for k in _zones_map}
+location_to_zone_map_capwords = lambda client_location_name: zone_to_capwords.get(location_to_zone_map.get(client_location_name))
 
 def _goto_centre_of_map():
-    import time
     import logging
     from GhostBot import logger
     from GhostBot.lib.win32.process import PymemProcess
