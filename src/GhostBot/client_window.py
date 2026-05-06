@@ -6,16 +6,8 @@ from ctypes.wintypes import LPARAM, WPARAM
 import cv2
 import numpy as np
 import pymem
-import pywintypes
-import win32.win32api
-import win32api
-import win32con
-import win32gui
-import win32process
-import win32ui
 
 from pymem.exception import MemoryReadError, ProcessError
-from win32con import SM_CYCAPTION
 
 from GhostBot.abstract_client_window import AbstractClientWindow, Location
 from GhostBot.lib import win32messages, get_with_case

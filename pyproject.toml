@@ -17,9 +17,6 @@
     ]
     dependencies = [
         'pymem',
-        'npyscreen',
-        'windows-curses',
-        'pywin32',
         'attrdict',
         'pyyaml',
         'pillow',
