@@ -324,20 +324,20 @@ class Win32ClientWindow(AbstractClientWindow):
     @property
     def target_hp(self) -> int | None:
         """
-        self.pointers.is_target_selected() is NOT LINEAR
-        597 when 100%
-        461 when 0%
-        0 when dead
-        :returns target HP 0-100, -1 if target dead, None if no target
+        Valor cru do pointer: 0 = sem alvo/morto, 461-597 = HP do alvo (461=0%, 597=100%).
+        NAO usa is_target_selected -- esse pointer OSCILA (True/False) e zerava o HP e os kills.
+        :returns HP do alvo em 0-100 (%), ou None se sem alvo / morto.
         """
         try:
-            if self.pointers.is_target_selected():
-                value = self.pointers.target_hp()
-                return math.ceil((value - TARGET_MIN_HP) / (TARGET_MAX_HP - TARGET_MIN_HP) * 100) if value >= TARGET_MIN_HP else -1
-            else:
-                return None
+            value = self.pointers.target_hp()
+            if value is None or value <= 0:
+                return None                      # sem alvo ou morto
+            if value >= TARGET_MIN_HP:
+                return math.ceil((value - TARGET_MIN_HP) / (TARGET_MAX_HP - TARGET_MIN_HP) * 100)
+            return 1                             # HP baixissimo (1-460)
         except pymem.exception.MemoryReadError as e:
             self.logger.error(e)
+            return None
 
     @property
     def target_name(self) -> str | None:

@@ -24,7 +24,7 @@ class PymemProcess:
 
     @classmethod
     def get_game_exe(cls, auto_cleanup: bool = False) -> pymem.Pymem:
-        games = list(cls.get_proc_matching(b'game.exe'))
+        games = list(cls.get_proc_matching(b'client.exe'))
         if len(games) > 1:
             if not auto_cleanup:
                 raise KeyError()

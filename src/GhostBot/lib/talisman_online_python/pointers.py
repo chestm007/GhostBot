@@ -15,6 +15,7 @@ class Pointers:
         self.CHAR_NAME_POINTER = 0x011450EC
         self.LEVEL_POINTER = self.get_pointer(self.CLIENT + 0x00D450EC, offsets=[0x3C4])
         self.ENERGY_POINTER = self.get_pointer(self.CLIENT + 0x00D450EC, offsets=[0x3cc])
+        self.XP_POINTER = self.get_pointer(self.CLIENT + 0x00D450EC, offsets=[0x3C8])  # XP atual no nivel (zera ao upar)
         self.HP_POINTER = self.get_pointer(self.CLIENT + 0x00D450EC, offsets=[0x3B8])
         self.HP_PLUS_POINTER = self.get_pointer(self.CLIENT + 0x00D450EC, offsets=[0xE4])
         self.HP_BUFF_POINTER = self.get_pointer(self.CLIENT + 0x00D450EC, offsets=[0xE0])
@@ -128,6 +129,50 @@ class Pointers:
             pass
         return None
 
+    def read_inventory_slot(self, address: int) -> dict | None:
+        """
+        Decodifica o struct de um slot da bag.
+
+        Layout (descoberto via CE em 2026-05-22 com Teleport Stone @ 0x1801C48C):
+          +0x00 (16 bytes): MSVC std::string -- inline buffer se cap < 16, senao ptr
+          +0x10 (4 bytes):  size do nome
+          +0x14 (4 bytes):  capacity do buffer
+          +0x18 (4 bytes):  quantity (stack size)
+
+        Retorna {'name', 'size', 'cap', 'qty'} ou None se leitura falhou
+        ou se o struct nao parece valido.
+        """
+        try:
+            raw = self.pm.read_bytes(address, 32)
+        except Exception:
+            return None
+
+        size = int.from_bytes(raw[16:20], 'little')
+        cap = int.from_bytes(raw[20:24], 'little')
+        qty = int.from_bytes(raw[24:28], 'little')
+
+        if size < 0 or size > 64 or cap < size or cap > 256:
+            return None
+
+        if cap >= 16:
+            ptr = int.from_bytes(raw[0:4], 'little')
+            try:
+                name_bytes = self.pm.read_bytes(ptr, size)
+            except Exception:
+                return None
+        else:
+            name_bytes = raw[:size]
+
+        try:
+            name = name_bytes.decode('utf-8')
+        except UnicodeDecodeError:
+            return None
+
+        if not name.isascii() or not name.strip():
+            return None
+
+        return {'name': name, 'size': size, 'cap': cap, 'qty': qty}
+
     def get_char_name(self) -> str | None:
         name = self.read_string_from_pointer(self.CHAR_NAME_POINTER, offset=0xBC, max_length=50)
 
@@ -206,6 +251,10 @@ class Pointers:
     def get_energy(self) -> int | None:
         return self.read_value(self.ENERGY_POINTER, data_type="int")
 
+    def get_xp(self) -> int | None:
+        """XP atual DENTRO do nivel (int cru). Zera ao subir de nivel; o max nao eh legivel."""
+        return self.read_value(self.XP_POINTER, data_type="int")
+
     def is_target_selected(self) -> bool:
         if self.TARGET_SELECT is None:
             print("Erro: Ponteiro TARGET_SELECT não calculado.")
@@ -218,12 +267,6 @@ class Pointers:
 
     def pet_active(self) -> bool:
         return self.pm.read_bool(self.PET_ACTIVE_POINTER)
-
-    def target_hp_full(self) -> bool:
-        return self.target_hp() == 597
-
-    def is_target_dead(self) -> bool:
-        return self.target_hp() == 0
 
     def get_hp(self) -> int | None:
         return self.read_value(self.HP_POINTER, data_type="int")
@@ -583,8 +626,19 @@ class Pointers:
 
 
 def main():
-    # Testando o código
-    pid = 2356  # Substitua 972 pelo PID do processo correto
+    # Auto-detecta o PID do client.exe
+    target = b'client.exe'
+    pid = None
+    for proc in pymem.process.list_processes():
+        if proc.szExeFile == target:
+            pid = proc.th32ProcessID
+            break
+
+    if pid is None:
+        print("ERRO: client.exe nao encontrado. O jogo esta aberto?")
+        return
+
+    print(f"Encontrado client.exe (PID={pid})")
     p = Pointers(pid)
 
     if p.is_target_selected():

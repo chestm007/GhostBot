@@ -1,19 +1,54 @@
+import tkinter as tk
+
 from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
 from GhostBot.controller.bot_controller import BotClientWindow
 from GhostBot.config import Config, RegenConfig
 from GhostBot.lib.var_or_none import var_or_none
-from GhostBot.UX.utils import create_entry
+from GhostBot.UX.utils import create_entry, create_int_slider
+
+HP_BG = "#e8b0b0"  # vermelho fosco
+MP_BG = "#b0b0e8"  # azul fosco
 
 
 class RegenFrame(TabFrame):
     def _init(self, client: BotClientWindow, *args, **kwargs) -> None:
         self.client = client
+
+        # Faixa HP (fora de combate)
+        hp_row = tk.Frame(self, bg=HP_BG)
+        hp_row.grid(row=0, column=0, columnspan=12, sticky="ew", padx=2, pady=1)
+
+        # Faixa MP (fora de combate)
+        mp_row = tk.Frame(self, bg=MP_BG)
+        mp_row.grid(row=1, column=0, columnspan=12, sticky="ew", padx=2, pady=1)
+
         self._vars = dict(
-            hp_low=create_entry(self, "HP Low:", 0, 0, ("bot_config.regen.hp_low", str)),
-            hp_key=create_entry(self, "HP Key:", 0, 2, ("bot_config.rege.hp_key", str)),
-            mp_low=create_entry(self, "MP Low:", 1, 0, ("bot_config.regen.mp_low", str)),
-            mp_key=create_entry(self, "MP Key:", 1, 2, ("bot_config.regen.mp_key", str)),
-            sit_key=create_entry(self, "Sit Key:", 2, 0, ("bot_config.regen.sit_key", str)),
+            hp_low=create_int_slider(
+                hp_row, "Sentar com HP em:", 0, 0, "bot_config.regen.hp_low",
+                default=60, min_val=0, max_val=100, suffix="%",
+                hint="Fora de combate, se seu HP cair abaixo desse %, o bot senta pra regenerar",
+                bg=HP_BG,
+            ),
+            hp_key=create_entry(
+                hp_row, "Tecla Pot HP:", 0, 4, ("bot_config.regen.hp_key", str), entry_width=3,
+                hint="Tecla do pot HP usado durante regen (opcional)",
+                bg=HP_BG,
+            ),
+            mp_low=create_int_slider(
+                mp_row, "Sentar com MP em:", 0, 0, "bot_config.regen.mp_low",
+                default=60, min_val=0, max_val=100, suffix="%",
+                hint="Fora de combate, se sua MP cair abaixo desse %, o bot senta pra regenerar",
+                bg=MP_BG,
+            ),
+            mp_key=create_entry(
+                mp_row, "Tecla Pot MP:", 0, 4, ("bot_config.regen.mp_key", str), entry_width=3,
+                hint="Tecla do pot MP usado durante regen (opcional)",
+                bg=MP_BG,
+            ),
+            sit_key=create_entry(
+                self, "Tecla Sentar:", 2, 0, ("bot_config.regen.sit_key", str), entry_width=3,
+                hint="Tecla pra sentar (regen passivo). Padrão TO: Insert",
+            ),
         )
 
     def display_config(self, config: Config):
@@ -23,9 +58,9 @@ class RegenFrame(TabFrame):
             mp_key = ''
             sit_key = ''
             if config.regen.bindings:
-                hp_key = str(config.regen.bindings.get('hp_pot'))
-                mp_key = str(config.regen.bindings.get('mana_pot'))
-                sit_key = str(config.regen.bindings.get('sit'))
+                hp_key = str(config.regen.bindings.get('hp_pot', '') or '')
+                mp_key = str(config.regen.bindings.get('mana_pot', '') or '')
+                sit_key = str(config.regen.bindings.get('sit', '') or '')
             self.setvar('bot_config.regen.hp_key', hp_key)
             self.setvar('bot_config.regen.mp_key', mp_key)
             self.setvar('bot_config.regen.sit_key', sit_key)

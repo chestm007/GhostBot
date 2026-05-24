@@ -15,6 +15,7 @@ class Command(Enum):
     INFO_AUTOLOGIN = 3
     START = 10
     STOP = 20
+    SELL_NOW = 25
     CONFIG = 30
     CONFIG_GET = 31
     CONFIG_SET = 32

@@ -5,8 +5,7 @@ from typing import TYPE_CHECKING
 
 from GhostBot.functions import Locational
 from GhostBot.functions.runner import run_at_interval
-from GhostBot.lib.math import seconds, item_coordinates_from_pos, linear_distance
-from GhostBot.lib.talisman_ui_locations import UI_locations
+from GhostBot.lib.math import seconds, linear_distance
 
 if TYPE_CHECKING:
     from GhostBot.config import SellConfig
@@ -15,6 +14,8 @@ if TYPE_CHECKING:
 
 @run_at_interval()
 class Sell(Locational):
+    NUM_SELL_BAGS = 3   # bags de 24 itens -> reabre o dialog a cada rodada
+
     def __init__(self, client: BotClientWindow):
         super().__init__(client)
         self.config: SellConfig = self._client.config.sell
@@ -29,8 +30,8 @@ class Sell(Locational):
             self._log_debug('No mount key set, self._use_mount = False')
             self._use_mount = False
 
-        if self.config.npc_sell_click_spot is None:
-            self._log_err('NPC sell click spot not set')
+        if self.config.return_spot_map_offset is None:
+            self._log_err('return_spot_map_offset nao setado -- nao vai conseguir voltar ao spot')
 
         #self._last_time_sold = time.time()
         self._last_time_sold = 0
@@ -50,7 +51,8 @@ class Sell(Locational):
             return True
 
     def _go_to_npc(self):
-        self._path_to_npc_search_spot()
+        # COMECA no Surroundings (NAO usar o move_to_pos/mapa antigo aqui -- ele abria
+        # o mapa e clicava em coord aleatoria no inicio).
         self._client.search_surroundings(self.config.sell_npc_name)
         try:
             first_result = self._client.pointers.get_sur_info()
@@ -68,33 +70,48 @@ class Sell(Locational):
             self._client.goto_first_surrounding_result()
             time.sleep(5)
             self._client.block_while_moving()
+        self._client.close_surroundings_ui()   # fecha o painel ao chegar
+        time.sleep(2)                            # deixa o char assentar
         return True
 
     def _sell_items(self):
-        self._log_info('Selling...')
+        self._log_info('Vendendo...')
+        start_slot = int(self.config.sell_item_pos or 1)
         self._client.reset_camera()
         time.sleep(2)
-        self._client.click_npc()
-        time.sleep(1)
-        self._client.left_click(self.config.npc_sell_click_spot)
-        time.sleep(1)
-        for i in range(24):
-            self._client.left_click(
-                item_coordinates_from_pos(
-                    int(self.config.sell_item_pos),
-                    UI_locations.sell_item_slot_1
-                )
-            )
-        self._client.left_click(UI_locations.confirm_sell_button)
-
-    def _path_to_npc_search_spot(self):
-        if self.config.npc_search_spot is not None:
-            self._log_info('going to npc search location %s', str(self.config.npc_search_spot))
-            self._client.move_to_pos(self.config.npc_search_spot)
+        for bag in range(self.NUM_SELL_BAGS):
+            if not self._client.running:
+                return
+            self._client.click_npc()              # abre a janela Dialogue do NPC
+            time.sleep(2)
+            if not self._client.click_npc_sell_button():   # acha "Dialogue" -> clica "Sell Item"
+                self._log_err('Janela do NPC / Sell Item nao encontrada (visivel/a esquerda?)')
+                return
+            time.sleep(2)
+            header = self._client.sell_dialog_header()     # acha o titulo "Sell"
+            if header is None:
+                self._log_err('Dialog de venda nao abriu (header "Sell" nao achado)')
+                return
+            slot = self._client.sell_slot_pos(header, start_slot)
+            self._log_info('Bag %d/%d: clicando slot %d em %s (30x)',
+                           bag + 1, self.NUM_SELL_BAGS, start_slot, str(slot))
+            for _ in range(30):                    # reflow: vende do slot inicial em diante
+                self._client.left_click(slot)
+                time.sleep(0.2)
+            self._client.left_click(self._client.sell_confirm_pos(header))   # CONFIRMA a venda
+            time.sleep(2)                          # confirma -> dialog fecha
 
     def _path_to_attack_spot(self):
-        if self._return_spot is not None:
-            self._log_info('returning to %s', str(self._return_spot))
-            # TODO: loop trying to move via map until the char moves.
-            self._client.move_to_pos(self._return_spot)
-            self._goto_start_location()
+        offset = self.config.return_spot_map_offset
+        if offset is None:
+            self._log_err('return_spot_map_offset nao setado -- pulando retorno ao spot')
+            return
+        self._log_info('Voltando ao spot de farm %s', str(self._return_spot))
+        self._client.goto_spot_via_map(tuple(offset))   # abre mapa -> isca + spot -> fecha mapa
+        # espera chegar no spot (coords do mundo = _return_spot, vindo de config.attack.spot)
+        t0 = time.time()
+        while linear_distance(self._client.location, self._return_spot) > 3 and self._client.running:
+            if time.time() - t0 > 60:
+                self._log_info('Timeout voltando ao spot')
+                break
+            time.sleep(1)

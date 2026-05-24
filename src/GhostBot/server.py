@@ -57,6 +57,10 @@ class GhostbotIPCServer(IPCServer):
                         self.logger.debug("dispatching STOP")
                         self.bot_controller.stop_bot(message.target)
                         return message
+                    case Command.SELL_NOW:
+                        self.logger.info("dispatching SELL_NOW for %s", message.target)
+                        self.bot_controller.trigger_sell_now(message.target)
+                        return message
                     case Command.INFO:
                         self.vdebug("dispatching INFO")
                         return self.bot_controller_clients_message
@@ -195,6 +199,10 @@ class GhostbotIPCClient(IPCClient):
     def stop_bot(self, target: str):
         self.logger.info(f"{self.__class__.__name__}: sending stop bot message for :{target}")
         return self.send(Message(Command.STOP, target))
+
+    def sell_now(self, target: str):
+        self.logger.info(f"{self.__class__.__name__}: sending sell_now message for :{target}")
+        return self.send(Message(Command.SELL_NOW, target))
 
     def char_info(self, target: str):
         self.logger.debug(f"{self.__class__.__name__}: sending char info message for :{target}")

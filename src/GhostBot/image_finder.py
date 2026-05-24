@@ -117,6 +117,36 @@ class ImageFinder:
             logger.exception(e)
             return None
 
+    def find_button_center(self, bmp_name: str, folder: str = None, threshold: float = 0.75) -> tuple[int, int] | None:
+        """
+        Acha um BMP de botao na janela do jogo e retorna a coordenada do CENTRO
+        (pra clicar no meio do botao, nao no canto).
+
+        Diferente de `find_ui_element` que retorna `(x, y-30)` (offset feito pra clicks
+        em items da bag).
+        """
+        if folder is None:
+            folder = self.misc_folder
+        bmp_path = os.path.join(folder, bmp_name)
+        img = cv2.imread(bmp_path, cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            logger.info("ImageFinder :: find_button_center :: bmp not found: %s", bmp_path)
+            return None
+        try:
+            window_img = self._client.capture_window()
+            result = cv2.matchTemplate(window_img, img, cv2.TM_CCOEFF_NORMED)
+            _, max_val, _, max_loc = cv2.minMaxLoc(result)
+            # log score sempre, mesmo quando bate -- ajuda a tunar threshold
+            logger.info("ImageFinder :: find_button_center :: %s match score=%.3f (threshold=%.2f)",
+                        bmp_name, max_val, threshold)
+            if max_val < threshold:
+                return None
+            h, w = img.shape[:2]
+            return max_loc[0] + w // 2, max_loc[1] + h // 2
+        except cv2.error as e:
+            logger.exception(e)
+            return None
+
     @property
     def destroy_item_location(self) -> tuple[int, int]:
         if self._destroy_item_location is None or time.time() - self._destroy_item_location[0] > 6000:

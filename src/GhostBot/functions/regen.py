@@ -17,8 +17,14 @@ class Regen(Locational):
 
         self._fairy_activated = fairy_activated
         self.config: RegenConfig = self._client.config.regen
-        self._mana_threshold = float(self.config.mana_threshold or 0.75)
-        self._hp_threshold = float(self.config.hp_threshold or 0.75)
+        self._mana_threshold = self._normalize_threshold(self.config.mana_threshold, default=0.75)
+        self._hp_threshold = self._normalize_threshold(self.config.hp_threshold, default=0.75)
+
+    @staticmethod
+    def _normalize_threshold(value, default: float) -> float:
+        v = float(value if value is not None else default)
+        # UI accepts 0-100 (percent). If user entered >1, treat as percent and convert.
+        return v / 100 if v > 1 else v
 
     def _run(self) -> bool:
         """

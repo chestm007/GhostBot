@@ -33,3 +33,18 @@ pytest.log
 dist/
 
 src/GhostBot.egg-info/
+
+# --- dev/build junk (sessao 2026-05-24) ---
+tmp_*.png
+tmp_*.bmp
+*.PTR
+BotTO_para_amigos.zip
+start_botto.bat
+LEIAME.txt
+install.bat
+.obsidian/
+.claude/settings.local.json
+.claude/*.bin
+.claude/snap*.json
+/test_inventory_decoder.py
+/test_item_pointer.py

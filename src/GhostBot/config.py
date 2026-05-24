@@ -87,7 +87,7 @@ class TypedConfig(ABC):
                 if isinstance(_val, (Sized, str)) and _expected_type == tuple[int, int]:
                     _handle_location(_val)
                     _try_change_type_with_check(lambda v: (all(map(lambda _v: isinstance(_v, int), v)) and isinstance(v, tuple)))
-                elif _attr not in  ('attacks', 'bindings', 'buffs'):
+                elif _attr not in  ('attacks', 'bindings', 'buffs', 'items_trash', 'items_keep', 'items_rare'):
                     raise TypeError(f'{self.__class__.__name__}.{_attr} is an unexpected type.\n'
                                     f'expected {_expected_type}, got {type(_val).__name__}')
                 else:
@@ -151,6 +151,10 @@ class FairyConfig(FunctionConfig):
     heal_team_threshold: float = None
     heal_self_threshold: float = None
     spot: tuple[int, int] = None
+    # Team buff (rotina periodica de aplicar combo de buffs em cada membro)
+    buffs: list[list[str | int]] = None  # [[tecla, ms], ...]
+    buff_interval_mins: int = None
+    buff_self: bool = None
 
 @dataclass
 class SellConfig(FunctionConfig):
@@ -158,15 +162,30 @@ class SellConfig(FunctionConfig):
         mount: NotRequired[int | str]
     sell_npc_name: str
     bindings: Bindings = None
-    sell_item_pos: int = 1
+    sell_item_pos: int = 1   # slot inicial de venda (1-24): vende deste em diante, mantem 1..N-1
     sell_interval_mins: int = 60
     npc_search_spot: tuple[int, int] = None
     use_mount: bool = None
-    npc_sell_click_spot: tuple[int, int] = None
+    # Spot de farm pra retornar: offset do titulo 'Map' ate o ponto no mapa
+    # (escolhido pelo usuario na UI). As coords do mundo vem de config.attack.spot.
+    return_spot_map_offset: tuple[int, int] = None
+    # Categorização de itens (sprint futura: leitura de bag + ações automáticas)
+    items_trash: list[str] = None  # vender automaticamente
+    items_keep: list[str] = None   # manter sem alertar
+    items_rare: list[str] = None   # alertar no Discord
 
     def __post_init__(self):
         if self.bindings is None:
             self.bindings = {'mount': 0}
+
+    def validate(self):
+        super().validate()
+        # Spot de farm OBRIGATORIO: sem ele o bot nao sabe pra onde voltar apos vender.
+        if self.return_spot_map_offset is None:
+            raise ValueError(
+                "Config de venda invalida: 'Spot de farm (mapa)' e obrigatorio. "
+                "Abra o mapa no jogo e use o botao 'Capturar spot' antes de salvar/rodar."
+            )
 
 @dataclass
 class DeleteConfig(FunctionConfig):

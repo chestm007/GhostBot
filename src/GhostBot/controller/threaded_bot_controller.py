@@ -58,7 +58,7 @@ class ThreadedBotController(BotController):
 
         elif len(self.login_queue) < 1:
             try:
-                if len(list(PymemProcess.get_proc_matching(b'game.exe'))) == 0:
+                if len(list(PymemProcess.get_proc_matching(b'client.exe'))) == 0:
                     self.logger.debug('spawning game launcher')
                     ClientLauncher().block_until_ready()
                 else:
@@ -119,7 +119,11 @@ class ThreadedBotController(BotController):
         task.start()
 
     def _stop_task(self, task_name: str, timeout: int = 30):
-        self._tasks.get(task_name).join(timeout=timeout)
+        task = self._tasks.get(task_name)
+        if task is None:
+            self.logger.debug("_stop_task: no task named %s -- ja terminou ou nunca existiu", task_name)
+            return
+        task.join(timeout=timeout)
 
     def _stop_all_tasks(self, timeout: int = 30):
         for _task_name, _task in self._tasks.items():

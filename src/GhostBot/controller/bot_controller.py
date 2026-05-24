@@ -13,7 +13,7 @@ from GhostBot.IPC.server import IPCServerLogHandler
 from GhostBot.client_window import Win32ClientWindow
 from GhostBot.config import ConfigLoader, LoginDetailsConfigLoader, GhostBotServerConfigLoader
 from GhostBot.enums.bot_status import BotStatus
-from GhostBot.functions import Attack, Buffs, Fairy, Petfood, Regen, Runner, Sell, Delete
+from GhostBot.functions import Attack, Buffs, Fairy, Petfood, Regen, Runner, Sell
 from GhostBot.lib.math import linear_distance, position_difference, scale_minimap_move_distance, coords_to_map_screen_pos
 from GhostBot.lib.talisman_ui_locations import UI_locations
 from GhostBot.lib.win32.process import PymemProcess
@@ -36,8 +36,45 @@ class BotClientWindow(Win32ClientWindow):
         if self.disconnected:
             self.bot_status = BotStatus.disconnected
         self.load_config()
+        # Stats simples (dashboard)
+        self.kills: int = 0
+        self._last_target_hp_seen: int | None = None
+        self._farm_start_ts: float | None = None  # timestamp do ultimo Start
+        self._xp_gained: int = 0
+        self._last_xp: int | None = None
+        self._gold_start: int | None = None
 
     def to_json(self) -> dict:
+        # Detecção de kill: alvo estava com HP positivo, agora ta None/<0 (dead/no target)
+        current_target_hp = self.target_hp
+        _last = self._last_target_hp_seen
+        if _last is not None and _last > 0:
+            # alvo morreu (None/<=0) OU o HP SUBIU (trocou pra um mob novo = o anterior morreu)
+            if (current_target_hp is None
+                    or (isinstance(current_target_hp, int)
+                        and (current_target_hp <= 0 or current_target_hp > _last + 15))):
+                self.kills += 1
+        self._last_target_hp_seen = current_target_hp
+
+        # Tempo de farm em segundos desde o ultimo Start
+        # conta desde o ultimo Start (nao depende da flag running, que pode oscilar)
+        if self._farm_start_ts is None:
+            farm_time_s = 0
+        else:
+            farm_time_s = int(__import__("time").time() - self._farm_start_ts)
+
+        # XP ganho na sessao (acumulado; a prova de level-up: ao upar o XP zera)
+        _cur_xp = self.pointers.get_xp()
+        if _cur_xp is not None:
+            if self._last_xp is not None:
+                self._xp_gained += (_cur_xp - self._last_xp) if _cur_xp >= self._last_xp else _cur_xp
+            self._last_xp = _cur_xp
+        # Gold ganho (delta desde o 1o read depois do Start)
+        _cur_gold = self.pointers.get_gold()
+        if _cur_gold is not None and self._gold_start is None:
+            self._gold_start = _cur_gold
+        _gold_gained = (_cur_gold - self._gold_start) if (_cur_gold is not None and self._gold_start is not None) else 0
+
         return dict(
             name=self.name,
             status=self.bot_status.name,
@@ -47,7 +84,7 @@ class BotClientWindow(Win32ClientWindow):
             max_mana=self.max_mana,
             level=self.level,
             target_name=self.target_name,
-            target_hp=self.target_hp,
+            target_hp=current_target_hp,
             location_x=self.location_x,
             location_y=self.location_y,
             location_name=self.location_name,
@@ -62,7 +99,12 @@ class BotClientWindow(Win32ClientWindow):
             notification=self.notification,
             confirm=self.pointers.confirm_box(),
             dialog=self.pointers.get_dialog(),
-            dc=self.pointers.get_dc()
+            dc=self.pointers.get_dc(),
+            kills=self.kills,
+            farm_time_s=farm_time_s,
+            energy=self.pointers.get_energy(),
+            xp_gained=self._xp_gained,
+            gold_gained=_gold_gained,
         )
 
     def post_login_setup(self):
@@ -104,6 +146,7 @@ class BotClientWindow(Win32ClientWindow):
         return self.mana / self.max_mana
 
     def start_bot(self):
+        import time as _time
         self.logger.info(f'{self.name}: Starting...')
         if self.disconnected:
             self.bot_status = BotStatus.disconnected
@@ -111,6 +154,13 @@ class BotClientWindow(Win32ClientWindow):
         self.bot_status = BotStatus.starting
         self.running = True
         self.load_config()
+        # Reset stats da sessao
+        self.kills = 0
+        self._farm_start_ts = _time.time()
+        self._last_target_hp_seen = None
+        self._xp_gained = 0
+        self._last_xp = None
+        self._gold_start = None
 
     def stop_bot(self):
         self.logger.info(f'{self.name}: Stopping...')
@@ -326,9 +376,43 @@ class BotController(ABC):
             self.logger.warning('no client %s', client)
         return client
 
+    def trigger_sell_now(self, client_name: str) -> bool:
+        """Dispara a rotina de Sell uma vez, fora do ciclo agendado.
+
+        Usado pelo botao 'Vender agora' da UI. Bypassa o intervalo configurado e o
+        check de should_run. Roda em thread daemon pra nao bloquear o server.
+        """
+        client = self.get_client(client_name)
+        if client is None:
+            self.logger.warning('trigger_sell_now: client %s nao encontrado', client_name)
+            return False
+        if client.config is None or client.config.sell is None:
+            self.logger.warning('trigger_sell_now: %s nao tem config de sell', client_name)
+            return False
+
+        def _go():
+            try:
+                self.logger.info("%s: trigger_sell_now firing", client.name)
+                # Status precisa estar running pra Runner.run() permitir, e bypass do
+                # check de intervalo chamando _run direto.
+                _prev_status = client.bot_status
+                _prev_running = client.running
+                client.bot_status = BotStatus.running
+                client.running = True
+                try:
+                    Sell(client)._run()
+                finally:
+                    client.bot_status = _prev_status
+                    client.running = _prev_running
+                self.logger.info("%s: trigger_sell_now done", client.name)
+            except Exception as e:
+                self.logger.exception(e)
+
+        threading.Thread(target=_go, daemon=True).start()
+        return True
+
     def _get_functions_for_client(self, client: BotClientWindow) -> Generator[Runner, None, None]:
-        if client.config.delete is not None:
-            yield Delete(client)
+        # Delete REMOVIDO do app (risco de apagar item sem querer). Nao roda mais.
         if client.config.sell is not None:
             yield Sell(client)
         if client.config.pet is not None:
