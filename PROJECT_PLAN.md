@@ -26,7 +26,7 @@
 2. **Teste do ciclo de venda REAL** (DRY validado; falta a venda de verdade)
 3. **Validar Fairy team buff** + `TEAM_NAME` quando o time conectar
 4. **OCR do chat System** (drops próprios: XP/energy/itens "You got...") pro Discord (Sprint 4)
-5. Build **.exe** via GitHub Actions (workflow `build-executable.yml` já existe) quando quiser release — exige commitar/pushar antes
+5. 🎯 **DECIDIDO: gerar o .exe** (pra os amigos não precisarem instalar Python). Via GitHub Actions → **Build Executable** (rodar 2x: `client` e `server`). Branch `minha-versao-estavel` já está pushado no fork. Falta: disparar o workflow, baixar os 2 .exe, testar (atenção ao path das imagens no binário — já houve bug antes, ver commits #30/#31). Como os .exe são grandes, distribuir por link (não cabe no Discord).
 
 ### Como rodar:
 - Atalho **BotTO** no desktop (pede admin sozinho) ou `start_botto.bat`.
