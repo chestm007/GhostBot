@@ -42,6 +42,7 @@ BotTO_para_amigos.zip
 start_botto.bat
 LEIAME.txt
 install.bat
+discord_webhook.txt
 .obsidian/
 .claude/settings.local.json
 .claude/*.bin

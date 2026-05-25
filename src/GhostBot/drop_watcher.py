@@ -13,9 +13,11 @@ mais pra frente).
 """
 from __future__ import annotations
 
+import difflib
 import logging
 import os
 import re
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -73,30 +75,37 @@ _ITEM_RE = re.compile(r"got the item:\s*[\[\(]\s*(.+?)\s*[\]\)]", re.IGNORECASE)
 # Fallback: o OCR embola o prefixo "got the item" mas le o "[nome]" certo.
 # Tolera [<->( e ]<->), e pula um "(lvl N)" opcional antes do fechamento.
 _BRACKET_RE = re.compile(
-    r"[\[\(]\s*([A-Za-z][A-Za-z '\-]{1,30}?)\s*(?:\(lvl\s*\d+\))?\s*[\]\)]"
+    r"[\[\(]\s*([A-Za-z][A-Za-z '\-]{3,40}?)\s*(?:\(lvl\s*\d+\))?\s*[\]\)]"
 )
 _LVL_RE = re.compile(r"\s*\(lvl\s*\d+\)\s*$", re.IGNORECASE)
+
+MIN_NAME_LEN = 4  # item de verdade tem nome >= 4 letras; corta fragmentos ('XY', 'Red')
 
 
 def _clean(raw: str) -> str:
     return _LVL_RE.sub("", raw).strip()
 
 
+def _looks_like_item(name: str) -> bool:
+    return len(name) >= MIN_NAME_LEN
+
+
 def extract_item_names(text: str) -> list[str]:
     """Pega os nomes de item das linhas de drop no texto lido pelo OCR.
 
     Linhas tipo "Congratulations! [Jogador]" tambem tem colchete mas NAO sao
-    item -- sao ignoradas.
+    item -- sao ignoradas. Fragmentos curtos de ruido de OCR sao descartados.
     """
     names: list[str] = []
     for line in text.splitlines():
         if (m := _ITEM_RE.search(line)):
-            names.append(_clean(m.group(1)))
+            if _looks_like_item(name := _clean(m.group(1))):
+                names.append(name)
             continue
         if "congrat" in line.lower():
             continue
         for raw in _BRACKET_RE.findall(line):
-            if (name := _clean(raw)):
+            if _looks_like_item(name := _clean(raw)):
                 names.append(name)
     return names
 
@@ -183,32 +192,77 @@ def classify(name: str, want: set[str], ignore: set[str]) -> str:
     return "unknown"
 
 
+# Dedup robusto a ruido de OCR:
+SIM_THRESHOLD = 0.85   # similaridade (0-1) p/ tratar dois nomes como o MESMO item
+DEDUP_WINDOW = 45      # segundos sem ver o item antes de poder alertar de novo
+
+
+def _similar(a: str, b: str) -> float:
+    """Quao parecidos dois nomes sao (0-1). 'Blue Stee! Dagger' ~ 'Blue Steel Dagger'."""
+    return difflib.SequenceMatcher(None, a.lower(), b.lower()).ratio()
+
+
 class DropWatcher:
-    """Mantem a watchlist + estado de dedup. `poll(client)` devolve os itens
-    NOVOS desde a ultima leitura, ja classificados."""
+    """Detecta drops NOVOS com dedup robusto a ruido de OCR.
+
+    Dois mecanismos contra o problema de o mesmo drop ser avisado varias vezes:
+      - SEMELHANCA: 'Blue Stee! Dagger' ~ 'Blue Steel Dagger' contam como o
+        mesmo item (OCR troca 1 letra) -> nao re-alerta.
+      - ESTABILIDADE: so alerta um nome que apareceu em 2 leituras SEGUIDAS
+        -> corta fragmentos de lixo que o OCR cospe 1 vez so ('Red', '3.u...').
+    Nao re-alerta enquanto o item continua visivel (renova o timer a cada
+    leitura); libera de novo se ele sumir por DEDUP_WINDOW segundos (= novo drop).
+    """
 
     def __init__(self, watchlist_path):
         self.watchlist_path = watchlist_path
         self.want, self.ignore = load_watchlist(watchlist_path)
-        self._last_seen: set[str] = set()
+        self._prev: set[str] = set()           # nomes da leitura anterior (estabilidade)
+        self._alerted: dict[str, float] = {}   # nome alertado -> ultima vez visto (dedup)
 
     def reload_watchlist(self):
         self.want, self.ignore = load_watchlist(self.watchlist_path)
 
+    @staticmethod
+    def _match(name: str, candidates) -> str | None:
+        """Primeiro candidato parecido o bastante com `name` (ou None)."""
+        for c in candidates:
+            if _similar(name, c) >= SIM_THRESHOLD:
+                return c
+        return None
+
+    def _dedup_within(self, items: list[str]) -> list[str]:
+        """Remove variantes do MESMO item dentro de UMA leitura (mantem o 1o)."""
+        unique: list[str] = []
+        for name in items:
+            if not self._match(name, unique):
+                unique.append(name)
+        return unique
+
+    def prime(self, client: "AbstractClientWindow") -> None:
+        """Marca tudo que ja esta na tela como 'ja visto' -> nao alerta no inicio."""
+        items = self._dedup_within(read_chat_items(client) or [])
+        now = time.time()
+        self._alerted = {n: now for n in items}
+        self._prev = set(items)
+
     def poll(self, client: "AbstractClientWindow") -> list[tuple[str, str]]:
-        """[(nome, categoria)] dos itens novos. Dedup: compara o conjunto de
-        nomes visiveis agora com o da leitura anterior; reporta os que
-        apareceram (some quando a linha sai da tela e re-alerta se cair de novo)."""
-        items = read_chat_items(client)
-        if items is None:
+        """[(nome, categoria)] dos itens NOVOS (estaveis e nao repetidos)."""
+        raw_items = read_chat_items(client)
+        if raw_items is None:
             return []
-        current = set(items)
-        new = current - self._last_seen
-        self._last_seen = current
+        now = time.time()
+        # expira itens alertados que sumiram ha mais de DEDUP_WINDOW
+        self._alerted = {n: t for n, t in self._alerted.items() if now - t < DEDUP_WINDOW}
+        items = self._dedup_within(raw_items)
         out: list[tuple[str, str]] = []
-        emitted: set[str] = set()
-        for name in items:  # preserva a ordem de cima->baixo
-            if name in new and name not in emitted:
-                emitted.add(name)
-                out.append((name, classify(name, self.want, self.ignore)))
+        for name in items:
+            if (hit := self._match(name, self._alerted.keys())):
+                self._alerted[hit] = now           # continua visivel -> renova timer
+                continue
+            if not self._match(name, self._prev):  # estabilidade: tem que ter aparecido antes
+                continue
+            self._alerted[name] = now
+            out.append((name, classify(name, self.want, self.ignore)))
+        self._prev = set(items)
         return out

@@ -46,9 +46,9 @@ if duration <= 0:
         print(f"  {ICON.get(cat, cat)} {name}")
     raise SystemExit(0)
 
-# loop: primeiro poll so PRIMA o dedup (descarta o que ja estava na tela),
+# loop: PRIMA o dedup (marca o que ja esta na tela como visto),
 # pra so mostrar drops NOVOS dali pra frente.
-watcher.poll(client)
+watcher.prime(client)
 print(f"\nPrimado. Lendo a cada {interval}s por {duration:.0f}s.")
 print(">>> Vai no jogo e dropa algo -- deve aparecer aqui embaixo:\n")
 
