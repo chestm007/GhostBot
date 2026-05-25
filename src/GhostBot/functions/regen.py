@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class Regen(Locational):
-    MAX_REGEN_SECS = 60  # rede de seguranca: nunca senta mais que isso sem recuperar -> volta a atacar
+    MAX_REGEN_SECS = 16  # rede de seguranca: nunca descansa mais que isso -> volta a atacar
 
     def __init__(self, client: BotClientWindow, fairy_activated: bool = False):
         super().__init__(client=client)
@@ -63,16 +63,22 @@ class Regen(Locational):
         hp = int(self._client.hp)
         regen_start = time.time()
         while not self._recovered() and self._client.running:
-            self._log_debug('healing')
-            time.sleep(2)
-            if self._client.in_battle or self._client.hp < hp:
-                self._log_debug('Ouch, attacking')
-                return False  # atacado -> para de descansar
+            # PRIORIDADE ATAQUE: se entrou em combate (mob agressivo chegou perto) ou
+            # esta apanhando, PARA de descansar e volta a atacar na hora.
+            if self._client.in_battle or int(self._client.hp) < hp:
+                self._log_debug('Ouch -> volta a atacar')
+                return False
             if time.time() - regen_start > self.MAX_REGEN_SECS:
-                self._log_info('Regen demorou demais (%ss), seguindo', self.MAX_REGEN_SECS)
+                self._log_info('Regen atingiu o limite (%ss), seguindo', self.MAX_REGEN_SECS)
                 break
             self._sit()  # senta ONDE ESTA (nao vai pro spot)
             hp = int(self._client.hp)
+            # descansa em passos curtos checando combate -> resposta rapida a mob agressivo
+            for _ in range(3):
+                time.sleep(0.5)
+                if self._client.in_battle:
+                    self._log_debug('Mob agressivo no descanso -> volta a atacar')
+                    return False
 
         # 3) RECUPERADO -> levanta e SO ENTAO volta pro spot (so fora de combate)
         self._stand()
