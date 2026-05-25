@@ -111,7 +111,27 @@ class Locational(Runner, ABC):
         return self._client.location
 
     def _goto_start_location(self):
-        """Moves the char to the saved `start_location`"""
-        while linear_distance(self.start_location, self._client.location) > 2 and self._client.running:
-            self._log_debug(f'{self._client.name}: go to saved spot: {self.start_location}')
+        """Move o char pro `start_location` SEM travar.
+
+        `move_to_pos` so EMPURRA o char na direcao do ponto (clique no minimapa,
+        sem precisao fina). Exigir distancia <= 2 travava pra sempre quando o char
+        nao conseguia encostar exatamente no ponto (bug do regen: parava a ~5 do
+        spot e nudgeava infinito). Agora:
+          - 'chegou' = dentro de ARRIVE passos (alcancavel),
+          - DESISTE se nao estiver mais se aproximando (nao da pra chegar mais perto),
+          - no maximo MAX_TRIES tentativas (rede de seguranca)."""
+        ARRIVE = 8
+        MAX_TRIES = 10
+        last_dist = None
+        for _ in range(MAX_TRIES):
+            if not self._client.running:
+                return
+            dist = linear_distance(self.start_location, self._client.location)
+            if dist <= ARRIVE:
+                return
+            if last_dist is not None and dist >= last_dist - 1:
+                self._log_debug('goto_start: nao aproxima mais (dist=%s), seguindo', round(dist, 1))
+                return
+            last_dist = dist
+            self._log_debug('goto_start: indo pro spot %s (dist=%s)', self.start_location, round(dist, 1))
             self._client.move_to_pos(self.start_location)
