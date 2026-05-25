@@ -237,6 +237,9 @@ class GhostBot(tk.Tk):
             self.tabbed_widget.setvar("char_info.gold_s", str(_s))
             self.tabbed_widget.setvar("char_info.gold_c", str(_c))
 
+            # Painel de drops da sessao (lista + botoes Quero/Nao quero)
+            self._functions_frame.update_drops(response.get("drops", {}))
+
         self.client.add_callback(Command.CONFIG, self._update_char_config)
 
         def save_config():

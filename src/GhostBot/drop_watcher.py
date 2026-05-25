@@ -211,6 +211,41 @@ def classify(name: str, want: set[str], ignore: set[str]) -> str:
     return "unknown"
 
 
+def add_to_watchlist(name: str, which: str, path=None) -> None:
+    """Adiciona `name` na secao 'want' (QUERO) ou 'ignore' (NAO QUERO) do
+    alertas_drop.txt, tirando de onde estava antes (sem duplicar). UI e server
+    ficam na mesma maquina -> a UI escreve o arquivo e o DropWatch recarrega."""
+    path = path or default_watchlist_path()
+    name = name.strip()
+    is_want = which == "want"
+
+    def _is_header(ln: str, want: bool) -> bool:
+        up = ln.strip().upper()
+        if want:
+            return up.startswith("[QUERO")
+        return up.startswith("[NAO QUERO") or up.startswith("[NÃO QUERO")
+
+    try:
+        lines = Path(path).read_text(encoding="utf-8").splitlines()
+    except (FileNotFoundError, OSError):
+        lines = ["[QUERO ALERTA]", "", "[NAO QUERO]", ""]
+
+    low = name.lower()
+    lines = [ln for ln in lines if ln.strip().lower() != low]  # tira duplicata
+
+    out: list[str] = []
+    inserted = False
+    for ln in lines:
+        out.append(ln)
+        if not inserted and _is_header(ln, is_want):
+            out.append(name)
+            inserted = True
+    if not inserted:  # secao nao existia no arquivo
+        out += ["", "[QUERO ALERTA]" if is_want else "[NAO QUERO]", name]
+
+    Path(path).write_text("\n".join(out) + "\n", encoding="utf-8")
+
+
 # Dedup robusto a ruido de OCR:
 SIM_THRESHOLD = 0.85   # similaridade (0-1) p/ tratar dois nomes como o MESMO item
 DEDUP_WINDOW = 45      # segundos sem ver o item antes de poder alertar de novo

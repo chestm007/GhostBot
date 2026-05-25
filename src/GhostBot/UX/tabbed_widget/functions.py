@@ -123,6 +123,55 @@ class FunctionsFrame(tk.Frame):
             tk.Label(_coins, text=_lbl, bg=T.BG_PANEL, fg=_color,
                      font=("TkDefaultFont", 11, "bold")).pack(side="left", padx=(1, 12))
 
+        # Painel de DROPS da sessao (com triagem de 1 clique: Quero / Nao quero)
+        drops_frame = tk.Frame(master=self, bd=1, relief="solid", bg=T.BG_PANEL)
+        drops_frame.grid(row=6, column=1, columnspan=3, sticky="ew", padx=8, pady=(4, 8))
+        ttk.Label(master=drops_frame, text="🎁 DROPS DA SESSÃO", background=T.BG_PANEL,
+                  foreground=T.FG_MUTED, font=("TkDefaultFont", 11, "bold")).pack(
+            anchor="w", padx=8, pady=(6, 2))
+        self.drops_container = tk.Frame(master=drops_frame, bg=T.BG_PANEL)
+        self.drops_container.pack(fill="x", padx=4, pady=(0, 6))
+        self._last_drops = None
+        self.update_drops({})  # placeholder inicial
+
+    def update_drops(self, drops: dict):
+        """Entrada thread-safe (chamada pela thread do IPC): so redesenha quando
+        os drops mudam, e agenda o desenho na thread da UI (tkinter nao e thread-safe)."""
+        drops = drops or {}
+        if drops == self._last_drops:
+            return
+        self._last_drops = dict(drops)
+        self.after(0, lambda d=dict(drops): self._render_drops(d))
+
+    def _render_drops(self, drops: dict):
+        """Redesenha a lista de drops. Cada linha: 'item ×N' + ✅ Quero / ❌ Nao."""
+        for w in self.drops_container.winfo_children():
+            w.destroy()
+        if not drops:
+            tk.Label(self.drops_container, text="(nenhum drop ainda)", bg=T.BG_PANEL,
+                     fg=T.FG_MUTED, font=("TkDefaultFont", 11)).pack(anchor="w", padx=8)
+            return
+        for name, count in sorted(drops.items(), key=lambda kv: -kv[1]):
+            row = tk.Frame(self.drops_container, bg=T.BG_PANEL)
+            row.pack(fill="x", padx=4, pady=1)
+            tk.Label(row, text=f"{name}  ×{count}", bg=T.BG_PANEL, fg=T.FG_MAIN,
+                     font=("TkDefaultFont", 11), anchor="w", width=30).pack(side="left")
+            tk.Button(row, text="✅ Quero", bg=T.BG_PANEL, fg=T.GREEN_HI, bd=1,
+                      activebackground="#26392F", relief="solid",
+                      command=lambda n=name: self._triage(n, "want")).pack(side="left", padx=2)
+            tk.Button(row, text="❌ Não", bg=T.BG_PANEL, fg=T.RED, bd=1,
+                      activebackground="#3a2222", relief="solid",
+                      command=lambda n=name: self._triage(n, "ignore")).pack(side="left", padx=2)
+
+    def _triage(self, name: str, which: str):
+        """Botao do Dashboard: joga o item na lista QUERO ou NAO QUERO (escreve
+        no alertas_drop.txt; o DropWatch do server recarrega sozinho)."""
+        try:
+            from GhostBot.drop_watcher import add_to_watchlist
+            add_to_watchlist(name, which)
+        except Exception:
+            pass
+
     def save_config(self):
         def _function_enabled(f):
             return int(self.getvar(f'bot_config.{f}.enabled')) == 1

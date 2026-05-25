@@ -75,3 +75,9 @@ def send_drop_alert(item: str, category: str, char: str | None = None) -> bool:
     else:  # unknown / item novo
         msg = f"❓ Item novo: **{item}**{who}  _(decida em qual lista colocar)_"
     return send(msg)
+
+
+def send_death_alert(char: str | None = None) -> bool:
+    """Avisa no Discord que o personagem morreu (HP chegou a 0)."""
+    who = f" — **{char}**" if char else ""
+    return send(f"💀 **MORTE!** O personagem morreu{who}")

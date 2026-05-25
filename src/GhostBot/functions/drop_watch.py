@@ -11,7 +11,7 @@ from __future__ import annotations
 import time
 
 from GhostBot import drop_watcher as _dw
-from GhostBot.discord_notify import send_drop_alert
+from GhostBot.discord_notify import send_drop_alert, send_death_alert
 from GhostBot.functions.runner import Runner, run_at_interval
 
 _POLL_SECS = 2
@@ -49,4 +49,32 @@ class DropWatch(Runner):
                 self._log_info("drop: %s [%s]", name, cat)
         except Exception as e:
             self._log_err("drop watch erro: %s", e)
+        return True
+
+
+@run_at_interval(run_on_start=True, run_in_battle=True)
+class DeathAlert(Runner):
+    """Avisa no Discord quando o personagem morre (HP chega a 0).
+
+    Nao depende de OCR/Tesseract. So alerta na TRANSICAO vivo->morto (nao spamma)
+    e re-arma quando o HP volta acima de 0. Roda so com o bot rodando (Stop para)."""
+
+    def _setup(self):
+        self._interval = 3
+        self._was_alive = True
+
+    def _run(self) -> bool:
+        try:
+            hp = self._client.hp
+        except Exception:
+            return False
+        if hp is None:
+            return False  # leitura ruim / desconectado -> nao conclui morte
+        if hp <= 0:
+            if self._was_alive:
+                self._was_alive = False
+                send_death_alert(self._client.name)
+                self._log_info("MORTE detectada -> alerta no Discord")
+        else:
+            self._was_alive = True
         return True
