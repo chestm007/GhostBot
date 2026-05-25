@@ -63,7 +63,14 @@ class AttackFrame(TabFrame):
             ),
             spot=create_entry(
                 self, "Spot (X,Y):", 5, 0, ("bot_config.attack.spot", str),
-                hint="Coordenadas X,Y do ponto fixo de farm. Botão 'Posição atual' captura sua posição agora.",
+                hint="Coordenadas X,Y do ponto de farm — medem a distância pra saber quando voltar. "
+                     "Preenchido por 'Posição atual' ou pelo '📍 Capturar spot' abaixo.",
+            ),
+            map_spot=create_entry(
+                self, "Spot de farm (mapa):", 6, 0, ("bot_config.sell.return_spot_map_offset", str),
+                hint="Pra ONDE o bot volta quando sai do raio de farm (clique no MAPA aberto). Fique no "
+                     "spot, abra o MAPA (M), ponha o mouse no seu personagem no mapa e clique "
+                     "'📍 Capturar spot'. É o MESMO da aba Sell (sincronizado: mexe num, muda no outro).",
             ),
         )
 
@@ -78,8 +85,50 @@ class AttackFrame(TabFrame):
             master=self, text="Posição atual", command=lambda: self._set_spot_as_current('spot')
         ).grid(row=5, column=2, padx=4)
 
+        ttk.Button(
+            master=self, text="📍 Capturar spot", command=self._capture_farm_spot
+        ).grid(row=6, column=2, padx=4)
+
     def _set_spot_as_current(self, field: str):
         self._vars[field].set(eval(self.master.getvar('char_info.position')))
+
+    def _capture_farm_spot(self):
+        """Captura o spot de farm de uma vez: a posicao X,Y do char (mede distancia)
+        E o offset do MAPA (pro retorno por mapa, sincronizado com a aba Sell).
+        Fique no spot, abra o MAPA (M), ponha o mouse no seu personagem no mapa, clique."""
+        import time
+        import ctypes
+        from ctypes import wintypes
+        import win32api
+        from GhostBot.lib.win32.process import PymemProcess
+        from GhostBot.client_window import Win32ClientWindow
+
+        # 1) X,Y atual do char (pra medir a distancia ao spot)
+        try:
+            self._set_spot_as_current('spot')
+        except Exception:
+            pass
+        # 2) offset do mapa (pro clique de retorno) -- mesma logica da aba Sell
+        var = self._vars['map_spot']
+        var.set("Abra o mapa (M) e ponha o mouse no spot...")
+        self.update_idletasks()
+        time.sleep(4)
+        try:
+            proc = next(iter(PymemProcess.list_clients()), None)
+            if proc is None:
+                var.set("(client.exe nao encontrado)")
+                return
+            client = Win32ClientWindow(proc)
+            title = client._image_finder.find_button_center('map_title.bmp', threshold=0.70)
+            if title is None:
+                var.set("(titulo 'Map' nao achado - mapa aberto/visivel?)")
+                return
+            sx, sy = win32api.GetCursorPos()
+            pt = wintypes.POINT(sx, sy)
+            ctypes.windll.user32.ScreenToClient(client.window_handle, ctypes.byref(pt))
+            var.set("{} {}".format(pt.x - title[0], pt.y - title[1]))
+        except Exception as e:
+            var.set(f"(erro: {e})")
 
     def display_config(self, config: Config):
         if config.attack:
