@@ -96,6 +96,7 @@ class Locational(Runner, ABC):
     Represents a function that has a concept of location.
     """
     ARRIVE_DISTANCE = 10   # ao voltar pro spot, recentraliza ate ficar ~centralizado (dentro disso)
+    MAP_DISTANCE = 40      # LONGE (> isso): volta pelo MAPA aberto (confiavel); PERTO: minimapa
 
     def __init__(self, client: BotClientWindow):
         super().__init__(client)
@@ -111,18 +112,26 @@ class Locational(Runner, ABC):
                 return int(fairy.spot[0]), int(fairy.spot[1])
         return self._client.location
 
+    def _spot_map_offset(self) -> tuple[int, int] | None:
+        """Offset do spot no MAPA (capturado na aba Sell/Attack -- mesmo ponto)."""
+        sell = getattr(self._client.config, 'sell', None)
+        off = getattr(sell, 'return_spot_map_offset', None) if sell else None
+        return tuple(off) if off else None
+
     def _goto_start_location(self):
-        """Volta pro spot pelo MINIMAPA (passos curtos, relativos ao char -> confiavel
-        pra distancia curta; o MAPA aberto so serve pra viagem longa do sell, nao
-        consegue mover em dist curta). So volta se passar do ACCEPT_DISTANCE; dentro
-        disso ja esta na area do spot e segue atacando. Bounded (passos limitados +
-        desiste se nao aproxima) -> nunca trava nem foge."""
+        """Volta pro spot, HIBRIDO conforme a distancia:
+          - LONGE (> MAP_DISTANCE): abre o MAPA (M), clique-isca + clica no spot, fecha M
+            (igual o sell -- confiavel pra longe; o minimapa estoura o alcance e nao move).
+          - PERTO (<= MAP_DISTANCE): pequenos cliques no MINIMAPA (relativo ao char; o mapa
+            nao move em dist curta -- clique cai em cima do char).
+        Recentraliza ate ARRIVE_DISTANCE. Bounded (passos limitados + desiste) -> nao trava."""
         if not self._client.running:
             return
         if linear_distance(self.start_location, self._client.location) <= self.ARRIVE_DISTANCE:
             return  # ja centralizado o bastante
+        offset = self._spot_map_offset()
         last_dist = None
-        for _ in range(15):
+        for _ in range(8):
             if not self._client.running:
                 return
             dist = linear_distance(self.start_location, self._client.location)
@@ -132,4 +141,13 @@ class Locational(Runner, ABC):
                 self._log_debug('goto_start: nao aproxima mais (dist=%s), seguindo', round(dist, 1))
                 return
             last_dist = dist
-            self._client.move_to_pos_minimap(self.start_location)  # passo curto, sem o mapa-calculado antigo
+            if dist > self.MAP_DISTANCE and offset is not None:
+                # LONGE -> MAPA aberto (goto_spot_via_map ja faz o clique-isca/fantasma)
+                if self._client.goto_spot_via_map(offset):
+                    t0 = time.time()
+                    while (linear_distance(self.start_location, self._client.location) > self.ARRIVE_DISTANCE
+                           and self._client.running and time.time() - t0 < 40):
+                        time.sleep(1)
+            else:
+                # PERTO -> pequenos cliques no minimapa
+                self._client.move_to_pos_minimap(self.start_location)
