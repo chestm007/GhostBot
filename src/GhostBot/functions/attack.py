@@ -73,6 +73,9 @@ class Attack(Locational):
     otherwise returns Falsey
     """
     _cur_attack_queue = []
+    RETURN_DONE_DISTANCE = 15   # 'centralizou' no spot (sai do modo voltar) dentro disso
+    MAX_RETURN_CYCLES = 6       # ciclos tentando voltar antes de aceitar e farmar (anti-trava)
+
     def __init__(self, client: BotClientWindow):
         super().__init__(client)
         self.config: AttackConfig = client.config.attack
@@ -82,6 +85,9 @@ class Attack(Locational):
         except AttributeError as e:
             self._log_err(f"{self._client.name} error {e}")
             self._stuck_interval = 10
+            self.roam_distance = 40
+        self._returning = False     # modo 'voltando ao spot': persiste ate CENTRALIZAR
+        self._return_cycles = 0
 
     def _run(self) -> bool:
         self._client.close_inventory()
@@ -89,15 +95,29 @@ class Attack(Locational):
 
         context = AttackContext(self._client, self._stuck_interval)
 
-        # if were too far away from our start location, move back there
-        # So recentraliza no spot se passar da 'Distancia max do spot' (o slider que o
-        # usuario configura na aba Attack). Dentro do raio, segue atacando/cacando.
-        if linear_distance(self.start_location, self._client.location) > self.roam_distance:
-            self._log_debug(f'too far go back C:{self._client.location} | T:{self.start_location}')
-            self._client.set_action("🏃 Voltando ao spot")
-            self._goto_start_location()            # volta pelo minimapa (passos curtos)
-            self._client.new_target()
-            return True
+        # MODO 'VOLTANDO': passou do raio ('Distancia max do spot') -> entra no modo voltar.
+        # So SAI quando CENTRALIZA perto do spot -- assim um mob no caminho NAO cancela a
+        # viagem (antes ele parava no meio do caminho pra farmar). Anti-trava: desiste apos
+        # MAX_RETURN_CYCLES (ex.: mob bloqueando de vez) e farma onde esta.
+        dist = linear_distance(self.start_location, self._client.location)
+        if dist > self.roam_distance:
+            self._returning = True
+        if self._returning:
+            if dist <= self.RETURN_DONE_DISTANCE:
+                self._returning = False            # chegou perto do spot -> pode farmar
+                self._return_cycles = 0
+            else:
+                self._return_cycles += 1
+                if self._return_cycles > self.MAX_RETURN_CYCLES:
+                    self._log_info("voltar ao spot: nao centralizou em %s ciclos (bloqueado?), "
+                                   "farmando aqui", self.MAX_RETURN_CYCLES)
+                    self._returning = False
+                    self._return_cycles = 0
+                else:
+                    self._log_debug('voltando ao spot C:%s | T:%s', self._client.location, self.start_location)
+                    self._client.set_action("🏃 Voltando ao spot")
+                    self._goto_start_location()    # so VIAJA; nao ataca mob no caminho
+                    return True
 
         if not self._client.has_alive_target:# or (self._distance_to_target() or 0) > self.roam_distance:
             self._client.set_action("🔍 Procurando alvo")
