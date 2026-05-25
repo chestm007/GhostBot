@@ -23,9 +23,10 @@ class Regen(Locational):
         self._hp_threshold = self._normalize_threshold(self.config.hp_threshold, default=0.75)
         # classes sem mana (ex: Assassin) ignoram o MP no descanso
         self._ignore_mana = bool(getattr(self.config, 'ignore_mana', False))
-        # volta a atacar ao recuperar ACIMA do limite (com folga); nunca exige 100% -> evita sentar pra sempre
-        self._hp_recovered = min(self._hp_threshold + 0.15, 0.95)
-        self._mana_recovered = min(self._mana_threshold + 0.15, 0.95)
+        # Recupera ate ~CHEIO antes de voltar a atacar (nao desperdica pot levantando
+        # a 85%). O timeout MAX_REGEN_SECS (60s) impede sentar pra sempre se nao encher.
+        self._hp_recovered = 0.95
+        self._mana_recovered = 0.95
 
     @staticmethod
     def _normalize_threshold(value, default: float) -> float:
