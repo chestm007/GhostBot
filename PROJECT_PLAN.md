@@ -21,9 +21,18 @@
 - ✅ **UI**: aba de venda reorganizada (2 sobreposições corrigidas), campo "Spot de farm (mapa)" + botão "Capturar spot" (client-side, sem IPC), aviso "deixe os diálogos à esquerda/visíveis", borda azul nos botões, **atalho "BotTO" no desktop** (pede admin) + `start_botto.bat`.
 - ✅ **Pacote pros amigos**: `BotTO_para_amigos.zip` (código + imagens/BMPs + install.bat + start_botto.bat + LEIAME). 0,5 MB, cabe no Discord.
 
+### 🔥 Feito na sessão 2026-05-24 (parte 2 — tarde/noite) — commit `4dee204`
+- ✅ **3 bugs reportados pelo dono, corrigidos:**
+  1. **Regen "sentava e não voltava a atacar"** — saía do descanso só com HP **e** MP em 100% cravado; se o MP nunca enchia (ex: **Assassin não tem mana**), travava sentado pra sempre. Agora sai ao recuperar **acima do limite com folga** + **timeout de 60s** de segurança. Nova caixa **"Classe sem mana"** (`RegenConfig.ignore_mana`) na aba Regen ignora o MP no descanso. Raio de farm ("Distância máx do spot") agora **40–100** (default 60).
+  2. **Sell não achava "Sell Item" (PC do amigo)** — o offset fixo apontava pra **1ª linha do menu** = "Purchase Item" no Blacksmith (abria a janela errada → voltava ao spot). Agora acha "Sell Item" por **IMAGEM** (`sell_items_button.bmp`, threshold 0.85) + novo **`window_to_client()`** converte coord da captura (janela inteira) → área cliente antes de clicar (corrige o Δ da barra de título — a tese antiga estava certa, o palpite de "resolução" estava errado). **Venda REAL validada ao vivo** (gold subiu 435→448). ✅ tarefa "venda real" concluída.
+  3. **Stop = botão de EMERGÊNCIA** — checagens de `running` no loop de venda (30 cliques) e no pathing pelo mapa; `trigger_sell_now` roda em **thread registrada** que não ressuscita `running` após Stop; `stop_bot` **força** a parada e espera loop principal + venda manual.
+- ✅ **Multi-conta confirmada**: 2+ chars logados rodam em paralelo (threads independentes), cada um na lista à esquerda com seu dashboard. Corrigido o bug de **seleção desselecionando** (set da lista limpava a seleção → preserva por nome agora).
+- ✅ **Branding "Talisman Bot"** (pivot de "Automation SpAl"): logo do dono → `logo.png`/`logo.ico`, ícone na janela + barra de tarefas + build do `.exe` (nuitka). **Tema ESCURO** centralizado em `UX/theme.py` (verde/dourado do logo), aplicado em todas as abas. Banner do logo no topo da lista. Start verde / Stop vermelho. Atalho "Talisman Bot" no desktop.
+- ✅ **UX**: scroll da **aba inteira** (`ScrollableFrame`; combo achatado, sem scroll próprio); bug do scroll-pra-cima corrigido (só rola com overflow). **Fontes +2** no app todo. Campos **espalhados** (faixas HP/MP full-width, "Tecla Pot" na borda). **Autologin** reorganizado (grid + barra de botões no lugar de `place()` fixo). Tooltip com fonte **preta** (era branco no claro).
+
 ### Próxima sessão começa por:
 1. **Tabela de XP-por-nível** (amigos montando) → ligar a **% do XP** no dashboard
-2. **Teste do ciclo de venda REAL** (DRY validado; falta a venda de verdade)
+2. ✅ ~~Teste do ciclo de venda REAL~~ FEITO. Falta: rodar o ciclo **3-bags automático** no farm real (1 bag validada).
 3. **Validar Fairy team buff** + `TEAM_NAME` quando o time conectar
 4. **OCR do chat System** (drops próprios: XP/energy/itens "You got...") pro Discord (Sprint 4)
 5. 🎯 **DECIDIDO: gerar o .exe** (pra os amigos não precisarem instalar Python). Via GitHub Actions → **Build Executable** (rodar 2x: `client` e `server`). Branch `minha-versao-estavel` já está pushado no fork. Falta: disparar o workflow, baixar os 2 .exe, testar (atenção ao path das imagens no binário — já houve bug antes, ver commits #30/#31). Como os .exe são grandes, distribuir por link (não cabe no Discord).
@@ -80,7 +89,7 @@ Aplicada nesta sessão sobre tudo que o bot já tinha:
 - ✅ **Delete** — só checkbox + slider intervalo
 
 ### Janela principal (`main.py`)
-- 🎨 Paleta moderna: bg `#eef1f5`, lista escura `#3a3f4b`, log escuro `#1e1f22`, accent azul `#4a90e2`
+- 🎨 **TEMA ESCURO** (2026-05-24, cores do logo) centralizado em `UX/theme.py`: bg `#14201C`, paineis `#1B2B24`, verde `#7CB518`/`#B4FB00`, dourado `#FCB400`. (Era claro azul `#4a90e2` antes.)
 - 📐 Layout responsivo (grid + weights) — **redimensionável**
 - 🪟 Tabs e log em `tk.PanedWindow` — **divisor arrastável**
 - 🔘 Botão Start em estilo "Accent" (azul)
