@@ -144,33 +144,49 @@ class FunctionsFrame(tk.Frame):
         self.after(0, lambda d=dict(drops): self._render_drops(d))
 
     def _render_drops(self, drops: dict):
-        """Redesenha a lista de drops. Cada linha: 'item ×N' + ✅ Quero / ❌ Nao."""
+        """Redesenha a lista de drops. Item ja classificado mostra uma TAG
+        (🎯 quero / 🚫 ignorado); item ainda nao decidido mostra os botoes."""
         for w in self.drops_container.winfo_children():
             w.destroy()
         if not drops:
             tk.Label(self.drops_container, text="(nenhum drop ainda)", bg=T.BG_PANEL,
                      fg=T.FG_MUTED, font=("TkDefaultFont", 11)).pack(anchor="w", padx=8)
             return
+        try:
+            from GhostBot.drop_watcher import load_watchlist, default_watchlist_path
+            want, ignore = load_watchlist(default_watchlist_path())
+        except Exception:
+            want, ignore = set(), set()
         for name, count in sorted(drops.items(), key=lambda kv: -kv[1]):
+            low = name.lower()
             row = tk.Frame(self.drops_container, bg=T.BG_PANEL)
             row.pack(fill="x", padx=4, pady=1)
             tk.Label(row, text=f"{name}  ×{count}", bg=T.BG_PANEL, fg=T.FG_MAIN,
                      font=("TkDefaultFont", 11), anchor="w", width=30).pack(side="left")
-            tk.Button(row, text="✅ Quero", bg=T.BG_PANEL, fg=T.GREEN_HI, bd=1,
-                      activebackground="#26392F", relief="solid",
-                      command=lambda n=name: self._triage(n, "want")).pack(side="left", padx=2)
-            tk.Button(row, text="❌ Não", bg=T.BG_PANEL, fg=T.RED, bd=1,
-                      activebackground="#3a2222", relief="solid",
-                      command=lambda n=name: self._triage(n, "ignore")).pack(side="left", padx=2)
+            if low in want:
+                tk.Label(row, text="🎯 quero", bg=T.BG_PANEL, fg=T.GREEN_HI,
+                         font=("TkDefaultFont", 10, "bold")).pack(side="left", padx=4)
+            elif low in ignore:
+                tk.Label(row, text="🚫 ignorado", bg=T.BG_PANEL, fg=T.FG_MUTED,
+                         font=("TkDefaultFont", 10)).pack(side="left", padx=4)
+            else:
+                tk.Button(row, text="✅ Quero", bg=T.BG_PANEL, fg=T.GREEN_HI, bd=1,
+                          activebackground="#26392F", relief="solid",
+                          command=lambda n=name: self._triage(n, "want")).pack(side="left", padx=2)
+                tk.Button(row, text="❌ Não", bg=T.BG_PANEL, fg=T.RED, bd=1,
+                          activebackground="#3a2222", relief="solid",
+                          command=lambda n=name: self._triage(n, "ignore")).pack(side="left", padx=2)
 
     def _triage(self, name: str, which: str):
         """Botao do Dashboard: joga o item na lista QUERO ou NAO QUERO (escreve
-        no alertas_drop.txt; o DropWatch do server recarrega sozinho)."""
+        no alertas_drop.txt; o DropWatch do server recarrega sozinho). Redesenha
+        ja, pra os botoes daquele item virarem a tag na hora."""
         try:
             from GhostBot.drop_watcher import add_to_watchlist
             add_to_watchlist(name, which)
         except Exception:
             pass
+        self._render_drops(self._last_drops or {})
 
     def save_config(self):
         def _function_enabled(f):
