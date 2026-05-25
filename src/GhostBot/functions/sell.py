@@ -51,6 +51,7 @@ class Sell(Locational):
             return True
 
     def _go_to_npc(self):
+        self._client.set_action("🏃 Indo vender (NPC)")
         # COMECA no Surroundings (NAO usar o move_to_pos/mapa antigo aqui -- ele abria
         # o mapa e clicava em coord aleatoria no inicio).
         self._client.search_surroundings(self.config.sell_npc_name)
@@ -75,6 +76,7 @@ class Sell(Locational):
         return True
 
     def _sell_items(self):
+        self._client.set_action("💰 Vendendo no NPC")
         self._log_info('Vendendo...')
         start_slot = int(self.config.sell_item_pos or 1)
         self._client.reset_camera()
@@ -109,6 +111,7 @@ class Sell(Locational):
     def _path_to_attack_spot(self):
         if not self._client.running:   # Stop apertado -> nem tenta voltar ao spot
             return
+        self._client.set_action("🏃 Voltando ao spot (pós-venda)")
         offset = self.config.return_spot_map_offset
         if offset is None:
             self._log_err('return_spot_map_offset nao setado -- pulando retorno ao spot')
