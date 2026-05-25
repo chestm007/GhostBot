@@ -13,7 +13,7 @@ from GhostBot.IPC.server import IPCServerLogHandler
 from GhostBot.client_window import Win32ClientWindow
 from GhostBot.config import ConfigLoader, LoginDetailsConfigLoader, GhostBotServerConfigLoader
 from GhostBot.enums.bot_status import BotStatus
-from GhostBot.functions import Attack, Buffs, DeathAlert, DropWatch, Fairy, Petfood, Regen, Runner, Sell
+from GhostBot.functions import Attack, Buffs, Fairy, Petfood, Regen, Runner, Sell
 from GhostBot.lib.math import linear_distance, position_difference, scale_minimap_move_distance, coords_to_map_screen_pos
 from GhostBot.lib.talisman_ui_locations import UI_locations
 from GhostBot.lib.win32.process import PymemProcess
@@ -485,10 +485,9 @@ class BotController(ABC):
             yield Attack(client)
         if client.config.fairy is not None:
             yield Fairy(self, client)
-        # Sempre roda: monitora o chat System -> alerta drop no Discord + contagem no dashboard
-        yield DropWatch(client)
-        # Sempre roda: avisa no Discord se o personagem morrer (HP=0)
-        yield DeathAlert(client)
+        # DropWatch (OCR de drop) e DeathAlert NAO ficam aqui no loop sequencial -- rodam
+        # numa THREAD paralela (ver ThreadedBotController._run_monitor), pra nao serem
+        # atrasados pelo combate (era a causa do "as vezes detecta, as vezes nao").
 
     @abstractmethod
     def stop_all_bots(self, timeout=30) -> None: ...
