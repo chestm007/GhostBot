@@ -95,8 +95,7 @@ class Locational(Runner, ABC):
     """
     Represents a function that has a concept of location.
     """
-    ACCEPT_DISTANCE = 100   # dentro disso = ja na area do spot -> nao precisa voltar, so ataca
-    ARRIVE_DISTANCE = 50    # ao voltar pelo mapa, considera "chegou" dentro disso
+    ARRIVE_DISTANCE = 10   # ao voltar pro spot, recentraliza ate ficar ~centralizado (dentro disso)
 
     def __init__(self, client: BotClientWindow):
         super().__init__(client)
@@ -112,42 +111,25 @@ class Locational(Runner, ABC):
                 return int(fairy.spot[0]), int(fairy.spot[1])
         return self._client.location
 
-    def _spot_map_offset(self) -> tuple[int, int] | None:
-        """Offset do spot no MAPA (capturado na aba Sell -- mesmo ponto de farm)."""
-        sell = getattr(self._client.config, 'sell', None)
-        off = getattr(sell, 'return_spot_map_offset', None) if sell else None
-        return tuple(off) if off else None
-
     def _goto_start_location(self):
-        """Volta pro spot pelo MAPA ABERTO (igual o sell: abre M, clique-ISCA pra furar
-        o bug do jogo, clica no spot, fecha M). So volta se estiver LONGE
-        (> ACCEPT_DISTANCE); dentro disso ja esta na area do spot e segue atacando.
-        O mapa nao serve pra dist curta (o clique cai quase em cima do char), por isso
-        so usamos pra longe. Bounded (poucas viagens + desiste) -> nunca trava/foge."""
+        """Volta pro spot pelo MINIMAPA (passos curtos, relativos ao char -> confiavel
+        pra distancia curta; o MAPA aberto so serve pra viagem longa do sell, nao
+        consegue mover em dist curta). So volta se passar do ACCEPT_DISTANCE; dentro
+        disso ja esta na area do spot e segue atacando. Bounded (passos limitados +
+        desiste se nao aproxima) -> nunca trava nem foge."""
         if not self._client.running:
             return
-        if linear_distance(self.start_location, self._client.location) <= self.ACCEPT_DISTANCE:
-            return  # ja esta na area do spot
-        offset = self._spot_map_offset()
-        if offset is None:
-            self._log_err("goto_start: 'Spot de farm (mapa)' nao configurado -- nao da pra voltar")
-            return
+        if linear_distance(self.start_location, self._client.location) <= self.ARRIVE_DISTANCE:
+            return  # ja centralizado o bastante
         last_dist = None
-        for _ in range(3):
+        for _ in range(15):
             if not self._client.running:
                 return
             dist = linear_distance(self.start_location, self._client.location)
             if dist <= self.ARRIVE_DISTANCE:
                 return
-            if last_dist is not None and dist >= last_dist - 3:  # nao aproximou -> desiste
-                self._log_debug('goto_start: mapa nao aproximou (dist=%s), seguindo', round(dist, 1))
+            if last_dist is not None and dist >= last_dist - 1:  # nao aproximou -> desiste
+                self._log_debug('goto_start: nao aproxima mais (dist=%s), seguindo', round(dist, 1))
                 return
             last_dist = dist
-            if not self._client.goto_spot_via_map(offset):  # ja inclui o clique-isca (fantasma)
-                return
-            t0 = time.time()
-            while linear_distance(self.start_location, self._client.location) > self.ARRIVE_DISTANCE and self._client.running:
-                if time.time() - t0 > 40:
-                    self._log_debug('goto_start: timeout no retorno por mapa')
-                    break
-                time.sleep(1)
+            self._client.move_to_pos_minimap(self.start_location)  # passo curto, sem o mapa-calculado antigo

@@ -57,9 +57,9 @@ class AttackFrame(TabFrame):
             ),
             roam=create_int_slider(
                 self, "Distância máx do spot:", 3, 0, "bot_config.attack.battle_roam",
-                default=60, min_val=40, max_val=100, suffix="un",
-                hint="Raio do círculo de farm ao redor do Spot. 40=bem preso · 100=mais solto. "
-                     "Se o personagem sair do raio, ele volta ao Spot.",
+                default=40, min_val=15, max_val=100, suffix="un",
+                hint="Raio de farm ao redor do Spot. Se o personagem passar dessa distância, ele "
+                     "recentraliza no Spot (pequenos cliques no minimapa). 15=bem grudado · 100=mais solto.",
             ),
             spot=create_entry(
                 self, "Spot (X,Y):", 5, 0, ("bot_config.attack.spot", str),

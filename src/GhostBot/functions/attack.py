@@ -90,13 +90,12 @@ class Attack(Locational):
         context = AttackContext(self._client, self._stuck_interval)
 
         # if were too far away from our start location, move back there
-        # So volta pro spot se passar do limite de aceitacao (ACCEPT_DISTANCE=100).
-        # Dentro disso (mesmo um pouco acima do roam) ele aceita e segue atacando.
-        if linear_distance(self.start_location, self._client.location) > self.ACCEPT_DISTANCE:
+        # So recentraliza no spot se passar da 'Distancia max do spot' (o slider que o
+        # usuario configura na aba Attack). Dentro do raio, segue atacando/cacando.
+        if linear_distance(self.start_location, self._client.location) > self.roam_distance:
             self._log_debug(f'too far go back C:{self._client.location} | T:{self.start_location}')
             self._client.set_action("🏃 Voltando ao spot")
-            with self._client.mounted():          # monta pra viajar mais rapido
-                self._goto_start_location()        # volta pelo MAPA (com clique-isca)
+            self._goto_start_location()            # volta pelo minimapa (passos curtos)
             self._client.new_target()
             return True
 
