@@ -132,4 +132,4 @@ class Locational(Runner, ABC):
                 self._log_debug('goto_start: nao aproxima mais (dist=%s), seguindo', round(dist, 1))
                 return
             last_dist = dist
-            self._client.move_to_pos(self.start_location)
+            self._client.move_to_pos_minimap(self.start_location)  # SO minimapa (sem o mapa-calculado antigo)

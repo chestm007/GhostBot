@@ -204,6 +204,22 @@ class BotClientWindow(Win32ClientWindow):
         self.right_click(minimap_pos)
         self.block_while_moving()
 
+    def move_to_pos_minimap(self, target_pos):
+        """Move em direcao ao alvo SO pelo minimapa (relativo ao char -> confiavel),
+        SEM cair pro mapa-calculado antigo (`_move_to_pos_via_map`, do upstream, que
+        calcula coord da tela pela zona e erra de lugar). Pra retorno curto IN-ZONE
+        (regen/attack). scale_minimap_move_distance limita o passo ao alcance do
+        minimapa, entao distancias maiores so precisam de mais chamadas (o chamador
+        repete num loop)."""
+        if not self.running:
+            return
+        pos_diff = position_difference(self.location, target_pos)
+        pos_diff_mm_pix = tuple(map(mul, pos_diff, (-1.7, 1.7)))
+        minimap_relative_pos = scale_minimap_move_distance(pos_diff_mm_pix)
+        minimap_pos = tuple(map(math.ceil, map(add, UI_locations.minimap_centre, minimap_relative_pos)))
+        self.right_click(minimap_pos)
+        self.block_while_moving()
+
     def _move_to_pos_via_map(self, target_pos: tuple[int, int]):
         if not self.running:   # Stop = emergencia
             return False
