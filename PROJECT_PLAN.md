@@ -40,13 +40,17 @@
   - **Teste 60s ao vivo:** detectou `Animal Fur` como NOVO, **dedup OK** (1 alerta em ~35 leituras), priming descarta o que já está na tela, não perdeu drop.
   - **⚠️ capture_window() = ÁREA DO CLIENTE** (não a janela toda); converter cursor com `ScreenToClient`, não `GetWindowRect` (esse inclui borda invisível do DWM).
   - **Raridade pela cor:** o **nome do item vem na COR da raridade** (Animal Fur = nome BRANCO = comum; o prefixo "You got the item:" é amarelo fixo). Filtro "branco não avisa" é viável → **DEFERIDO** (amostrar só o trecho do nome via `image_to_data`; calibrar com mais raridades; fundo de chat opaco ajuda).
-- ⏭️ **PRÓXIMO:** Etapa 2 = webhook Discord (precisa URL do canal do user, **nunca commitar**; alerta want+novo, pula ignore). Depois Etapa 3 (rodar no loop do bot + toggle na UI, respeitar Stop=emergência) e Etapa 4 (embutir Tesseract no `.exe` pros amigos — ninguém instala nada).
+- ✅ **Etapa 2 (Discord webhook) FEITA:** `discord_notify.py` (urllib + header `User-Agent` p/ furar o HTTP 403 do Discord). URL em `discord_webhook.txt` (gitignored, nunca commitar). Validado ao vivo (drops postados no canal). Alerta want=🎯, novo=❓, pula "não quero".
+- ✅ **Etapa 3 (integração no bot) FEITA:** DropWatch + DeathAlert rodam em **THREAD PARALELA** (`ThreadedBotController._run_monitor`, ~2s, independente do loop, respeita Stop) — resolveu o "às vezes detecta, às vezes não". Dashboard ganhou: painel **"Drops da sessão"** (lista + **contagem x2**) + botões **✅ Quero / ❌ Não quero** (triagem 1 clique → escreve no `alertas_drop.txt`, vira tag) + **barra de AÇÃO ATUAL grifada** (mostra o que o bot faz) + **alerta de MORTE** 💀 (HP=0 → Discord).
+- ✅ **"Spot de farm (mapa)" na aba Attack, sincronizado com a Sell** (1 captura = X,Y + offset do mapa); offset movido pra `AttackConfig` (salva mesmo com a aba Sell desativada).
+- ✅ **Lote grande de fixes do bot (achados testando):** Regen — recupera até ~95% (não desperdiça pot), descanso máx **16s**, volta a atacar na hora se mob agressivo, recupera ANTES de voltar ao spot, nunca descansa/volta em combate. RETORNO ao spot **HÍBRIDO** (perto=minimapa passos curtos / longe=MAPA aberto com clique-isca), gatilho = slider "Distância máx do spot" (liberado **15-100**), + modo **"voltando"** que insiste até CENTRALIZAR (não para pra brigar no caminho; anti-trava após 6 ciclos). Matou o `_move_to_pos_via_map` (mapa-calculado antigo do upstream que ia pro lugar errado). Contagem de drop **x2** separada do anti-spam do Discord.
+- ⏭️ **PRÓXIMO:** **Boss target-lock** (frente 4): flag + caixa de nome na aba Attack → dá TAB até o nome bater e ataca só ele. Depois: mensagem **bonita** no Discord (embeds + cor de raridade + emojis), **filtro por cor de raridade** ("branco não avisa"), e **embutir o Tesseract no `.exe`** (ninguém instala nada). Tudo commitado LOCAL (sem push ainda).
 
 ### Próxima sessão começa por:
 1. **Tabela de XP-por-nível** (amigos montando) → ligar a **% do XP** no dashboard
 2. ✅ ~~Teste do ciclo de venda REAL~~ FEITO. Falta: rodar o ciclo **3-bags automático** no farm real (1 bag validada).
 3. **Validar Fairy team buff** + `TEAM_NAME` quando o time conectar
-4. ✅ ~~**OCR do chat System**~~ — Etapa 1 (detecção de drop por OCR) **FEITA** em 2026-05-25 (`drop_watcher.py`). Falta **Etapa 2: webhook Discord** (precisa URL do canal).
+4. ✅ ~~**Detecção de drop + Discord**~~ **COMPLETA** (Etapas 1-3: OCR + webhook + thread paralela + dashboard com triagem + alerta de morte). Próximo grande: **Boss target-lock** (frente 4). Depois: msg bonita Discord (embeds/raridade), filtro por raridade, Tesseract no `.exe`.
 5. 🎯 **DECIDIDO: gerar o .exe** (pra os amigos não precisarem instalar Python). Via GitHub Actions → **Build Executable** (rodar 2x: `client` e `server`). Branch `minha-versao-estavel` já está pushado no fork. Falta: disparar o workflow, baixar os 2 .exe, testar (atenção ao path das imagens no binário — já houve bug antes, ver commits #30/#31). Como os .exe são grandes, distribuir por link (não cabe no Discord).
 
 ### Como rodar:
@@ -194,7 +198,7 @@ Plano original mantido. Não iniciado.
 
 - ⏳ Telemetria sessão + histórico + por papel — **Dashboard já tem kills + tempo**
 - ⏳ Tier de Itens (5 níveis) — **3 categorias já existem na UI (Lixo/Bons/Raros), expandir pra 5 níveis**
-- 🔄 Discord Webhook — **detecção de drop por OCR FEITA (Etapa 1, `drop_watcher.py`, sessão 2026-05-25)**; falta o **disparo do webhook (Etapa 2)** — precisa da URL do canal (não commitar)
+- ✅ Discord Webhook — **COMPLETO (sessão 2026-05-25):** detecção de drop por OCR + webhook (`discord_notify.py`) + thread paralela + dashboard (painel de drops + triagem ✅/❌ + barra de ação + alerta de morte 💀). Falta só o polimento: msg bonita (embeds/raridade), filtro por cor de raridade, Tesseract no .exe.
 - ⏳ Acesso Mobile via Tailscale
 - ⏳ Dashboard HTML local (5 chars em tempo real)
 - ⏳ Auto-Venda Completa (13 etapas)
