@@ -110,28 +110,54 @@ class Locational(Runner, ABC):
                 return int(fairy.spot[0]), int(fairy.spot[1])
         return self._client.location
 
-    def _goto_start_location(self):
-        """Move o char pro `start_location` SEM travar.
+    ARRIVE_DISTANCE = 8  # 'chegou no spot' = dentro de N passos (move_to_pos nao tem precisao fina)
 
-        `move_to_pos` so EMPURRA o char na direcao do ponto (clique no minimapa,
-        sem precisao fina). Exigir distancia <= 2 travava pra sempre quando o char
-        nao conseguia encostar exatamente no ponto (bug do regen: parava a ~5 do
-        spot e nudgeava infinito). Agora:
-          - 'chegou' = dentro de ARRIVE passos (alcancavel),
-          - DESISTE se nao estiver mais se aproximando (nao da pra chegar mais perto),
-          - no maximo MAX_TRIES tentativas (rede de seguranca)."""
-        ARRIVE = 8
-        MAX_TRIES = 10
+    def _spot_map_offset(self) -> tuple[int, int] | None:
+        """Offset do spot no MAPA (capturado na aba Sell -- e o mesmo ponto de farm).
+        Usado pro retorno PRECISO por mapa. None se nao configurado."""
+        sell = getattr(self._client.config, 'sell', None)
+        off = getattr(sell, 'return_spot_map_offset', None) if sell else None
+        return tuple(off) if off else None
+
+    def _goto_start_location(self):
+        """Volta pro `start_location` SEM travar.
+
+        - Se ja esta PERTO (<= ARRIVE_DISTANCE) -> nao faz nada (segue atacando).
+        - Se esta LONGE e tem o 'Spot de farm (mapa)' configurado -> volta PRECISO
+          pelo MAPA (mesmo metodo confiavel do sell) e espera chegar.
+        - Senao -> empurra pelo minimapa, mas SEM exigir cravar no ponto (move_to_pos
+          so empurra, sem precisao -> exigir dist<=2 travava o regen). Desiste se
+          nao estiver mais se aproximando."""
+        ARRIVE = self.ARRIVE_DISTANCE
+        if not self._client.running:
+            return
+        if linear_distance(self.start_location, self._client.location) <= ARRIVE:
+            return  # ja esta perto o bastante -> volta a atacar
+
+        offset = self._spot_map_offset()
+        if offset is not None:
+            self._log_debug('goto_start: retorno por MAPA, offset=%s', offset)
+            if self._client.goto_spot_via_map(offset):
+                t0 = time.time()
+                while (linear_distance(self.start_location, self._client.location) > ARRIVE
+                       and self._client.running):
+                    if time.time() - t0 > 60:
+                        self._log_debug('goto_start: timeout no retorno por mapa')
+                        break
+                    time.sleep(1)
+                return
+            self._log_debug('goto_start: mapa falhou, caindo pro minimapa')
+
+        # fallback minimapa (sem travar): empurra ate chegar perto OU parar de aproximar
         last_dist = None
-        for _ in range(MAX_TRIES):
+        for _ in range(10):
             if not self._client.running:
                 return
             dist = linear_distance(self.start_location, self._client.location)
             if dist <= ARRIVE:
                 return
             if last_dist is not None and dist >= last_dist - 1:
-                self._log_debug('goto_start: nao aproxima mais (dist=%s), seguindo', round(dist, 1))
+                self._log_debug('goto_start: minimapa nao aproxima mais (dist=%s)', round(dist, 1))
                 return
             last_dist = dist
-            self._log_debug('goto_start: indo pro spot %s (dist=%s)', self.start_location, round(dist, 1))
             self._client.move_to_pos(self.start_location)
