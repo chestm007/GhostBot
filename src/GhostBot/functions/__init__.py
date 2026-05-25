@@ -5,5 +5,6 @@ from GhostBot.functions.fairy import Fairy
 from GhostBot.functions.petfood import Petfood
 from GhostBot.functions.regen import Regen
 from GhostBot.functions.sell import Sell
+from GhostBot.functions.drop_watch import DropWatch
 
-__all__ = ['Runner', 'Locational', 'Attack', 'Buffs', 'Fairy', 'Petfood', 'Regen', 'Sell']
+__all__ = ['Runner', 'Locational', 'Attack', 'Buffs', 'Fairy', 'Petfood', 'Regen', 'Sell', 'DropWatch']

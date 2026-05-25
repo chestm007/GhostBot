@@ -13,7 +13,7 @@ from GhostBot.IPC.server import IPCServerLogHandler
 from GhostBot.client_window import Win32ClientWindow
 from GhostBot.config import ConfigLoader, LoginDetailsConfigLoader, GhostBotServerConfigLoader
 from GhostBot.enums.bot_status import BotStatus
-from GhostBot.functions import Attack, Buffs, Fairy, Petfood, Regen, Runner, Sell
+from GhostBot.functions import Attack, Buffs, DropWatch, Fairy, Petfood, Regen, Runner, Sell
 from GhostBot.lib.math import linear_distance, position_difference, scale_minimap_move_distance, coords_to_map_screen_pos
 from GhostBot.lib.talisman_ui_locations import UI_locations
 from GhostBot.lib.win32.process import PymemProcess
@@ -43,6 +43,7 @@ class BotClientWindow(Win32ClientWindow):
         self._xp_gained: int = 0
         self._last_xp: int | None = None
         self._gold_start: int | None = None
+        self.drops: dict[str, int] = {}  # contagem de drops da sessao (Dashboard)
 
     def to_json(self) -> dict:
         # Detecção de kill: alvo estava com HP positivo, agora ta None/<0 (dead/no target)
@@ -105,6 +106,7 @@ class BotClientWindow(Win32ClientWindow):
             energy=self.pointers.get_energy(),
             xp_gained=self._xp_gained,
             gold_gained=_gold_gained,
+            drops=dict(self.drops),
         )
 
     def post_login_setup(self):
@@ -125,6 +127,10 @@ class BotClientWindow(Win32ClientWindow):
 
     def set_config(self, config: Config):
         self.config = config
+
+    def record_drop(self, name: str) -> None:
+        """Acumula a contagem de um drop detectado (usado pelo DropWatch)."""
+        self.drops[name] = self.drops.get(name, 0) + 1
 
     @property
     def bot_status_string(self) -> str:
@@ -161,6 +167,7 @@ class BotClientWindow(Win32ClientWindow):
         self._xp_gained = 0
         self._last_xp = None
         self._gold_start = None
+        self.drops = {}
 
     def stop_bot(self):
         self.logger.info(f'{self.name}: Stopping...')
@@ -447,6 +454,8 @@ class BotController(ABC):
             yield Attack(client)
         if client.config.fairy is not None:
             yield Fairy(self, client)
+        # Sempre roda: monitora o chat System -> alerta drop no Discord + contagem no dashboard
+        yield DropWatch(client)
 
     @abstractmethod
     def stop_all_bots(self, timeout=30) -> None: ...

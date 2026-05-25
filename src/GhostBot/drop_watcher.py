@@ -57,6 +57,10 @@ if _TESS:
 else:
     logger.warning("drop_watcher :: Tesseract nao encontrado -- OCR de drop vai falhar")
 
+
+def tesseract_available() -> bool:
+    return _TESS is not None
+
 _TESS_CONFIG = "--psm 6"  # bloco uniforme de texto (varias linhas de chat)
 
 # ----------------------------------------------------------------------------
@@ -158,6 +162,21 @@ def read_chat_items(client: "AbstractClientWindow") -> list[str] | None:
 # ----------------------------------------------------------------------------
 # Watchlist (alertas_drop.txt)
 # ----------------------------------------------------------------------------
+_WATCHLIST_CANDIDATES = [
+    os.path.join(os.path.expanduser("~"), "GhostBot", "alertas_drop.txt"),
+    os.path.normpath(os.path.join(_path_base, "..", "..", "alertas_drop.txt")),
+    os.path.join(_path_base, "alertas_drop.txt"),
+]
+
+
+def default_watchlist_path() -> str:
+    """Acha o alertas_drop.txt (HOME/GhostBot, depois raiz do repo/.exe)."""
+    for p in _WATCHLIST_CANDIDATES:
+        if os.path.exists(p):
+            return p
+    return _WATCHLIST_CANDIDATES[0]  # default: HOME/GhostBot (criado por quem usar)
+
+
 def load_watchlist(path) -> tuple[set[str], set[str]]:
     """Le o alertas_drop.txt -> (quero, nao_quero) em minusculo."""
     want: set[str] = set()
