@@ -272,7 +272,8 @@ class DropWatcher:
         self.watchlist_path = watchlist_path
         self.want, self.ignore = load_watchlist(watchlist_path)
         self._prev: set[str] = set()           # nomes da leitura anterior (estabilidade)
-        self._alerted: dict[str, float] = {}   # nome alertado -> ultima vez visto (dedup)
+        self._alerted: dict[str, float] = {}   # nome alertado -> ultima vez visto (dedup do alerta)
+        self._visible_counts: dict[str, int] = {}  # nome -> qtd visivel na ultima leitura (contagem)
 
     def reload_watchlist(self):
         self.want, self.ignore = load_watchlist(self.watchlist_path)
@@ -293,23 +294,47 @@ class DropWatcher:
                 unique.append(name)
         return unique
 
+    def _count_occurrences(self, items: list[str]) -> dict[str, int]:
+        """{nome_canonico: quantas vezes aparece agora}, agrupando variantes de OCR (fuzzy)."""
+        counts: dict[str, int] = {}
+        for name in items:
+            key = self._match(name, counts.keys()) or name
+            counts[key] = counts.get(key, 0) + 1
+        return counts
+
     def prime(self, client: "AbstractClientWindow") -> None:
-        """Marca tudo que ja esta na tela como 'ja visto' -> nao alerta no inicio."""
-        items = self._dedup_within(read_chat_items(client) or [])
+        """Marca tudo que ja esta na tela como 'ja visto' -> nao alerta NEM conta no inicio."""
+        raw = read_chat_items(client) or []
+        items = self._dedup_within(raw)
         now = time.time()
         self._alerted = {n: now for n in items}
         self._prev = set(items)
+        self._visible_counts = self._count_occurrences(raw)
 
-    def poll(self, client: "AbstractClientWindow") -> list[tuple[str, str]]:
-        """[(nome, categoria)] dos itens NOVOS (estaveis e nao repetidos)."""
-        raw_items = read_chat_items(client)
-        if raw_items is None:
-            return []
+    def poll(self, client: "AbstractClientWindow") -> tuple[list[tuple[str, str]], dict[str, int]]:
+        """Retorna (alerts, deltas):
+          - alerts: [(nome, categoria)] pra avisar no Discord -- com DEDUP (nao spamma o
+            mesmo item na janela).
+          - deltas: {nome: n} drops NOVOS pra somar no dashboard -- CONTA repeticoes
+            (2 linhas iguais visiveis = +2; reler as mesmas linhas nao re-conta)."""
+        raw = read_chat_items(client)
+        if raw is None:
+            return [], {}
         now = time.time()
-        # expira itens alertados que sumiram ha mais de DEDUP_WINDOW
+
+        # CONTAGEM (dashboard): soma os AUMENTOS de ocorrencia visivel por item.
+        cur_counts = self._count_occurrences(raw)
+        deltas: dict[str, int] = {}
+        for name, cnt in cur_counts.items():
+            prev = self._visible_counts.get(self._match(name, self._visible_counts.keys()) or name, 0)
+            if cnt > prev:
+                deltas[name] = cnt - prev
+        self._visible_counts = cur_counts
+
+        # ALERTAS (Discord): dedup -- nao re-alerta o mesmo item dentro da janela.
         self._alerted = {n: t for n, t in self._alerted.items() if now - t < DEDUP_WINDOW}
-        items = self._dedup_within(raw_items)
-        out: list[tuple[str, str]] = []
+        items = self._dedup_within(raw)
+        alerts: list[tuple[str, str]] = []
         for name in items:
             if (hit := self._match(name, self._alerted.keys())):
                 self._alerted[hit] = now           # continua visivel -> renova timer
@@ -317,6 +342,6 @@ class DropWatcher:
             if not self._match(name, self._prev):  # estabilidade: tem que ter aparecido antes
                 continue
             self._alerted[name] = now
-            out.append((name, classify(name, self.want, self.ignore)))
+            alerts.append((name, classify(name, self.want, self.ignore)))
         self._prev = set(items)
-        return out
+        return alerts, deltas

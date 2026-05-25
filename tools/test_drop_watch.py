@@ -39,10 +39,10 @@ print(f"NAO QUERO = {sorted(watcher.ignore)}")
 if duration <= 0:
     # tiro unico: sem priming, mostra o que estiver visivel agora
     print("\n-- tiro unico (o que esta visivel no chat agora) --")
-    hits = watcher.poll(client)
-    if not hits:
+    alerts, _ = watcher.poll(client)
+    if not alerts:
         print("(nada detectado -- a ancora foi achada? tem linha de drop visivel?)")
-    for name, cat in hits:
+    for name, cat in alerts:
         print(f"  {ICON.get(cat, cat)} {name}")
     raise SystemExit(0)
 
@@ -54,7 +54,8 @@ print(">>> Vai no jogo e dropa algo -- deve aparecer aqui embaixo:\n")
 
 end = time.time() + duration
 while time.time() < end:
-    for name, cat in watcher.poll(client):
+    alerts, _ = watcher.poll(client)
+    for name, cat in alerts:
         ts = time.strftime("%H:%M:%S")
         print(f"{ts} {ICON.get(cat, cat)} {name}", flush=True)
     time.sleep(interval)

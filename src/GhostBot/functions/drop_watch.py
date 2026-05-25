@@ -42,8 +42,10 @@ class DropWatch(Runner):
             self._watcher.reload_watchlist()
             self._last_reload = time.time()
         try:
-            for name, cat in self._watcher.poll(self._client):
-                self._client.record_drop(name)
+            alerts, deltas = self._watcher.poll(self._client)
+            for name, n in deltas.items():
+                self._client.record_drop(name, n)   # conta cada drop (2 iguais = x2)
+            for name, cat in alerts:
                 if cat != "ignore":
                     send_drop_alert(name, cat, self._client.name)
                 self._log_info("drop: %s [%s]", name, cat)

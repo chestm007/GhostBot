@@ -57,7 +57,8 @@ watcher.prime(client)
 end = time.time() + duration if duration > 0 else None
 try:
     while end is None or time.time() < end:
-        for name, cat in watcher.poll(client):
+        alerts, _deltas = watcher.poll(client)
+        for name, cat in alerts:
             ts = time.strftime("%H:%M:%S")
             print(f"{ts} {ICON.get(cat, cat)} {name}", flush=True)
             if cat == "ignore":

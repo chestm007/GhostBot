@@ -130,9 +130,9 @@ class BotClientWindow(Win32ClientWindow):
     def set_config(self, config: Config):
         self.config = config
 
-    def record_drop(self, name: str) -> None:
-        """Acumula a contagem de um drop detectado (usado pelo DropWatch)."""
-        self.drops[name] = self.drops.get(name, 0) + 1
+    def record_drop(self, name: str, count: int = 1) -> None:
+        """Acumula a contagem de drops detectados (usado pelo DropWatch)."""
+        self.drops[name] = self.drops.get(name, 0) + count
 
     def set_action(self, text: str) -> None:
         """Define a acao atual do bot (mostrada grifada no Dashboard)."""
