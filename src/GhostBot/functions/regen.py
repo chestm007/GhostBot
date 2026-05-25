@@ -38,6 +38,7 @@ class Regen(Locational):
         :return: True is we healed successfully, False if we were attacked, or in battle while healing
         """
         if self._mana_low() or self._hp_low():
+            self._client.set_action("🪑 Descansando (HP/MP)")
             self._goto_start_location()
 
             start_wait = time.time()

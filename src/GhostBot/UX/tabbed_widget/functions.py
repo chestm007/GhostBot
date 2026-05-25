@@ -40,6 +40,7 @@ class FunctionsFrame(tk.Frame):
             gold_g=tk.StringVar(master=self, name="char_info.gold_g", value="0"),
             gold_s=tk.StringVar(master=self, name="char_info.gold_s", value="0"),
             gold_c=tk.StringVar(master=self, name="char_info.gold_c", value="0"),
+            current_action=tk.StringVar(master=self, name="char_info.current_action", value="—"),
         )
 
         ttk.Checkbutton(master=self, text="Attack", style="TCheckbutton", width=13, variable=self._vars['attack_enabled']).grid(row=0, column=0)
@@ -123,9 +124,16 @@ class FunctionsFrame(tk.Frame):
             tk.Label(_coins, text=_lbl, bg=T.BG_PANEL, fg=_color,
                      font=("TkDefaultFont", 11, "bold")).pack(side="left", padx=(1, 12))
 
+        # Barra GRIFADA com a ACAO ATUAL do bot (verde, em destaque)
+        self.action_label = tk.Label(
+            master=self, textvariable=self._vars['current_action'],
+            bg=T.GREEN, fg="#0E1714", font=("TkDefaultFont", 13, "bold"),
+            anchor="w", padx=10, pady=5)
+        self.action_label.grid(row=6, column=0, columnspan=4, sticky="ew", padx=8, pady=(8, 2))
+
         # Painel de DROPS da sessao (com triagem de 1 clique: Quero / Nao quero)
         drops_frame = tk.Frame(master=self, bd=1, relief="solid", bg=T.BG_PANEL)
-        drops_frame.grid(row=6, column=1, columnspan=3, sticky="ew", padx=8, pady=(4, 8))
+        drops_frame.grid(row=7, column=1, columnspan=3, sticky="ew", padx=8, pady=(4, 8))
         ttk.Label(master=drops_frame, text="🎁 DROPS DA SESSÃO", background=T.BG_PANEL,
                   foreground=T.FG_MUTED, font=("TkDefaultFont", 11, "bold")).pack(
             anchor="w", padx=8, pady=(6, 2))

@@ -92,6 +92,7 @@ class Attack(Locational):
         # if were too far away from our start location, move back there
         if (dist_to_target := linear_distance(self.start_location, self._client.location)) > self.roam_distance:
             self._log_debug(f'too far go back C:{self._client.location} | T:{self.start_location}')
+            self._client.set_action("🏃 Voltando ao spot")
             if dist_to_target < 100:
                 self._goto_start_location()
             else:
@@ -101,9 +102,11 @@ class Attack(Locational):
             return True
 
         if not self._client.has_alive_target:# or (self._distance_to_target() or 0) > self.roam_distance:
+            self._client.set_action("🔍 Procurando alvo")
             self._client.new_target()
             return True
 
+        self._client.set_action(f"⚔️ Atacando {self._client.target_name or 'alvo'}")
         while self._client.target_hp is not None and self._client.target_hp >= 0 and self._client.running:
             if self._client.target_name == self._client.name:  # if were targeting ourselves, get a new target
                 return True

@@ -237,6 +237,8 @@ class GhostBot(tk.Tk):
             self.tabbed_widget.setvar("char_info.gold_s", str(_s))
             self.tabbed_widget.setvar("char_info.gold_c", str(_c))
 
+            # Barra grifada: acao atual do bot
+            self.tabbed_widget.setvar("char_info.current_action", response.get("current_action", "—"))
             # Painel de drops da sessao (lista + botoes Quero/Nao quero)
             self._functions_frame.update_drops(response.get("drops", {}))
 

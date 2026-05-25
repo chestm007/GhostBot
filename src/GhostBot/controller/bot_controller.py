@@ -44,6 +44,7 @@ class BotClientWindow(Win32ClientWindow):
         self._last_xp: int | None = None
         self._gold_start: int | None = None
         self.drops: dict[str, int] = {}  # contagem de drops da sessao (Dashboard)
+        self.current_action: str = "parado"  # acao atual do bot (barra grifada no Dashboard)
 
     def to_json(self) -> dict:
         # Detecção de kill: alvo estava com HP positivo, agora ta None/<0 (dead/no target)
@@ -107,6 +108,7 @@ class BotClientWindow(Win32ClientWindow):
             xp_gained=self._xp_gained,
             gold_gained=_gold_gained,
             drops=dict(self.drops),
+            current_action=self.current_action,
         )
 
     def post_login_setup(self):
@@ -131,6 +133,10 @@ class BotClientWindow(Win32ClientWindow):
     def record_drop(self, name: str) -> None:
         """Acumula a contagem de um drop detectado (usado pelo DropWatch)."""
         self.drops[name] = self.drops.get(name, 0) + 1
+
+    def set_action(self, text: str) -> None:
+        """Define a acao atual do bot (mostrada grifada no Dashboard)."""
+        self.current_action = text
 
     @property
     def bot_status_string(self) -> str:
@@ -168,11 +174,13 @@ class BotClientWindow(Win32ClientWindow):
         self._last_xp = None
         self._gold_start = None
         self.drops = {}
+        self.current_action = "iniciando..."
 
     def stop_bot(self):
         self.logger.info(f'{self.name}: Stopping...')
         self.bot_status = BotStatus.stopping
         self.running = False
+        self.current_action = "parado"
 
     def move_to_pos(self, target_pos):
         """
