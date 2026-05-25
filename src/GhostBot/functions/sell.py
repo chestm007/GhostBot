@@ -112,9 +112,12 @@ class Sell(Locational):
         if not self._client.running:   # Stop apertado -> nem tenta voltar ao spot
             return
         self._client.set_action("🏃 Voltando ao spot (pós-venda)")
-        offset = self.config.return_spot_map_offset
+        # offset do spot no mapa: prioridade pra config de ATTACK (onde fica agora),
+        # cai pro sell por compatibilidade com configs antigas.
+        _atk = self._client.config.attack
+        offset = (getattr(_atk, 'return_spot_map_offset', None) if _atk else None) or self.config.return_spot_map_offset
         if offset is None:
-            self._log_err('return_spot_map_offset nao setado -- pulando retorno ao spot')
+            self._log_err('return_spot_map_offset nao setado (Attack nem Sell) -- pulando retorno ao spot')
             return
         self._log_info('Voltando ao spot de farm %s', str(self._return_spot))
         self._client.goto_spot_via_map(tuple(offset))   # abre mapa -> isca + spot -> fecha mapa

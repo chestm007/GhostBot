@@ -67,7 +67,7 @@ class AttackFrame(TabFrame):
                      "Preenchido por 'Posição atual' ou pelo '📍 Capturar spot' abaixo.",
             ),
             map_spot=create_entry(
-                self, "Spot de farm (mapa):", 6, 0, ("bot_config.sell.return_spot_map_offset", str),
+                self, "Spot de farm (mapa):", 6, 0, ("bot_config.attack.return_spot_map_offset", str),
                 hint="Pra ONDE o bot volta quando sai do raio de farm (clique no MAPA aberto). Fique no "
                      "spot, abra o MAPA (M), ponha o mouse no seu personagem no mapa e clique "
                      "'📍 Capturar spot'. É o MESMO da aba Sell (sincronizado: mexe num, muda no outro).",
@@ -145,6 +145,8 @@ class AttackFrame(TabFrame):
             self.setvar('bot_config.attack.battle_stuck', str(config.attack.stuck_interval or ''))
             self.setvar('bot_config.attack.battle_roam', str(config.attack.roam_distance or ''))
             self.setvar('bot_config.attack.spot', _format_spot(config.attack.spot))
+            self.setvar('bot_config.attack.return_spot_map_offset',
+                        _format_spot(config.attack.return_spot_map_offset))
 
             self._combo.set_attacks(config.attack.attacks or [])
         else:
@@ -166,6 +168,7 @@ class AttackFrame(TabFrame):
             battle_hp_threshold=var_or_none(self.getvar('bot_config.attack.battle_hp_low')),
             roam_distance=var_or_none(self.getvar('bot_config.attack.battle_roam')),
             spot=var_or_none(self.getvar('bot_config.attack.spot')),
+            return_spot_map_offset=var_or_none(self.getvar('bot_config.attack.return_spot_map_offset')),
         )
 
     def _clear(self):

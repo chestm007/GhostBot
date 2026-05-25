@@ -110,6 +110,7 @@ class AttackConfig(FunctionConfig):
     battle_hp_threshold: float = None
     roam_distance: int = None
     spot: tuple[int, int] = None
+    return_spot_map_offset: tuple[int, int] = None  # offset do spot no MAPA (retorno por mapa); compartilhado com o sell
 
 @dataclass
 class RegenConfig(FunctionConfig):
@@ -181,12 +182,9 @@ class SellConfig(FunctionConfig):
 
     def validate(self):
         super().validate()
-        # Spot de farm OBRIGATORIO: sem ele o bot nao sabe pra onde voltar apos vender.
-        if self.return_spot_map_offset is None:
-            raise ValueError(
-                "Config de venda invalida: 'Spot de farm (mapa)' e obrigatorio. "
-                "Abra o mapa no jogo e use o botao 'Capturar spot' antes de salvar/rodar."
-            )
+        # 'Spot de farm (mapa)' agora pode vir da config de ATTACK (compartilhado) -- nao
+        # e mais obrigatorio aqui. O sell le de attack se faltar; sem ele em nenhum dos
+        # dois, o retorno pos-venda so loga aviso (nao trava o save).
 
 @dataclass
 class DeleteConfig(FunctionConfig):

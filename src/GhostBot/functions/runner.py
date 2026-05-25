@@ -113,9 +113,12 @@ class Locational(Runner, ABC):
         return self._client.location
 
     def _spot_map_offset(self) -> tuple[int, int] | None:
-        """Offset do spot no MAPA (capturado na aba Sell/Attack -- mesmo ponto)."""
-        sell = getattr(self._client.config, 'sell', None)
-        off = getattr(sell, 'return_spot_map_offset', None) if sell else None
+        """Offset do spot no MAPA -- vem da config de ATTACK (cai pro sell por compat)."""
+        atk = getattr(self._client.config, 'attack', None)
+        off = getattr(atk, 'return_spot_map_offset', None) if atk else None
+        if not off:
+            sell = getattr(self._client.config, 'sell', None)
+            off = getattr(sell, 'return_spot_map_offset', None) if sell else None
         return tuple(off) if off else None
 
     def _goto_start_location(self):
@@ -141,9 +144,14 @@ class Locational(Runner, ABC):
                 self._log_debug('goto_start: nao aproxima mais (dist=%s), seguindo', round(dist, 1))
                 return
             last_dist = dist
-            if dist > self.MAP_DISTANCE and offset is not None:
-                # LONGE -> MAPA aberto (goto_spot_via_map ja faz o clique-isca/fantasma)
-                if self._client.goto_spot_via_map(offset):
+            if dist > self.MAP_DISTANCE:
+                # LONGE -> MAPA aberto. Precisa do offset do spot no mapa (capturado na UI).
+                if offset is None:
+                    self._client.set_action("⚠️ Configure o 'Spot de farm (mapa)' (📍 Capturar spot)")
+                    self._log_err("goto_start: char longe (%s) mas 'Spot de farm (mapa)' nao "
+                                  "configurado -- nao da pra voltar pelo mapa", round(dist, 1))
+                    return
+                if self._client.goto_spot_via_map(offset):  # ja faz o clique-isca (fantasma)
                     t0 = time.time()
                     while (linear_distance(self.start_location, self._client.location) > self.ARRIVE_DISTANCE
                            and self._client.running and time.time() - t0 < 40):
