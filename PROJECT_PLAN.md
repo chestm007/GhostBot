@@ -4,7 +4,7 @@
 **Base:** Fork do `chestm007/GhostBot`, branch local `minha-versao-estavel`
 **Stack:** Python 3.11+ no Windows 11 + Tesseract OCR + Cheat Engine + Discord Webhook + Tailscale
 **Cronograma original:** 23/mai → 12/ago (12 semanas + Sprint 6 opcional)
-**Última atualização do doc:** 2026-05-24
+**Última atualização do doc:** 2026-05-25
 
 ---
 
@@ -30,11 +30,23 @@
 - ✅ **Branding "Talisman Bot"** (pivot de "Automation SpAl"): logo do dono → `logo.png`/`logo.ico`, ícone na janela + barra de tarefas + build do `.exe` (nuitka). **Tema ESCURO** centralizado em `UX/theme.py` (verde/dourado do logo), aplicado em todas as abas. Banner do logo no topo da lista. Start verde / Stop vermelho. Atalho "Talisman Bot" no desktop.
 - ✅ **UX**: scroll da **aba inteira** (`ScrollableFrame`; combo achatado, sem scroll próprio); bug do scroll-pra-cima corrigido (só rola com overflow). **Fontes +2** no app todo. Campos **espalhados** (faixas HP/MP full-width, "Tecla Pot" na borda). **Autologin** reorganizado (grid + barra de botões no lugar de `place()` fixo). Tooltip com fonte **preta** (era branco no claro).
 
+### 🔥 Feito na sessão 2026-05-25 — Farm overnight OK + Detecção de drop por OCR
+- ✅ **GATE CUMPRIDO: o bot rodou a MADRUGADA INTEIRA (24→25/mai) sem travar** — ciclo farm+venda em produção validado na prática. Destravou o próximo milestone (Sprint 4).
+- ✅ **Detecção de DROP pelo chat System (Sprint 4, Etapa 1) — FEITA e validada ao vivo.**
+  - **Pivot ponteiro → OCR:** tentamos achar pointer do chat via CE (scan nível 6, base única `client.exe+0x00C7C6CC`), mas **morre no 2º restart** — cada linha do chat é heap realocado (mesmo problema dos itens da bag). OCR é mais robusto e **não quebra em update do TO**.
+  - **Como ficou:** acha o chat por **ÂNCORA** (template dos 3 ícones do chat, `Images/misc/chat_anchor.bmp`, match 0.98) + região calibrada por offset relativo à âncora; recorta; trata a imagem (cinza + ampliar 4x + Otsu, `--psm 6`); OCR; extrai nome de `You got the item: [Nome(lvl X)]` casando pelo `[colchete]` (tolerante a erro de OCR; ignora linhas "Congratulations").
+  - **Código:** `src/GhostBot/drop_watcher.py` (classe `DropWatcher.poll()` + helpers). Tools: `tools/test_ocr_chat.py` (testa tratamentos), `tools/calibrate_chat_region.py` (calibra a região ao vivo via mouse + âncora), `tools/test_drop_watch.py` (loop ao vivo).
+  - **Listas:** `alertas_drop.txt` (raiz) — `[QUERO ALERTA]` (Medium/Large Ruby+Emerald) / `[NAO QUERO]` / fora das duas = "item novo (decidir)". Cada jogador terá a própria cópia.
+  - **Teste 60s ao vivo:** detectou `Animal Fur` como NOVO, **dedup OK** (1 alerta em ~35 leituras), priming descarta o que já está na tela, não perdeu drop.
+  - **⚠️ capture_window() = ÁREA DO CLIENTE** (não a janela toda); converter cursor com `ScreenToClient`, não `GetWindowRect` (esse inclui borda invisível do DWM).
+  - **Raridade pela cor:** o **nome do item vem na COR da raridade** (Animal Fur = nome BRANCO = comum; o prefixo "You got the item:" é amarelo fixo). Filtro "branco não avisa" é viável → **DEFERIDO** (amostrar só o trecho do nome via `image_to_data`; calibrar com mais raridades; fundo de chat opaco ajuda).
+- ⏭️ **PRÓXIMO:** Etapa 2 = webhook Discord (precisa URL do canal do user, **nunca commitar**; alerta want+novo, pula ignore). Depois Etapa 3 (rodar no loop do bot + toggle na UI, respeitar Stop=emergência) e Etapa 4 (embutir Tesseract no `.exe` pros amigos — ninguém instala nada).
+
 ### Próxima sessão começa por:
 1. **Tabela de XP-por-nível** (amigos montando) → ligar a **% do XP** no dashboard
 2. ✅ ~~Teste do ciclo de venda REAL~~ FEITO. Falta: rodar o ciclo **3-bags automático** no farm real (1 bag validada).
 3. **Validar Fairy team buff** + `TEAM_NAME` quando o time conectar
-4. **OCR do chat System** (drops próprios: XP/energy/itens "You got...") pro Discord (Sprint 4)
+4. ✅ ~~**OCR do chat System**~~ — Etapa 1 (detecção de drop por OCR) **FEITA** em 2026-05-25 (`drop_watcher.py`). Falta **Etapa 2: webhook Discord** (precisa URL do canal).
 5. 🎯 **DECIDIDO: gerar o .exe** (pra os amigos não precisarem instalar Python). Via GitHub Actions → **Build Executable** (rodar 2x: `client` e `server`). Branch `minha-versao-estavel` já está pushado no fork. Falta: disparar o workflow, baixar os 2 .exe, testar (atenção ao path das imagens no binário — já houve bug antes, ver commits #30/#31). Como os .exe são grandes, distribuir por link (não cabe no Discord).
 
 ### Como rodar:
@@ -60,7 +72,7 @@
 - ✅ Char de teste subiu de Lv 1 → Lv 2 durante a validação
 
 ### Pendente Sprint 0
-- ⏳ Validar OCR pra ler "Inventory Full" e nome de mob/item (binding instalado, lógica não tunada)
+- 🔄 OCR: **`pytesseract` validado em runtime + tratamento tunado pro chat** (drop detection, 2026-05-25). Falta ainda "Inventory Full" e nome de mob/alvo.
 - ⏳ Tutoriais RaaskiBot v3.0 no YouTube (referência pras 17 features)
 - ⏳ Primeiro farm de teste do **Assassin real** do dono (não só char de teste)
 
@@ -182,7 +194,7 @@ Plano original mantido. Não iniciado.
 
 - ⏳ Telemetria sessão + histórico + por papel — **Dashboard já tem kills + tempo**
 - ⏳ Tier de Itens (5 níveis) — **3 categorias já existem na UI (Lixo/Bons/Raros), expandir pra 5 níveis**
-- ⏳ Discord Webhook — task #7 pendente (já tem o canal do usuário)
+- 🔄 Discord Webhook — **detecção de drop por OCR FEITA (Etapa 1, `drop_watcher.py`, sessão 2026-05-25)**; falta o **disparo do webhook (Etapa 2)** — precisa da URL do canal (não commitar)
 - ⏳ Acesso Mobile via Tailscale
 - ⏳ Dashboard HTML local (5 chars em tempo real)
 - ⏳ Auto-Venda Completa (13 etapas)

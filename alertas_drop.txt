@@ -1,0 +1,24 @@
+# ============================================================
+#  Alertas de Drop no Discord  —  Talisman Bot
+# ============================================================
+#
+#  Edite as listas abaixo. UM item por linha, SEM os colchetes.
+#  Linhas que comecam com '#' sao comentarios (ignoradas).
+#
+#  COMO FUNCIONA:
+#    - Item na lista [QUERO ALERTA]  -> avisa no Discord (alerta cheio).
+#    - Item na lista [NAO QUERO]     -> ignora, nao avisa.
+#    - Item que NAO esta em nenhuma  -> avisa como "item novo (decidir)",
+#                                        pra voce escolher depois a lista.
+#
+#  Dica: conforme os alertas de "item novo" forem chegando, vai jogando
+#  o lixo comum (ex.: Animal Fur, Pet Food) na lista [NAO QUERO].
+# ============================================================
+
+[QUERO ALERTA]
+Medium Ruby
+Large Ruby
+Medium Emerald
+Large Emerald
+
+[NAO QUERO]
