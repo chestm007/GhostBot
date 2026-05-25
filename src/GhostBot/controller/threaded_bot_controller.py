@@ -184,10 +184,13 @@ class ThreadedBotController(BotController):
                 self.logger.warning('no client %s', client)
                 return
 
-        if client.running:
-            client.stop_bot()
-            self._stop_task(client.name, timeout)
-            client.bot_status = BotStatus.stopped
+        # PARADA DE EMERGENCIA: forca running=False mesmo se o status nao for 'running'
+        # (ex: venda manual 'Vender agora' em andamento) e espera TODAS as threads do
+        # cliente terminarem -- loop principal E venda manual.
+        client.stop_bot()  # running=False, status=stopping
+        self._stop_task(client.name, timeout)               # loop principal (se houver)
+        self._stop_task(f"sell_now_{client.name}", timeout)  # venda manual (se houver)
+        client.bot_status = BotStatus.stopped
 
     def listen(self):
         self._running = True

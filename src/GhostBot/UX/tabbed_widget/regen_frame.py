@@ -1,13 +1,15 @@
 import tkinter as tk
+from tkinter import ttk
 
 from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
 from GhostBot.controller.bot_controller import BotClientWindow
 from GhostBot.config import Config, RegenConfig
 from GhostBot.lib.var_or_none import var_or_none
-from GhostBot.UX.utils import create_entry, create_int_slider
+from GhostBot.UX.utils import create_entry, create_int_slider, Tooltip
+from GhostBot.UX import theme as T
 
-HP_BG = "#e8b0b0"  # vermelho fosco
-MP_BG = "#b0b0e8"  # azul fosco
+HP_BG = T.HP_BG   # faixa HP (vermelho escuro)
+MP_BG = T.MP_BG   # faixa MP (azul escuro)
 
 
 class RegenFrame(TabFrame):
@@ -21,6 +23,11 @@ class RegenFrame(TabFrame):
         # Faixa MP (fora de combate)
         mp_row = tk.Frame(self, bg=MP_BG)
         mp_row.grid(row=1, column=0, columnspan=12, sticky="ew", padx=2, pady=1)
+
+        # Espalha: faixas ocupam a largura toda; o "Tecla Pot" vai pra direita
+        self.grid_columnconfigure(11, weight=1)
+        hp_row.grid_columnconfigure(3, weight=1)
+        mp_row.grid_columnconfigure(3, weight=1)
 
         self._vars = dict(
             hp_low=create_int_slider(
@@ -51,6 +58,19 @@ class RegenFrame(TabFrame):
             ),
         )
 
+        # Classe sem mana (ex: Assassin): ignora o MP no descanso pra nao ficar preso sentado
+        ignore_mana_var = tk.BooleanVar(
+            master=self, name="bot_config.regen.ignore_mana", value=False
+        )
+        _ignore_cb = ttk.Checkbutton(
+            master=self, text="Classe sem mana (ignora MP no descanso)",
+            variable=ignore_mana_var,
+        )
+        _ignore_cb.grid(row=3, column=0, columnspan=6, padx=4, pady=4, sticky="w")
+        Tooltip(_ignore_cb, "Marque para classes sem mana (ex: Assassin). O bot ignora o MP ao "
+                            "descansar e não fica preso sentado esperando o MP encher.")
+        self._vars['ignore_mana'] = ignore_mana_var
+
     def display_config(self, config: Config):
 
         if config.regen:
@@ -67,6 +87,7 @@ class RegenFrame(TabFrame):
 
             self.setvar('bot_config.regen.hp_low', str(config.regen.hp_threshold or ''))
             self.setvar('bot_config.regen.mp_low', str(config.regen.mana_threshold or ''))
+            self._vars['ignore_mana'].set(bool(getattr(config.regen, 'ignore_mana', False)))
 
         else:
             self.clear()
@@ -81,4 +102,5 @@ class RegenFrame(TabFrame):
             bindings=self._populate_bindings(bindings),
             hp_threshold=var_or_none(self.getvar('bot_config.regen.hp_low')),
             mana_threshold=var_or_none(self.getvar('bot_config.regen.mp_low')),
+            ignore_mana=bool(self._vars['ignore_mana'].get()),
         )

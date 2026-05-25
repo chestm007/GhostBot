@@ -8,6 +8,7 @@ import tkinter as tk
 from GhostBot.client_window import Win32ClientWindow
 from GhostBot.config import Config, SellConfig
 from GhostBot.lib.var_or_none import var_or_none
+from GhostBot.UX import theme as T
 
 
 _IMAGES_ROOT = Path(__file__).resolve().parent.parent.parent / "Images"
@@ -75,24 +76,24 @@ class SellFrame(TabFrame):
             self,
             text="⚠️ Deixe os diálogos do jogo (NPC, venda, mapa) à ESQUERDA e VISÍVEIS. "
                  "Se nascerem fora da tela, o bot não os encontra.",
-            fg="#7a0000", bg="#fff3cd", wraplength=560, justify="left", anchor="w",
+            fg=T.GOLD, bg="#2E2410", wraplength=560, justify="left", anchor="w",
         )
         _warn.grid(row=5, column=0, columnspan=4, padx=4, pady=(6, 4), sticky="ew")
 
         # Lista de itens da bag (linha 5) — fonte pra drag-and-drop
-        self._bag_frame = tk.Frame(self, bd=1, relief="solid", bg="#ffffff")
+        self._bag_frame = tk.Frame(self, bd=1, relief="solid", bg=T.BG_PANEL)
         self._bag_frame.grid(row=6, column=0, columnspan=3, padx=4, pady=(10, 2), sticky="ew")
 
         _bag_title = tk.Label(self._bag_frame, text="📜 Itens na bag — arraste pra categoria abaixo",
-                              bg="#ffffff", fg="#333", font=("TkDefaultFont", 10, "bold"))
+                              bg=T.BG_PANEL, fg=T.FG_MAIN, font=("TkDefaultFont", 12, "bold"))
         _bag_title.pack(side="top", anchor="w", padx=8, pady=(6, 2))
 
-        _bag_scroll_frame = tk.Frame(self._bag_frame, bg="#ffffff")
+        _bag_scroll_frame = tk.Frame(self._bag_frame, bg=T.BG_PANEL)
         _bag_scroll_frame.pack(side="top", fill="x", padx=8, pady=(0, 8))
 
-        self._bag_listbox = tk.Listbox(_bag_scroll_frame, height=5, bg="#fafafa",
+        self._bag_listbox = tk.Listbox(_bag_scroll_frame, height=5, bg=T.BG_INPUT,
                                        borderwidth=0, highlightthickness=0,
-                                       selectbackground="#4a90e2", selectforeground="#ffffff")
+                                       selectbackground=T.GREEN, selectforeground=T.BG_PANEL)
         self._bag_listbox.pack(side="left", fill="x", expand=True)
 
         _bag_scroll = tk.Scrollbar(_bag_scroll_frame, orient="vertical", command=self._bag_listbox.yview)
@@ -101,26 +102,26 @@ class SellFrame(TabFrame):
 
         # placeholder enquanto pointer de nomes nao implementado
         self._bag_listbox.insert("end", "(leitura de inventario pendente — task #6)")
-        self._bag_listbox.itemconfig(0, fg="#999")
+        self._bag_listbox.itemconfig(0, fg=T.FG_MUTED)
 
         # Categorização de itens (linha 6) — destinos do drag-and-drop
         # capture_folder aponta pra pasta onde o BMP do icone vai ser salvo quando
         # o usuario capturar via Win+Shift+S.
         self._items_trash = NamedListWidget(
             self, title="🗑️ Lixo (vender)", grid_row=7, grid_column=0,
-            title_color="#999",
+            title_color=T.FG_MUTED,
             hint="Itens que o bot vai vender automaticamente quando o inventario estiver cheio.",
             capture_folder=_IMAGES_ROOT / "SELL",
         )
         self._items_keep = NamedListWidget(
             self, title="📦 Bons (manter)", grid_row=7, grid_column=1,
-            title_color="#1f6feb",
+            title_color=T.GREEN_HI,
             hint="Itens valiosos que o bot mantem no inventario sem notificar.",
             capture_folder=_IMAGES_ROOT / "KEEP",
         )
         self._items_rare = NamedListWidget(
             self, title="✨ Super raros (alerta)", grid_row=7, grid_column=2,
-            title_color="#d29922",
+            title_color=T.GOLD,
             hint="Itens raros que disparam alerta no Discord quando dropam.",
             capture_folder=_IMAGES_ROOT / "ALERTS" / "RARE",
         )
@@ -143,7 +144,7 @@ class SellFrame(TabFrame):
         self._bag_listbox.delete(0, "end")
         if not items:
             self._bag_listbox.insert("end", "(leitura de inventario pendente — task #6)")
-            self._bag_listbox.itemconfig(0, fg="#999")
+            self._bag_listbox.itemconfig(0, fg=T.FG_MUTED)
             return
         for it in items:
             self._bag_listbox.insert("end", it)

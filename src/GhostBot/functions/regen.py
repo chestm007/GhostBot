@@ -12,6 +12,8 @@ if TYPE_CHECKING:
 
 
 class Regen(Locational):
+    MAX_REGEN_SECS = 60  # rede de seguranca: nunca senta mais que isso sem recuperar -> volta a atacar
+
     def __init__(self, client: BotClientWindow, fairy_activated: bool = False):
         super().__init__(client=client)
 
@@ -19,6 +21,11 @@ class Regen(Locational):
         self.config: RegenConfig = self._client.config.regen
         self._mana_threshold = self._normalize_threshold(self.config.mana_threshold, default=0.75)
         self._hp_threshold = self._normalize_threshold(self.config.hp_threshold, default=0.75)
+        # classes sem mana (ex: Assassin) ignoram o MP no descanso
+        self._ignore_mana = bool(getattr(self.config, 'ignore_mana', False))
+        # volta a atacar ao recuperar ACIMA do limite (com folga); nunca exige 100% -> evita sentar pra sempre
+        self._hp_recovered = min(self._hp_threshold + 0.15, 0.95)
+        self._mana_recovered = min(self._mana_threshold + 0.15, 0.95)
 
     @staticmethod
     def _normalize_threshold(value, default: float) -> float:
@@ -49,22 +56,31 @@ class Regen(Locational):
                 self._use_mana_pot()
 
             hp = int(self._client.hp)
-            if self._fairy_activated:
-                _wait_condition = lambda : (self._client.mana < self._client.max_mana)
-            else:
-                _wait_condition = lambda : (self._client.mana < self._client.max_mana or self._client.hp < self._client.max_hp)
-            while _wait_condition() and self._client.running:
+            regen_start = time.time()
+            while not self._recovered() and self._client.running:
                 self._log_debug(f'healing')
                 time.sleep(2)
                 if self._client.in_battle or self._client.hp < hp:
                     self._log_debug(f'Ouch, attacking')
                     return False
+                if time.time() - regen_start > self.MAX_REGEN_SECS:
+                    self._log_info('Regen demorou demais (%ss sem recuperar), voltando a atacar', self.MAX_REGEN_SECS)
+                    break
                 self._goto_spot_and_sit()
                 hp = int(self._client.hp)
             return True
         return False
 
+    def _recovered(self) -> bool:
+        """Recuperou o suficiente pra voltar a atacar (acima do limite, com folga).
+        Fairy ignora HP; classe sem mana ignora MP -> nunca espera recurso que nao enche."""
+        hp_ok = self._fairy_activated or (self._client.hp_percent >= self._hp_recovered)
+        mana_ok = self._ignore_mana or (self._client.mana_percent >= self._mana_recovered)
+        return hp_ok and mana_ok
+
     def _mana_low(self) -> int:
+        if self._ignore_mana:
+            return False
         return self._client.mana_percent < self._mana_threshold
 
     def _hp_low(self) -> int:
@@ -79,6 +95,8 @@ class Regen(Locational):
                 self._client.press_key(self.config.bindings.get('hp_pot'))
 
     def _use_mana_pot(self) -> None:
+        if self._ignore_mana:
+            return
         if self._client.mana_percent < self._mana_threshold:
             if self.config.bindings.get('mana_pot') is not None:
                 self._goto_spot_and_sit()

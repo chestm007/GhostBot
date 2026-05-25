@@ -4,8 +4,11 @@ import threading
 import time
 import tkinter as tk
 from tkinter import ttk, filedialog
+from tkinter import font as tkfont
 
 from GhostBot import logger
+from GhostBot.UX import theme as T
+from GhostBot.UX.utils import ScrollableFrame
 from GhostBot.UX.autologin.main import GhostBotAutoLogin
 from GhostBot.UX.tabbed_widget.sell_frame import SellFrame
 from GhostBot.config import Config
@@ -26,44 +29,96 @@ from GhostBot.UX.tabbed_widget.regen_frame import RegenFrame
 
 class GhostBot(tk.Tk):
     def __init__(self):
+        # AppUserModelID: faz o Windows usar o icone do app (nao o do python) na barra de tarefas
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("TalismanBot.GhostBot")
+        except Exception:
+            pass
         super().__init__()
         self.client = GhostbotIPCClient()
-        self.title("GhostBot")
+        self.title("Talisman Bot")
+        # icone da janela (logo). No .exe o icone vem do nuitka; aqui e pra quando roda via python.
+        try:
+            _ico = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Images", "logo.ico")
+            if os.path.exists(_ico):
+                self.iconbitmap(_ico)
+        except Exception:
+            pass
 
-        # Paleta moderna clean
-        BG_MAIN = "#eef1f5"     # bg da janela
-        BG_PANEL = "#ffffff"    # bg dos paineis (tabs)
-        BG_LIST = "#3a3f4b"     # bg da lista de chars (escuro pra contraste)
-        FG_LIST = "#e8eaed"
-        ACCENT = "#4a90e2"
+        # Fontes +2 no app todo: aumenta as fontes nomeadas padrao (afeta widgets que nao
+        # definem fonte explicita -- abas, botoes, labels, entries, listas, menus).
+        for _fname in ("TkDefaultFont", "TkTextFont", "TkMenuFont", "TkHeadingFont"):
+            try:
+                tkfont.nametofont(_fname).configure(size=12)
+            except tk.TclError:
+                pass
+
+        # Paleta escura (tema Talisman Bot) -- cores centralizadas em UX/theme.py
+        BG_MAIN = T.BG_MAIN
+        BG_PANEL = T.BG_PANEL
+        BG_LIST = T.BG_LIST
+        FG_LIST = T.FG_MAIN
+        ACCENT = T.GREEN
 
         self.config(bg=BG_MAIN)
-        self.geometry("980x680")
+        self.geometry("1040x720")
         self.minsize(820, 560)
+
+        # Defaults pros widgets tk classicos (Entry/Listbox/Label/Frame/Toplevel/Scrollbar)
+        # ficarem escuros automaticamente, sem precisar setar cor em cada um.
+        self.option_add("*Font", "TkDefaultFont 12")
+        self.option_add("*background", BG_MAIN)
+        self.option_add("*foreground", T.FG_MAIN)
+        self.option_add("*Entry.background", T.BG_INPUT)
+        self.option_add("*Entry.foreground", T.FG_MAIN)
+        self.option_add("*Entry.insertBackground", T.FG_MAIN)
+        self.option_add("*Listbox.background", T.BG_INPUT)
+        self.option_add("*Listbox.foreground", T.FG_MAIN)
+        self.option_add("*Listbox.selectBackground", T.GREEN)
+        self.option_add("*Listbox.selectForeground", "#0E1714")
+        self.option_add("*Text.background", T.BG_INPUT)
+        self.option_add("*Text.foreground", T.FG_MAIN)
+        self.option_add("*Toplevel.background", BG_MAIN)
+        self.option_add("*Scrollbar.background", BG_PANEL)
+        self.option_add("*Scrollbar.troughColor", T.BG_INPUT)
+        self.option_add("*Scrollbar.activeBackground", T.GREEN)
 
         self.style = ttk.Style(self)
         self.style.theme_use("clam")
 
-        # Fonte global maior
-        _default_font = ("TkDefaultFont", 10)
-        self.style.configure(".", font=_default_font, background=BG_MAIN)
-        self.option_add("*Font", "TkDefaultFont 10")
+        # Fonte global maior + base escura
+        _default_font = ("TkDefaultFont", 12)
+        self.style.configure(".", font=_default_font, background=BG_MAIN, foreground=T.FG_MAIN,
+                             fieldbackground=T.BG_INPUT, bordercolor=T.BORDER,
+                             lightcolor=BG_PANEL, darkcolor=BG_PANEL)
 
         # Estilos botoes / labels
         self.style.configure("TButton", padding=6, relief="solid", borderwidth=1,
-                             bordercolor=ACCENT, background="#dfe4eb", foreground="#1f2937")
-        self.style.map("TButton", background=[("active", "#c8d1dc")],
-                       bordercolor=[("active", "#3a7bc8")])
-        self.style.configure("Accent.TButton", background=ACCENT, foreground="#ffffff")
-        self.style.map("Accent.TButton", background=[("active", "#3a7bc8")])
-        self.style.configure("TLabel", background=BG_MAIN)
+                             bordercolor=T.GREEN, background=BG_PANEL, foreground=T.FG_MAIN)
+        self.style.map("TButton", background=[("active", "#26392F")],
+                       bordercolor=[("active", T.GREEN_HI)])
+        # Start = verde com texto escuro
+        self.style.configure("Accent.TButton", background=T.GREEN, foreground="#0E1714")
+        self.style.map("Accent.TButton", background=[("active", T.GREEN_HI)])
+        # Stop = vermelho (botao de emergencia)
+        self.style.configure("Stop.TButton", background=T.RED, foreground="#ffffff")
+        self.style.map("Stop.TButton", background=[("active", "#B83232")])
+        self.style.configure("TLabel", background=BG_MAIN, foreground=T.FG_MAIN)
         self.style.configure("TFrame", background=BG_MAIN)
+        self.style.configure("TCheckbutton", background=BG_MAIN, foreground=T.FG_MAIN)
+        self.style.map("TCheckbutton", background=[("active", BG_MAIN)], foreground=[("active", T.GREEN_HI)])
         self.style.configure("TNotebook", background=BG_MAIN, borderwidth=0)
-        self.style.configure("TNotebook.Tab", padding=(12, 6), background="#cfd6e0", foreground="#1f2937")
-        self.style.map("TNotebook.Tab", background=[("selected", ACCENT)], foreground=[("selected", "#ffffff")])
+        self.style.configure("TNotebook.Tab", padding=(12, 6), background=BG_PANEL, foreground=T.FG_MUTED)
+        self.style.map("TNotebook.Tab", background=[("selected", T.GREEN)], foreground=[("selected", "#0E1714")])
+        # Sliders / combos / scrollbars ttk
+        self.style.configure("Horizontal.TScale", background=BG_MAIN, troughcolor=T.BG_INPUT)
+        self.style.configure("TCombobox", fieldbackground=T.BG_INPUT, background=BG_PANEL,
+                             foreground=T.FG_MAIN, arrowcolor=T.FG_MAIN)
+        self.style.configure("TScrollbar", background=BG_PANEL, troughcolor=T.BG_INPUT, arrowcolor=T.FG_MAIN)
 
-        self.style.configure("attack.TCheckbutton", background=BG_MAIN, foreground="#1f2937")
-        self.style.map("attack.TCheckbutton", background=[("active", "#dfe4eb")], foreground=[("active", "#1f2937")])
+        self.style.configure("attack.TCheckbutton", background=BG_MAIN, foreground=T.FG_MAIN)
+        self.style.map("attack.TCheckbutton", background=[("active", BG_MAIN)], foreground=[("active", T.GREEN_HI)])
 
         self.menu = GhostBotMenu(self)
         self.config(menu=self.menu)
@@ -81,10 +136,28 @@ class GhostBot(tk.Tk):
         self.client.add_callback(Command.INFO, lambda message: self.set_char_list(message.target.split(' ')))
         self.client.add_callback(Command.INFO_CHAR, lambda message: update_char_info_display(message.target))
 
-        self.list_box = ScrollableListbox(parent=self, scrollx=False, scrolly=True, listvariable=self._char_list)
+        # Coluna esquerda: banner do logo no topo + lista de personagens embaixo
+        left_frame = tk.Frame(self, bg=BG_MAIN)
+        left_frame.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(6, 3), pady=6)
+        left_frame.grid_rowconfigure(1, weight=1)
+        left_frame.grid_columnconfigure(0, weight=1)
+        try:
+            from PIL import Image, ImageTk
+            _logo_png = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Images", "logo.png")
+            _logo_im = Image.open(_logo_png).resize((150, 150), Image.LANCZOS)
+            self._logo_img = ImageTk.PhotoImage(_logo_im)
+            tk.Label(left_frame, image=self._logo_img, bg=BG_MAIN, borderwidth=0).grid(row=0, column=0, pady=(0, 6))
+        except Exception as _e:
+            logger.debug("logo banner nao carregou: %s", _e)
+
+        self.list_box = ScrollableListbox(parent=left_frame, scrollx=False, scrolly=True, listvariable=self._char_list)
+        tk.Frame.configure(self.list_box, bg=BG_MAIN)  # bg do frame em volta da lista
         self.list_box.config(bg=BG_LIST, fg=FG_LIST, borderwidth=0, highlightthickness=0,
-                             selectbackground=ACCENT, selectforeground="#ffffff")
-        self.list_box.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(6, 3), pady=6)
+                             selectbackground=ACCENT, selectforeground="#0E1714")
+        if hasattr(self.list_box, "v_scroll"):
+            self.list_box.v_scroll.configure(bg=BG_PANEL, troughcolor=T.BG_INPUT,
+                                             activebackground=T.GREEN, borderwidth=0, highlightthickness=0)
+        self.list_box.grid(row=1, column=0, sticky="nsew")
 
         # PanedWindow vertical: tabs em cima, log embaixo. Usuario arrasta o divisor.
         self._splitter = tk.PanedWindow(self, orient=tk.VERTICAL, sashwidth=6, bg=BG_MAIN,
@@ -100,22 +173,22 @@ class GhostBot(tk.Tk):
                            insertbackground="#dcddde")
         self._splitter.add(self.log, minsize=80, height=140, stretch="never")
 
-        _functions_frame = FunctionsFrame(master=self.tabbed_widget)
-        self._functions_frame = _functions_frame
-        self._attack_frame = AttackFrame(master=self.tabbed_widget)
-        self._buff_frame = BuffFrame(master=self.tabbed_widget)
-        self._fairy_frame = FairyFrame(master=self.tabbed_widget)
-        self._pet_frame = PetFrame(master=self.tabbed_widget)
-        self._regen_frame = RegenFrame(master=self.tabbed_widget, client=self.client)
-        self._sell_frame = SellFrame(master=self.tabbed_widget, client=self.client)
+        # Cada aba vai dentro de um ScrollableFrame -> a ABA INTEIRA rola na vertical
+        # (nao so o combo). As abas continuam acessiveis via self._*_frame.
+        def _make_tab(frame_cls, text, **kw):
+            sf = ScrollableFrame(self.tabbed_widget)
+            frame = frame_cls(master=sf.inner, **kw)
+            frame.pack(fill="both", expand=True)
+            self.tabbed_widget.add(sf, text=text)
+            return frame
 
-        self.tabbed_widget.add(_functions_frame, text="Dashboard")
-        self.tabbed_widget.add(self._attack_frame, text="Attack")
-        self.tabbed_widget.add(self._fairy_frame, text="Fairy")
-        self.tabbed_widget.add(self._buff_frame, text="Buff")
-        self.tabbed_widget.add(self._regen_frame, text="Regen")
-        self.tabbed_widget.add(self._pet_frame, text="Pet")
-        self.tabbed_widget.add(self._sell_frame, text="Sell")
+        self._functions_frame = _functions_frame = _make_tab(FunctionsFrame, "Dashboard")
+        self._attack_frame = _make_tab(AttackFrame, "Attack")
+        self._fairy_frame = _make_tab(FairyFrame, "Fairy")
+        self._buff_frame = _make_tab(BuffFrame, "Buff")
+        self._regen_frame = _make_tab(RegenFrame, "Regen", client=self.client)
+        self._pet_frame = _make_tab(PetFrame, "Pet")
+        self._sell_frame = _make_tab(SellFrame, "Sell", client=self.client)
 
         def update_char_info_display(response):
             if response.get('name') != self.selected_char():
@@ -145,7 +218,7 @@ class GhostBot(tk.Tk):
             if response.get("in_battle"):
                 self._functions_frame.battle_label.config(text="🔴 EM COMBATE", bg="#e04040", fg="white")
             else:
-                self._functions_frame.battle_label.config(text="○ Tranquilo", bg="#dddddd", fg="#222")
+                self._functions_frame.battle_label.config(text="○ Tranquilo", bg=T.BG_PANEL, fg=T.FG_MUTED)
 
             # Stats (Dashboard)
             self.tabbed_widget.setvar("char_info.kills", str(response.get("kills", 0)))
@@ -180,7 +253,7 @@ class GhostBot(tk.Tk):
             command=lambda: self.client.start_bot(self.selected_char())
         ).pack(side="left", padx=2)
         ttk.Button(
-            master=_btn_frame, text="Stop",
+            master=_btn_frame, text="Stop", style="Stop.TButton",
             command=lambda: self.client.stop_bot(self.selected_char())
         ).pack(side="left", padx=2)
         ttk.Button(master=_btn_frame, text="Save", width=10, command=save_config).pack(side="left", padx=2)
@@ -215,8 +288,21 @@ class GhostBot(tk.Tk):
         # -> limpava a selecao do usuario -> congelava o dashboard. Normaliza antes de comparar.
         _cur = self._char_list.get()
         _cur = list(_cur) if isinstance(_cur, (tuple, list)) else []
-        if _cur != list(_char_list):
+        _new = list(_char_list)
+        if _cur != _new:
+            # set() do listvariable REPOVOA o listbox e LIMPA a selecao. Preserva a selecao
+            # do usuario (por NOME) pra nao desselecionar/congelar o dashboard quando a lista
+            # muda (ex: a 2a conta loga, ou um char some/volta no scan do servidor).
+            _selected = self.selected_char()
             self._char_list.set(_char_list)
+            if _selected in _new:
+                try:
+                    _idx = _new.index(_selected)
+                    self.list_box.listbox.selection_clear(0, "end")
+                    self.list_box.listbox.selection_set(_idx)
+                    self.list_box.listbox.activate(_idx)
+                except (tk.TclError, ValueError):
+                    pass
 
     def append_log(self, msg: str):
         self.log.append_log(msg)

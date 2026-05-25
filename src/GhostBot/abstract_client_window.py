@@ -238,9 +238,9 @@ class AbstractClientWindow(ABC):
             self.press_key('i')
             time.sleep(1)
 
-    def _find_anchor(self, bmp_name: str) -> tuple[int, int] | None:
+    def _find_anchor(self, bmp_name: str, threshold: float = None) -> tuple[int, int] | None:
         """Centro de um template (titulo de painel) na janela; None se nao achar."""
-        return self._image_finder.find_button_center(bmp_name, threshold=self._ANCHOR_THRESHOLD)
+        return self._image_finder.find_button_center(bmp_name, threshold=threshold or self._ANCHOR_THRESHOLD)
 
     def search_surroundings(self, val):
         # acha o titulo "Surroundings"; se nao achar, painel fechado -> abre e tenta de novo
@@ -284,13 +284,27 @@ class AbstractClientWindow(ABC):
         self.right_click(pos)
 
     def click_npc_sell_button(self):
-        # acha o titulo "Dialogue" da janela do NPC e clica em "Sell Item" por offset
+        # PRINCIPAL: acha o texto "Sell Item" direto por imagem. Robusto a NPC/ordem de menu
+        # diferente (no Blacksmith a 1a linha e "Purchase Item", entao o offset fixo erra a linha).
+        # Threshold alto (0.85) pra nunca cair em near-miss de outra linha (~0.72).
+        sell_item = self._find_anchor('sell_items_button.bmp', threshold=0.85)
+        if sell_item is not None:
+            # template casa em coords da CAPTURA (janela inteira); converte p/ area cliente
+            # antes de clicar (senao cai ~1 linha abaixo, na barra de titulo de diferenca)
+            click_at = self.window_to_client(sell_item) if hasattr(self, 'window_to_client') else sell_item
+            self.logger.info("click_npc_sell_button: 'Sell Item' (template) captura=%s -> cliente=%s",
+                             sell_item, click_at)
+            self.left_click(click_at)
+            return True
+        # FALLBACK: offset a partir do titulo "Dialogue" (so acerta se Sell Item for a 1a linha).
         dlg = self._find_anchor('npc_dialogue_title.bmp')
         if dlg is None:
-            self.logger.error("click_npc_sell_button: 'Dialogue' nao achado (janela do NPC visivel?)")
+            self.logger.error("click_npc_sell_button: nem 'Sell Item' (imagem) nem 'Dialogue' achados "
+                              "(janela do NPC aberta/visivel/a esquerda?)")
             return False
         sell_item = (dlg[0] + self._DIALOGUE_TO_SELL_ITEM[0], dlg[1] + self._DIALOGUE_TO_SELL_ITEM[1])
-        self.logger.info("click_npc_sell_button: 'Dialogue' %s -> Sell Item %s", dlg, sell_item)
+        self.logger.warning("click_npc_sell_button: 'Sell Item' por imagem falhou; usando offset do "
+                            "'Dialogue' %s -> %s (pode errar a linha em alguns NPCs)", dlg, sell_item)
         self.left_click(sell_item)
         return True
 

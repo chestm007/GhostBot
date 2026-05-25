@@ -4,6 +4,7 @@ from tkinter import Variable, StringVar, BooleanVar
 from typing import final
 
 from GhostBot.config import Config, FunctionConfig
+from GhostBot.UX import theme as T
 
 
 type VarConfig = tuple[str, type[str | bool]]
@@ -18,7 +19,7 @@ class TabFrame(tk.Frame, ABC):
 
     def __init__(self, master, *args, **kwargs):
         super().__init__(master)
-        self.config(bg="#EDECEC", width=650, height=459)
+        self.config(bg=T.BG_MAIN, width=650, height=459)
 
         self._init(*args, **kwargs)
 

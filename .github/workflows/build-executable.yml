@@ -44,6 +44,7 @@ jobs:
           nuitka-version: main
           script-name: src/GhostBot/run_${{ inputs.executable_kind }}.py
           mode: app
+          windows-icon-from-ico: src/GhostBot/Images/logo.ico
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7

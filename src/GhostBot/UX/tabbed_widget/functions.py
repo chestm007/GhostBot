@@ -8,12 +8,13 @@ from GhostBot.UX.tabbed_widget.pet_frame import PetFrame
 from GhostBot.UX.tabbed_widget.regen_frame import RegenFrame
 from GhostBot.UX.tabbed_widget.sell_frame import SellFrame
 from GhostBot.config import Config
+from GhostBot.UX import theme as T
 
 
 class FunctionsFrame(tk.Frame):
     def __init__(self, master):
         super().__init__(master)
-        self.config(bg="#EDECEC", width=650, height=459)
+        self.config(bg=T.BG_MAIN, width=650, height=459)
 
         self._vars = dict(
             attack_enabled=tk.BooleanVar(master=self, name="bot_config.attack.enabled", value=False),
@@ -72,7 +73,7 @@ class FunctionsFrame(tk.Frame):
         ttk.Label(master=target_hp_box, textvariable=self._vars['target_hp'], width=5).pack(side="left")
         # Custom style red bar
         style = ttk.Style()
-        style.configure("TargetHP.Horizontal.TProgressbar", troughcolor="#444", background="#e04040", thickness=14)
+        style.configure("TargetHP.Horizontal.TProgressbar", troughcolor=T.BG_INPUT, background=T.RED, thickness=14)
         self.target_hp_bar = ttk.Progressbar(master=target_hp_box, maximum=100, length=180, style="TargetHP.Horizontal.TProgressbar")
         self.target_hp_bar.pack(side="left", padx=4)
 
@@ -83,62 +84,66 @@ class FunctionsFrame(tk.Frame):
 
         # Indicador de combate (atualizado externamente via main.py)
         ttk.Label(master=char_info_frame, text="Combate:", width=10).grid(row=1, column=2)
-        self.battle_label = tk.Label(master=char_info_frame, text="○ Tranquilo", bg="#dddddd", fg="#222", width=16, anchor="center")
+        self.battle_label = tk.Label(master=char_info_frame, text="○ Tranquilo", bg=T.BG_PANEL, fg=T.FG_MUTED, width=16, anchor="center")
         self.battle_label.grid(row=1, column=3)
 
         # Stats da sessao (Kills + Tempo de farm)
-        stats_frame = tk.Frame(master=self, bd=1, relief="solid", bg="#ffffff")
+        stats_frame = tk.Frame(master=self, bd=1, relief="solid", bg=T.BG_PANEL)
         stats_frame.grid(row=5, column=1, columnspan=3, sticky="ew", padx=8, pady=(12, 4))
-        ttk.Label(master=stats_frame, text="📊 SESSÃO ATUAL", background="#ffffff", foreground="#666",
-                  font=("TkDefaultFont", 9, "bold")).grid(row=0, column=0, columnspan=4, sticky="w", padx=8, pady=(6, 2))
+        ttk.Label(master=stats_frame, text="📊 SESSÃO ATUAL", background=T.BG_PANEL, foreground=T.FG_MUTED,
+                  font=("TkDefaultFont", 11, "bold")).grid(row=0, column=0, columnspan=4, sticky="w", padx=8, pady=(6, 2))
 
-        ttk.Label(master=stats_frame, text="Mobs mortos:", background="#ffffff",
-                  font=("TkDefaultFont", 10)).grid(row=1, column=0, sticky="w", padx=(8, 4), pady=4)
-        ttk.Label(master=stats_frame, textvariable=self._vars['kills'], background="#ffffff",
-                  font=("TkDefaultFont", 14, "bold"), foreground="#1f6feb").grid(row=1, column=1, sticky="w", padx=(0, 16), pady=4)
+        ttk.Label(master=stats_frame, text="Mobs mortos:", background=T.BG_PANEL,
+                  font=("TkDefaultFont", 12)).grid(row=1, column=0, sticky="w", padx=(8, 4), pady=4)
+        ttk.Label(master=stats_frame, textvariable=self._vars['kills'], background=T.BG_PANEL,
+                  font=("TkDefaultFont", 16, "bold"), foreground=T.GREEN_HI).grid(row=1, column=1, sticky="w", padx=(0, 16), pady=4)
 
-        ttk.Label(master=stats_frame, text="Tempo de farm:", background="#ffffff",
-                  font=("TkDefaultFont", 10)).grid(row=1, column=2, sticky="w", padx=(8, 4), pady=4)
-        ttk.Label(master=stats_frame, textvariable=self._vars['farm_time'], background="#ffffff",
-                  font=("TkDefaultFont", 14, "bold"), foreground="#1f6feb").grid(row=1, column=3, sticky="w", padx=(0, 8), pady=4)
+        ttk.Label(master=stats_frame, text="Tempo de farm:", background=T.BG_PANEL,
+                  font=("TkDefaultFont", 12)).grid(row=1, column=2, sticky="w", padx=(8, 4), pady=4)
+        ttk.Label(master=stats_frame, textvariable=self._vars['farm_time'], background=T.BG_PANEL,
+                  font=("TkDefaultFont", 16, "bold"), foreground=T.GREEN_HI).grid(row=1, column=3, sticky="w", padx=(0, 8), pady=4)
 
-        ttk.Label(master=stats_frame, text="Energy:", background="#ffffff",
-                  font=("TkDefaultFont", 10)).grid(row=2, column=0, sticky="w", padx=(8, 4), pady=(0, 6))
-        ttk.Label(master=stats_frame, textvariable=self._vars['energy'], background="#ffffff",
-                  font=("TkDefaultFont", 14, "bold"), foreground="#1f6feb").grid(row=2, column=1, sticky="w", padx=(0, 16), pady=(0, 6))
+        ttk.Label(master=stats_frame, text="Energy:", background=T.BG_PANEL,
+                  font=("TkDefaultFont", 12)).grid(row=2, column=0, sticky="w", padx=(8, 4), pady=(0, 6))
+        ttk.Label(master=stats_frame, textvariable=self._vars['energy'], background=T.BG_PANEL,
+                  font=("TkDefaultFont", 16, "bold"), foreground=T.GREEN_HI).grid(row=2, column=1, sticky="w", padx=(0, 16), pady=(0, 6))
 
-        ttk.Label(master=stats_frame, text="XP ganho:", background="#ffffff",
-                  font=("TkDefaultFont", 10)).grid(row=2, column=2, sticky="w", padx=(8, 4), pady=(0, 6))
-        ttk.Label(master=stats_frame, textvariable=self._vars['xp'], background="#ffffff",
-                  font=("TkDefaultFont", 14, "bold"), foreground="#1f6feb").grid(row=2, column=3, sticky="w", pady=(0, 6))
+        ttk.Label(master=stats_frame, text="XP ganho:", background=T.BG_PANEL,
+                  font=("TkDefaultFont", 12)).grid(row=2, column=2, sticky="w", padx=(8, 4), pady=(0, 6))
+        ttk.Label(master=stats_frame, textvariable=self._vars['xp'], background=T.BG_PANEL,
+                  font=("TkDefaultFont", 16, "bold"), foreground=T.GREEN_HI).grid(row=2, column=3, sticky="w", pady=(0, 6))
 
-        ttk.Label(master=stats_frame, text="Gold ganho:", background="#ffffff",
-                  font=("TkDefaultFont", 10)).grid(row=3, column=0, sticky="w", padx=(8, 4), pady=(0, 8))
-        _coins = tk.Frame(stats_frame, bg="#ffffff")
+        ttk.Label(master=stats_frame, text="Gold ganho:", background=T.BG_PANEL,
+                  font=("TkDefaultFont", 12)).grid(row=3, column=0, sticky="w", padx=(8, 4), pady=(0, 8))
+        _coins = tk.Frame(stats_frame, bg=T.BG_PANEL)
         _coins.grid(row=3, column=1, columnspan=3, sticky="w", pady=(0, 8))
         for _var, _lbl, _color in (('gold_g', 'G', '#c8a227'), ('gold_s', 'S', '#8a8f98'), ('gold_c', 'C', '#b87333')):
-            tk.Label(_coins, textvariable=self._vars[_var], bg="#ffffff", fg=_color,
-                     font=("TkDefaultFont", 14, "bold")).pack(side="left")
-            tk.Label(_coins, text=_lbl, bg="#ffffff", fg=_color,
-                     font=("TkDefaultFont", 9, "bold")).pack(side="left", padx=(1, 12))
+            tk.Label(_coins, textvariable=self._vars[_var], bg=T.BG_PANEL, fg=_color,
+                     font=("TkDefaultFont", 16, "bold")).pack(side="left")
+            tk.Label(_coins, text=_lbl, bg=T.BG_PANEL, fg=_color,
+                     font=("TkDefaultFont", 11, "bold")).pack(side="left", padx=(1, 12))
 
     def save_config(self):
         def _function_enabled(f):
             return int(self.getvar(f'bot_config.{f}.enabled')) == 1
-        
+
         _config = Config()
 
-        for child in (c for c in self.master.children.values() if isinstance(c, tk.Frame)):
-            if isinstance(child, AttackFrame) and _function_enabled('attack'):
-                _config.attack = child.extract_config()
-            elif isinstance(child, BuffFrame) and _function_enabled('buff'):
-                _config.buff = child.extract_config()
-            elif isinstance(child, RegenFrame) and _function_enabled('regen'):
-                _config.regen = child.extract_config()
-            elif isinstance(child, PetFrame) and _function_enabled('pet'):
-                _config.pet = child.extract_config()
-            elif isinstance(child, FairyFrame) and _function_enabled('fairy'):
-                _config.fairy = child.extract_config()
-            elif isinstance(child, SellFrame) and _function_enabled('sell'):
-                _config.sell = child.extract_config()
+        # As abas agora ficam dentro de containers de scroll (ScrollableFrame), entao nao sao
+        # mais irmas diretas no notebook. Procura cada uma na arvore toda da janela.
+        _types = ((AttackFrame, 'attack'), (BuffFrame, 'buff'), (RegenFrame, 'regen'),
+                  (PetFrame, 'pet'), (FairyFrame, 'fairy'), (SellFrame, 'sell'))
+        found = {}
+
+        def _walk(w):
+            for c in w.winfo_children():
+                for cls, key in _types:
+                    if isinstance(c, cls):
+                        found[key] = c
+                _walk(c)
+
+        _walk(self.winfo_toplevel())
+        for cls, key in _types:
+            if key in found and _function_enabled(key):
+                setattr(_config, key, found[key].extract_config())
         return _config

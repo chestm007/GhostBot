@@ -5,8 +5,9 @@ from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
 from GhostBot.UX.utils import _format_spot, create_entry, create_int_slider, ComboWidget
 from GhostBot.config import Config, FairyConfig
 from GhostBot.lib.var_or_none import var_or_none
+from GhostBot.UX import theme as T
 
-HP_BG = "#e8b0b0"  # vermelho fosco
+HP_BG = T.HP_BG   # faixa HP (vermelho escuro)
 
 
 class FairyFrame(TabFrame):
@@ -17,6 +18,11 @@ class FairyFrame(TabFrame):
 
         self_row = tk.Frame(self, bg=HP_BG)
         self_row.grid(row=1, column=0, columnspan=12, sticky="ew", padx=2, pady=1)
+
+        # Espalha: faixas ocupam a largura toda; o campo da direita vai pra borda
+        self.grid_columnconfigure(11, weight=1)
+        team_row.grid_columnconfigure(3, weight=1)
+        self_row.grid_columnconfigure(3, weight=1)
 
         self._vars = dict(
             heal_team=create_int_slider(

@@ -120,6 +120,7 @@ class RegenConfig(FunctionConfig):
     bindings: Bindings = field(default_factory=lambda: dict(sit= 'x'))
     hp_threshold: float = None
     mana_threshold: float = None
+    ignore_mana: bool = False  # classes sem mana (ex: Assassin) -> ignora MP no descanso
 
     def __post_init__(self):
         if self.bindings is None:

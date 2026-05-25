@@ -2,6 +2,8 @@ from pathlib import Path
 from tkinter import ttk
 import tkinter as tk
 
+from GhostBot.UX import theme as T
+
 
 # pasta root das imagens do bot (usado pela captura de icones)
 _IMAGES_ROOT = Path(__file__).resolve().parent.parent / "Images"
@@ -25,8 +27,8 @@ class Tooltip:
         self.tip.wm_overrideredirect(True)
         self.tip.wm_geometry(f"+{x}+{y}")
         tk.Label(
-            self.tip, text=self.text, bg="#ffffe0", relief="solid", borderwidth=1,
-            font=("TkDefaultFont", 11), padx=8, pady=5, justify="left",
+            self.tip, text=self.text, bg="#ffffe0", fg="#1A1A1A", relief="solid", borderwidth=1,
+            font=("TkDefaultFont", 13), padx=8, pady=5, justify="left",
         ).pack()
 
     def _hide(self, _=None):
@@ -116,7 +118,7 @@ def create_int_slider(
         from_=min_val,
         to=max_val,
         orient="horizontal",
-        length=140,
+        length=210,
     )
 
     max_digits = len(str(max_val))
@@ -236,8 +238,8 @@ def setup_drag_from_listbox(listbox: tk.Listbox, on_drop):
             g = tk.Toplevel(listbox)
             g.wm_overrideredirect(True)
             g.attributes("-alpha", 0.85)
-            tk.Label(g, text=state["item"], bg="#4a90e2", fg="white",
-                     padx=8, pady=4, font=("TkDefaultFont", 9, "bold")).pack()
+            tk.Label(g, text=state["item"], bg=T.GREEN, fg="white",
+                     padx=8, pady=4, font=("TkDefaultFont", 11, "bold")).pack()
             state["ghost"] = g
         state["ghost"].geometry(f"+{event.x_root + 12}+{event.y_root + 12}")
 
@@ -265,6 +267,44 @@ def widget_in_container(widget, container) -> bool:
     return False
 
 
+class ScrollableFrame(tk.Frame):
+    """Container com scroll VERTICAL pra aba inteira. Coloque o conteudo dentro de `.inner`.
+    O conteudo ocupa a largura toda (sem scroll horizontal) e rola na vertical quando precisa."""
+
+    def __init__(self, parent, bg: str = None, **kwargs):
+        bg = bg or T.BG_MAIN
+        super().__init__(parent, bg=bg, **kwargs)
+        self.canvas = tk.Canvas(self, bg=bg, highlightthickness=0, bd=0)
+        self.vbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=self.vbar.set)
+        self.vbar.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
+
+        self.inner = tk.Frame(self.canvas, bg=bg)
+        self._win = self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
+        # scrollregion acompanha o conteudo; inner acompanha a largura do canvas (sem scroll horizontal)
+        self.inner.bind("<Configure>", lambda _e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+        self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfigure(self._win, width=e.width))
+        # roda do mouse rola, mas so quando o cursor esta sobre esta aba
+        self.canvas.bind("<Enter>", lambda _e: self.canvas.bind_all("<MouseWheel>", self._on_wheel))
+        self.canvas.bind("<Leave>", lambda _e: self.canvas.unbind_all("<MouseWheel>"))
+
+    def _on_wheel(self, event):
+        # so rola se o conteudo for MAIOR que a area visivel (senao "rolar pra cima" empurrava
+        # o conteudo pro meio deixando vazio em cima). Se tudo cabe, trava no topo.
+        try:
+            bbox = self.canvas.bbox("all")
+            if not bbox:
+                return
+            content_h = bbox[3] - bbox[1]
+            if content_h <= self.canvas.winfo_height():
+                self.canvas.yview_moveto(0)
+                return
+            self.canvas.yview_scroll(int(-event.delta / 120), "units")
+        except tk.TclError:
+            pass
+
+
 def capture_icon_dialog(parent, folder: Path, on_saved=None):
     """
     Popup pra capturar icone de item do TO via Win+Shift+S.
@@ -286,15 +326,15 @@ def capture_icon_dialog(parent, folder: Path, on_saved=None):
     win.geometry("420x340")
     win.transient(parent)
     win.grab_set()
-    win.configure(bg="#ffffff")
+    win.configure(bg=T.BG_PANEL)
 
     state = {"img": None, "preview_label": None}
 
     tk.Label(win, text=f"Salvando em: Images/{folder.relative_to(_IMAGES_ROOT)}",
-             bg="#ffffff", fg="#555", font=("TkDefaultFont", 9)).pack(pady=(8, 4))
+             bg=T.BG_PANEL, fg=T.FG_MUTED, font=("TkDefaultFont", 11)).pack(pady=(8, 4))
 
     tk.Label(win, text="Nome do item (sem espacos, sem .bmp):",
-             bg="#ffffff", font=("TkDefaultFont", 10)).pack(pady=(8, 2))
+             bg=T.BG_PANEL, font=("TkDefaultFont", 12)).pack(pady=(8, 2))
     name_entry = tk.Entry(win, width=30, justify="center")
     name_entry.pack(pady=2)
     name_entry.focus_set()
@@ -302,17 +342,17 @@ def capture_icon_dialog(parent, folder: Path, on_saved=None):
     instr = tk.Label(
         win,
         text="1. Vai pro jogo\n2. Win+Shift+S, recorta SO o icone\n3. Volta aqui e clica 'Ler clipboard'",
-        bg="#ffffff", fg="#444", justify="left", font=("TkDefaultFont", 9),
+        bg=T.BG_PANEL, fg=T.FG_MUTED, justify="left", font=("TkDefaultFont", 11),
     )
     instr.pack(pady=(8, 4))
 
-    preview_holder = tk.Frame(win, bg="#fafafa", bd=1, relief="solid", width=120, height=90)
+    preview_holder = tk.Frame(win, bg=T.BG_INPUT, bd=1, relief="solid", width=120, height=90)
     preview_holder.pack(pady=4)
     preview_holder.pack_propagate(False)
-    state["preview_label"] = tk.Label(preview_holder, text="(preview)", bg="#fafafa", fg="#999")
+    state["preview_label"] = tk.Label(preview_holder, text="(preview)", bg=T.BG_INPUT, fg=T.FG_MUTED)
     state["preview_label"].pack(expand=True)
 
-    status = tk.Label(win, text="", bg="#ffffff", fg="#1f6feb", font=("TkDefaultFont", 9))
+    status = tk.Label(win, text="", bg=T.BG_PANEL, fg=T.GREEN_HI, font=("TkDefaultFont", 11))
     status.pack(pady=(2, 4))
 
     def _read_clipboard():
@@ -330,7 +370,7 @@ def capture_icon_dialog(parent, folder: Path, on_saved=None):
         state["preview_label"].configure(image=photo, text="")
         state["preview_label"].image = photo  # mantem ref
         status.config(text=f"Capturado: {img.width}x{img.height} -- agora clica Salvar",
-                      fg="#1b5e20")
+                      fg=T.GREEN_HI)
 
     def _save():
         if state["img"] is None:
@@ -354,7 +394,7 @@ def capture_icon_dialog(parent, folder: Path, on_saved=None):
                 pass
         win.destroy()
 
-    btn_bar = tk.Frame(win, bg="#ffffff")
+    btn_bar = tk.Frame(win, bg=T.BG_PANEL)
     btn_bar.pack(pady=8)
     ttk.Button(btn_bar, text="Ler clipboard", command=_read_clipboard).pack(side="left", padx=4)
     ttk.Button(btn_bar, text="Salvar", command=_save, style="Accent.TButton").pack(side="left", padx=4)
@@ -369,24 +409,24 @@ class NamedListWidget:
     """
 
     def __init__(self, parent, title: str, grid_row: int, grid_column: int,
-                 width: int = 22, height: int = 7, title_color: str = "#333",
+                 width: int = 22, height: int = 7, title_color: str = T.FG_MAIN,
                  hint: str = None, capture_folder: Path | None = None):
-        self.container = tk.Frame(parent, bd=1, relief="solid", bg="#ffffff")
+        self.container = tk.Frame(parent, bd=1, relief="solid", bg=T.BG_PANEL)
         self.container.grid(row=grid_row, column=grid_column, padx=4, pady=4, sticky="nw")
         self._capture_folder = capture_folder
 
-        _title_lbl = tk.Label(self.container, text=title, bg="#ffffff", fg=title_color,
+        _title_lbl = tk.Label(self.container, text=title, bg=T.BG_PANEL, fg=title_color,
                               font=("TkDefaultFont", 10, "bold"))
         _title_lbl.pack(side="top", anchor="w", padx=6, pady=(4, 2))
         if hint:
             Tooltip(_title_lbl, hint)
 
         self.listbox = tk.Listbox(self.container, width=width, height=height,
-                                  bg="#fafafa", borderwidth=0, highlightthickness=0,
-                                  selectbackground="#4a90e2", selectforeground="#ffffff")
+                                  bg=T.BG_INPUT, borderwidth=0, highlightthickness=0,
+                                  selectbackground=T.GREEN, selectforeground=T.BG_PANEL)
         self.listbox.pack(side="top", padx=4, pady=2)
 
-        entry_frame = tk.Frame(self.container, bg="#ffffff")
+        entry_frame = tk.Frame(self.container, bg=T.BG_PANEL)
         entry_frame.pack(side="top", fill="x", padx=4, pady=(2, 4))
 
         self._entry = tk.Entry(entry_frame, width=width - 6)
@@ -447,36 +487,11 @@ class ComboWidget:
         self.container = ttk.Frame(parent)
         self.container.grid(row=grid_row, column=grid_column + 1, columnspan=8, sticky="nw", padx=4, pady=2)
 
-        # Area com scroll: Canvas + Scrollbar + Frame interno
-        self._scroll_frame = ttk.Frame(self.container)
-        self._scroll_frame.pack(side="top", fill="x", anchor="w")
+        # Linhas empilham direto aqui (sem scroll proprio) -- a ABA inteira rola agora.
+        self._inner = ttk.Frame(self.container)
+        self._inner.pack(side="top", fill="x", anchor="w")
 
-        self._canvas = tk.Canvas(self._scroll_frame, height=self.VISIBLE_HEIGHT_PX, highlightthickness=0)
-        self._scrollbar = ttk.Scrollbar(self._scroll_frame, orient="vertical", command=self._canvas.yview)
-        self._canvas.configure(yscrollcommand=self._scrollbar.set)
-
-        self._canvas.pack(side="left", fill="x", expand=True)
-        self._scrollbar.pack(side="right", fill="y")
-
-        self._inner = ttk.Frame(self._canvas)
-        self._canvas_window = self._canvas.create_window((0, 0), window=self._inner, anchor="nw")
-
-        # Atualiza scrollregion quando inner cresce/diminui
-        def _on_inner_configure(_event):
-            self._canvas.configure(scrollregion=self._canvas.bbox("all"))
-            # Ajusta largura do canvas pra caber o conteudo
-            req_w = self._inner.winfo_reqwidth()
-            self._canvas.configure(width=req_w)
-
-        self._inner.bind("<Configure>", _on_inner_configure)
-
-        # Scroll com roda do mouse quando mouse sobre o canvas
-        def _on_wheel(event):
-            self._canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        self._canvas.bind("<Enter>", lambda _e: self._canvas.bind_all("<MouseWheel>", _on_wheel))
-        self._canvas.bind("<Leave>", lambda _e: self._canvas.unbind_all("<MouseWheel>"))
-
-        # Botoes na base do container (fora do scroll)
+        # Botoes na base do container
         self._btn_bar = ttk.Frame(self.container)
         self._btn_bar.pack(side="top", anchor="w", pady=(4, 2))
 

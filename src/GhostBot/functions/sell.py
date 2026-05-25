@@ -96,12 +96,19 @@ class Sell(Locational):
             self._log_info('Bag %d/%d: clicando slot %d em %s (30x)',
                            bag + 1, self.NUM_SELL_BAGS, start_slot, str(slot))
             for _ in range(30):                    # reflow: vende do slot inicial em diante
+                if not self._client.running:       # Stop = emergencia: aborta na hora
+                    self._log_info('Stop apertado durante a venda -- abortando')
+                    return
                 self._client.left_click(slot)
                 time.sleep(0.2)
+            if not self._client.running:           # nao confirma venda parcial apos Stop
+                return
             self._client.left_click(self._client.sell_confirm_pos(header))   # CONFIRMA a venda
             time.sleep(2)                          # confirma -> dialog fecha
 
     def _path_to_attack_spot(self):
+        if not self._client.running:   # Stop apertado -> nem tenta voltar ao spot
+            return
         offset = self.config.return_spot_map_offset
         if offset is None:
             self._log_err('return_spot_map_offset nao setado -- pulando retorno ao spot')

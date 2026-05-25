@@ -172,6 +172,8 @@ class BotClientWindow(Win32ClientWindow):
         moves to `target_pos`, will invoke map based pathing if distance is too far.
         :param target_pos: `tuple(x, y)` coordinates to move too
         """
+        if not self.running:   # Stop = emergencia: nao inicia movimento
+            return
         while linear_distance(self.location, target_pos) > 50 and self.running:
             self.logger.debug(f"{self.name} moving via map")
             return self._move_to_pos_via_map(target_pos)
@@ -188,6 +190,8 @@ class BotClientWindow(Win32ClientWindow):
         self.block_while_moving()
 
     def _move_to_pos_via_map(self, target_pos: tuple[int, int]):
+        if not self.running:   # Stop = emergencia
+            return False
         zone = location_to_zone_map[self.location_name.strip()]
         screen_coords = coords_to_map_screen_pos(
             zones[zone],
@@ -201,6 +205,8 @@ class BotClientWindow(Win32ClientWindow):
             _loc = self.location
             self.right_click(tuple(map(add, screen_coords, (-30, -30)))) # Click away from tgt to clear possible existing tgt
             for offset in offsets:
+                if not self.running:   # Stop no meio do pathing -> aborta (o 'with' fecha o mapa)
+                    return False
                 path_tgt = tuple(map(add, screen_coords, offset))
                 self.right_click(path_tgt)
                 time.sleep(2)
@@ -390,25 +396,41 @@ class BotController(ABC):
             self.logger.warning('trigger_sell_now: %s nao tem config de sell', client_name)
             return False
 
+        _task_name = f"sell_now_{client.name}"
+
         def _go():
+            _prev_status = client.bot_status
+            _prev_running = client.running
             try:
                 self.logger.info("%s: trigger_sell_now firing", client.name)
                 # Status precisa estar running pra Runner.run() permitir, e bypass do
                 # check de intervalo chamando _run direto.
-                _prev_status = client.bot_status
-                _prev_running = client.running
                 client.bot_status = BotStatus.running
                 client.running = True
                 try:
                     Sell(client)._run()
                 finally:
-                    client.bot_status = _prev_status
-                    client.running = _prev_running
-                self.logger.info("%s: trigger_sell_now done", client.name)
+                    # Se o Stop (emergencia) foi apertado durante a venda, client.running
+                    # ja foi pra False -> NAO ressuscitar; fica parado.
+                    if not client.running:
+                        client.bot_status = BotStatus.stopped
+                        self.logger.info("%s: trigger_sell_now interrompido pelo Stop", client.name)
+                    else:
+                        client.running = _prev_running
+                        client.bot_status = _prev_status
+                        self.logger.info("%s: trigger_sell_now done", client.name)
             except Exception as e:
                 self.logger.exception(e)
+            finally:
+                _tasks = getattr(self, '_tasks', None)
+                if _tasks is not None:
+                    _tasks.pop(_task_name, None)
 
-        threading.Thread(target=_go, daemon=True).start()
+        # registra a thread (em vez de soltar daemon) pra o Stop conseguir esperar/parar
+        if hasattr(self, '_add_task'):
+            self._add_task(_go, _task_name)
+        else:
+            threading.Thread(target=_go, daemon=True).start()
         return True
 
     def _get_functions_for_client(self, client: BotClientWindow) -> Generator[Runner, None, None]:

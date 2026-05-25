@@ -3,12 +3,13 @@ from tkinter import ttk
 
 from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
 from GhostBot.UX.utils import _format_spot, create_entry, create_int_slider, ComboWidget
+from GhostBot.UX import theme as T
 from GhostBot.config import Config, AttackConfig
 from GhostBot.lib.var_or_none import var_or_none
 
 
-HP_BG = "#e8b0b0"  # vermelho fosco
-MP_BG = "#b0b0e8"  # azul fosco
+HP_BG = T.HP_BG   # faixa HP (vermelho escuro)
+MP_BG = T.MP_BG   # faixa MP (azul escuro)
 
 
 class AttackFrame(TabFrame):
@@ -20,6 +21,11 @@ class AttackFrame(TabFrame):
         # Faixa MP
         mp_row = tk.Frame(self, bg=MP_BG)
         mp_row.grid(row=1, column=0, columnspan=12, sticky="ew", padx=2, pady=1)
+
+        # Espalha: faixas ocupam a largura toda; o "Tecla Pot" vai pra direita
+        self.grid_columnconfigure(11, weight=1)
+        hp_row.grid_columnconfigure(3, weight=1)
+        mp_row.grid_columnconfigure(3, weight=1)
 
         self._vars = dict(
             hp_low=create_int_slider(
@@ -51,8 +57,9 @@ class AttackFrame(TabFrame):
             ),
             roam=create_int_slider(
                 self, "Distância máx do spot:", 3, 0, "bot_config.attack.battle_roam",
-                default=1000, min_val=10, max_val=1000, suffix="un",
-                hint="10=passo curto · 100=alcance vista · 1000=mapa todo",
+                default=60, min_val=40, max_val=100, suffix="un",
+                hint="Raio do círculo de farm ao redor do Spot. 40=bem preso · 100=mais solto. "
+                     "Se o personagem sair do raio, ele volta ao Spot.",
             ),
             spot=create_entry(
                 self, "Spot (X,Y):", 5, 0, ("bot_config.attack.spot", str),
