@@ -394,8 +394,17 @@ def main():
             ghost_bot.client.get_config(_selected)
 
     def _refresh_char_info():
+        _tick = 0
         while True:
             time.sleep(1)
+            # Pede a LISTA de personagens periodicamente (~3s) pra a interface se
+            # AUTO-RECUPERAR: se for fechada e reaberta (ou se o char logar depois),
+            # a lista volta sozinha. Antes dependia so do "empurrao" unico que o
+            # servidor manda na conexao -- se perdesse, a lista ficava vazia pra sempre.
+            # set_char_list so repovoa se a lista mudou (nao pisca, preserva selecao).
+            if _tick % 3 == 0:
+                ghost_bot.client.list_chars()
+            _tick += 1
             if _selected := ghost_bot.selected_char():
                 ghost_bot.client.char_info(_selected)
 
