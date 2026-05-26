@@ -81,3 +81,9 @@ def send_death_alert(char: str | None = None) -> bool:
     """Avisa no Discord que o personagem morreu (HP chegou a 0)."""
     who = f" — **{char}**" if char else ""
     return send(f"💀 **MORTE!** O personagem morreu{who}")
+
+
+def send_inventory_full_alert(char: str | None = None) -> bool:
+    """Avisa no Discord que a mochila encheu ('Your item box is full.')."""
+    who = f" — **{char}**" if char else ""
+    return send(f"📦 **MOCHILA CHEIA!** Indo vender{who}")

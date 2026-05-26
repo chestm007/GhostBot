@@ -38,6 +38,10 @@ def run_at_interval(run_on_start: bool = False, run_in_battle: bool = False):
         def should_run(self):
             if not run_in_battle and self._client.in_battle:
                 return False
+            # gancho opcional: roda JA (fora do intervalo) se a funcao pedir
+            # (ex.: Sell._force_run quando a mochila enche). Opt-in via hasattr.
+            if hasattr(self, '_force_run') and self._force_run():
+                return True
             return time.time() - self._last_time_ran > self._interval
 
         _clazz.__init__ = init

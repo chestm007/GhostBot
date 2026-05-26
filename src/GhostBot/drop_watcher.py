@@ -114,6 +114,32 @@ def extract_item_names(text: str) -> list[str]:
     return names
 
 
+# ----------------------------------------------------------------------------
+# Deteccao de "mochila cheia" -- MESMA regiao do chat (mesma leitura OCR).
+# Frase do jogo: "Your item box is full." O OCR embola letras, entao normaliza
+# a linha pra so-letras e casa o nucleo distintivo ('item box is full').
+# ----------------------------------------------------------------------------
+_BOX_FULL_CORE = "itemboxisfull"
+# O OCR troca letra<->digito (o->0, l->1, e->3...). Desfaz as trocas comuns
+# ANTES de comparar, senao 'Y0ur 1tem b0x is fu11' nao casa com 'item box is full'.
+_OCR_DIGIT_FIX = str.maketrans({"0": "o", "1": "l", "3": "e", "5": "s", "8": "b", "!": "l", "|": "l"})
+_BOX_FULL_SIM = 0.72  # limiar de semelhanca (nucleo distintivo -> seguro contra falso positivo)
+
+
+def chat_says_box_full(text: str) -> bool:
+    """True se alguma linha do chat parece 'Your item box is full.'
+    (nucleo 'itemboxisfull' como substring OU semelhanca >= limiar; tolera ruido de OCR)."""
+    for line in text.splitlines():
+        norm = re.sub(r"[^a-z]", "", line.lower().translate(_OCR_DIGIT_FIX))
+        if len(norm) < 8:
+            continue
+        if _BOX_FULL_CORE in norm:
+            return True
+        if difflib.SequenceMatcher(None, norm, _BOX_FULL_CORE).ratio() >= _BOX_FULL_SIM:
+            return True
+    return False
+
+
 def _preprocess(bgr):
     """Tratamento B (vencedor nos testes): cinza + ampliar 4x + Otsu."""
     gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
@@ -140,9 +166,10 @@ def find_anchor_top_left(client: "AbstractClientWindow") -> tuple[int, int] | No
     return x, y
 
 
-def read_chat_items(client: "AbstractClientWindow") -> list[str] | None:
-    """Le a regiao do chat e devolve os nomes de item detectados.
-    None = ancora nao achada (nao da pra ler agora)."""
+def read_chat_text(client: "AbstractClientWindow") -> str | None:
+    """Le a regiao do chat e devolve o TEXTO BRUTO do OCR.
+    None = ancora nao achada (nao da pra ler agora); "" = regiao vazia.
+    Base comum: 1 leitura serve pra drops E pra 'mochila cheia'."""
     anchor = find_anchor_top_left(client)
     if anchor is None:
         return None
@@ -153,9 +180,16 @@ def read_chat_items(client: "AbstractClientWindow") -> list[str] | None:
     x1, y1 = max(0, ax + lo), max(0, ay + to)
     x2, y2 = min(w, ax + ro), min(h, ay + bo)
     if not (x2 > x1 and y2 > y1):
-        return []
+        return ""
     crop = color[y1:y2, x1:x2]
-    text = pytesseract.image_to_string(_preprocess(crop), config=_TESS_CONFIG)
+    return pytesseract.image_to_string(_preprocess(crop), config=_TESS_CONFIG)
+
+
+def read_chat_items(client: "AbstractClientWindow") -> list[str] | None:
+    """Nomes de item detectados no chat. None = ancora nao achada."""
+    text = read_chat_text(client)
+    if text is None:
+        return None
     return extract_item_names(text)
 
 
@@ -274,6 +308,7 @@ class DropWatcher:
         self._prev: set[str] = set()           # nomes da leitura anterior (estabilidade)
         self._alerted: dict[str, float] = {}   # nome alertado -> ultima vez visto (dedup do alerta)
         self._visible_counts: dict[str, int] = {}  # nome -> qtd visivel na ultima leitura (contagem)
+        self.box_full: bool = False            # 'Your item box is full.' visivel na ultima leitura
 
     def reload_watchlist(self):
         self.want, self.ignore = load_watchlist(self.watchlist_path)
@@ -304,22 +339,27 @@ class DropWatcher:
 
     def prime(self, client: "AbstractClientWindow") -> None:
         """Marca tudo que ja esta na tela como 'ja visto' -> nao alerta NEM conta no inicio."""
-        raw = read_chat_items(client) or []
+        text = read_chat_text(client) or ""
+        raw = extract_item_names(text)
         items = self._dedup_within(raw)
         now = time.time()
         self._alerted = {n: now for n in items}
         self._prev = set(items)
         self._visible_counts = self._count_occurrences(raw)
+        self.box_full = chat_says_box_full(text)
 
     def poll(self, client: "AbstractClientWindow") -> tuple[list[tuple[str, str]], dict[str, int]]:
         """Retorna (alerts, deltas):
           - alerts: [(nome, categoria)] pra avisar no Discord -- com DEDUP (nao spamma o
             mesmo item na janela).
           - deltas: {nome: n} drops NOVOS pra somar no dashboard -- CONTA repeticoes
-            (2 linhas iguais visiveis = +2; reler as mesmas linhas nao re-conta)."""
-        raw = read_chat_items(client)
-        if raw is None:
+            (2 linhas iguais visiveis = +2; reler as mesmas linhas nao re-conta).
+        Tambem atualiza self.box_full ('Your item box is full.' na mesma leitura)."""
+        text = read_chat_text(client)
+        if text is None:
             return [], {}
+        raw = extract_item_names(text)
+        self.box_full = chat_says_box_full(text)
         now = time.time()
 
         # CONTAGEM (dashboard): soma os AUMENTOS de ocorrencia visivel por item.

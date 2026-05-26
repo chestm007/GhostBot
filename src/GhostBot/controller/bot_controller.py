@@ -45,6 +45,7 @@ class BotClientWindow(Win32ClientWindow):
         self._gold_start: int | None = None
         self.drops: dict[str, int] = {}  # contagem de drops da sessao (Dashboard)
         self.current_action: str = "parado"  # acao atual do bot (barra grifada no Dashboard)
+        self.sell_requested: bool = False  # mochila cheia detectada -> Sell vende na proxima volta
 
     def to_json(self) -> dict:
         # Detecção de kill: alvo estava com HP positivo, agora ta None/<0 (dead/no target)
@@ -175,6 +176,7 @@ class BotClientWindow(Win32ClientWindow):
         self._gold_start = None
         self.drops = {}
         self.current_action = "iniciando..."
+        self.sell_requested = False
 
     def stop_bot(self):
         self.logger.info(f'{self.name}: Stopping...')

@@ -36,6 +36,16 @@ class Sell(Locational):
         #self._last_time_sold = time.time()
         self._last_time_sold = 0
 
+    def _force_run(self) -> bool:
+        """Pedido de venda FORA do intervalo (ex.: mochila cheia detectada pelo
+        monitor). Consome a bandeira -> Sell roda na proxima volta do loop principal,
+        sequencial com o Attack (sem brigar pelo char). O timer normal segue valendo."""
+        if getattr(self._client, 'sell_requested', False):
+            self._client.sell_requested = False
+            self._log_info("venda solicitada (mochila cheia) -- vendendo agora")
+            return True
+        return False
+
     def _run(self):
         with self._client.mounted(self._mount_key):
 

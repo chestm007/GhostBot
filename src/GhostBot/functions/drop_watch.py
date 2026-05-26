@@ -11,7 +11,7 @@ from __future__ import annotations
 import time
 
 from GhostBot import drop_watcher as _dw
-from GhostBot.discord_notify import send_drop_alert, send_death_alert
+from GhostBot.discord_notify import send_drop_alert, send_death_alert, send_inventory_full_alert
 from GhostBot.functions.runner import Runner, run_at_interval
 
 _POLL_SECS = 2
@@ -30,8 +30,10 @@ class DropWatch(Runner):
             return
         self._watcher = _dw.DropWatcher(_dw.default_watchlist_path())
         self._last_reload = time.time()
+        self._box_was_full = False   # estado anterior da mochila (so age na transicao)
         try:
             self._watcher.prime(self._client)
+            self._box_was_full = self._watcher.box_full  # ja cheia no Start -> nao re-dispara
         except Exception as e:
             self._log_err("drop watch: prime falhou: %s", e)
 
@@ -49,9 +51,27 @@ class DropWatch(Runner):
                 if cat != "ignore":
                     send_drop_alert(name, cat, self._client.name)
                 self._log_info("drop: %s [%s]", name, cat)
+            self._check_inventory_full()
         except Exception as e:
             self._log_err("drop watch erro: %s", e)
         return True
+
+    def _check_inventory_full(self) -> None:
+        """Age SO na transicao vazia->cheia (nao spamma). Re-arma quando a msg some.
+        Ao encher: avisa no Discord + levanta sell_requested -> a venda do loop
+        principal vende na proxima volta (sequencial com Attack; o timer de venda
+        segue como rede de seguranca se o OCR nao pegar)."""
+        if self._watcher.box_full:
+            if not self._box_was_full:
+                self._box_was_full = True
+                self._log_info("MOCHILA CHEIA detectada -> avisa + pede venda")
+                try:
+                    send_inventory_full_alert(self._client.name)
+                except Exception as e:
+                    self._log_err("alerta de mochila cheia falhou: %s", e)
+                self._client.sell_requested = True
+        else:
+            self._box_was_full = False
 
 
 @run_at_interval(run_on_start=True, run_in_battle=True)
