@@ -92,7 +92,7 @@ O dono monta e **manda o zip COMPLETO** pros 4 amigos. Conteúdo:
 
 ---
 
-## ✅ SPRINT 0 — Fundação (23/mai → 03/jun) — **~98% concluída** (só falta "Inventory Full" via OCR)
+## ✅ SPRINT 0 — Fundação (23/mai → 03/jun) — **100% concluída** ("Inventory Full" via OCR FEITO)
 
 ### Concluído
 - ✅ Python 3.11+ instalado + `pip install .` do fork
@@ -200,7 +200,7 @@ Aplicada nesta sessão sobre tudo que o bot já tinha:
 **Status:** não iniciado. Algumas tarefas relacionadas já adiantadas via UX revolution.
 
 - ⏳ Configuração das 5 classes (Wizard, Monk, Assassin, Fairy, Tamer)
-- ⏳ Instalação nos PCs dos 4 amigos
+- 🔄 Instalação nos PCs dos 4 amigos — **EM ANDAMENTO:** pacote `.exe` autocontido FEITO E VALIDADO ao vivo (`C:\Bot\Talisman Bot.zip`, 139 MB, zero instalação). Falta só o dono subir num link e os amigos rodarem.
 - ⏳ Teste: os 5 farmando simultaneamente
 - ⏳ Item Blacklist (Discovery Mode) — **UI parcialmente pronta** via Sell tab (Lixo/Bons/Raros). Falta: lógica de "pegar tudo + log de drops + UI checkbox".
 - ⏳ Sistema de Montaria (montar/desmontar + auto-mount em viagem)
@@ -243,7 +243,7 @@ Plano original mantido. Não iniciado.
 
 - ⏳ Telemetria sessão + histórico + por papel — **Dashboard já tem kills + tempo**
 - ⏳ Tier de Itens (5 níveis) — **3 categorias já existem na UI (Lixo/Bons/Raros), expandir pra 5 níveis**
-- ✅ Discord Webhook — **COMPLETO (sessão 2026-05-25):** detecção de drop por OCR + webhook (`discord_notify.py`) + thread paralela + dashboard (painel de drops + triagem ✅/❌ + barra de ação + alerta de morte 💀) + **alerta de MOCHILA CHEIA 📦 (vende automático)** + **alertas em EMBEDS** (cards com cor/char/horário; cor por tipo, pronta pra raridade). Falta: **filtro por cor de raridade** (depende da detecção de raridade) e **fechar o Tesseract no `.exe`** — caminho ZIP pronto (`tools/make_portable_tesseract.py` monta `src/GhostBot/Tesseract-OCR/` portátil, gitignorada; código já a acha). CI (`build-executable.yml`) já embute Tesseract+Images via `include-data-dir`; **build #1 do server crashou** por `pytesseract` faltando nas deps + Images não-embutida → **corrigido (commit `43e4afb`)**; ⏭️ **re-rodar o build e validar o `run_server.exe` em runtime** (ver "🔖 RETOMAR AQUI" no topo).
+- ✅ Discord Webhook — **COMPLETO (sessão 2026-05-25):** detecção de drop por OCR + webhook (`discord_notify.py`) + thread paralela + dashboard (painel de drops + triagem ✅/❌ + barra de ação + alerta de morte 💀) + **alerta de MOCHILA CHEIA 📦 (vende automático)** + **alertas em EMBEDS** (cards com cor/char/horário; cor por tipo, pronta pra raridade). Falta: **filtro por cor de raridade** (depende da detecção de raridade) e **fechar o Tesseract no `.exe`** — caminho ZIP pronto (`tools/make_portable_tesseract.py` monta `src/GhostBot/Tesseract-OCR/` portátil, gitignorada; código já a acha). CI (`build-executable.yml`) já embute Tesseract+Images via `include-data-dir`; **`.exe` autocontido FEITO E VALIDADO ao vivo (2026-05-26):** Tesseract vai como PASTA ao lado do exe (nuitka não embute `.dll`/`.exe`), webhook/lista achados na pasta do exe, fork autossuficiente (submódulo removido). Pacote `C:\Bot\Talisman Bot.zip` testado (dashboard + drop no Discord + morte). **Falta só:** filtro por cor de raridade.
 - ⏳ Acesso Mobile via Tailscale
 - ⏳ Dashboard HTML local (5 chars em tempo real)
 - ⏳ Auto-Venda Completa (13 etapas)
