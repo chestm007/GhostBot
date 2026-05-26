@@ -272,6 +272,28 @@ Plano original mantido. Não iniciado.
 
 ---
 
+## 📅 SPRINT 7 — "Bots prontos" (Scripts/Presets de config) + Save robusto (backlog, sem data)
+
+**Pedido do dono (2026-05-26):** poder salvar uma configuração de bot como um "script" reutilizável ("bots simples prontos") e trocar entre eles com 1 clique.
+
+**Requisitos:**
+1. **Botão "Salvar script":** salva a configuração ATUAL (todas as abas — Attack, Regen, Buff, Fairy, Pet, Sell) como um preset com NOME.
+2. **Lista de scripts na LATERAL DIREITA:** espelha a lista de personagens logados da esquerda. Cada item mostra o **NOME do script** + a **última atualização** em formato abreviado **`dd/mm/yy hh:mm`**.
+3. **Aplicar por clique:** clicar num script da lista **SUBSTITUI** a configuração atual (carrega o preset nas abas do personagem selecionado).
+4. **🔴 Save SUPER confiável (crítico nesta sprint):** o botão **Save tem bugs hoje** — falha em **silêncio** se `config.validate()` barrar (o `.yml` não salva e o usuário não sabe). Como o save é o coração desta feature, esta sprint precisa:
+   - **Feedback VISÍVEL** de sucesso/erro na própria interface (não só no log do servidor).
+   - Mostrar **o que** falhou na validação (campo/motivo).
+   - Nunca salvar pela metade; confirmar que o arquivo foi gravado.
+
+**Notas de design (pra quando implementar):**
+- Guardar scripts como `.yml` nomeados (ex.: `~/GhostBot/scripts/<nome>.yml`), separados dos `<charname>.yml` por personagem.
+- Timestamp = `mtime` do arquivo (ou campo salvo no `.yml`), formatado `dd/mm/yy hh:mm`.
+- "Substituir o atual" = carregar o preset na config do char selecionado + atualizar as abas da UI + salvar. Reusa o load/save do `config.py`.
+- Respeitar **Stop = emergência**: provavelmente exigir o bot **parado** pra trocar de script (não trocar config no meio do farm).
+- Bug do Save: ver as notas do save silencioso (memória `reference-save-must-succeed`).
+
+---
+
 ## 🔒 SEGURANÇA — Diretrizes Permanentes
 
 - Senha do Talisman diferente de email/outros sites
