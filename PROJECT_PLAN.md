@@ -18,7 +18,18 @@
   1. **Re-rodar** o workflow "Build Executable" (`executable_kind=server`) — agora com a correção.
   2. Baixar o novo `run_server.exe`, pôr em `C:\Bot\BotTO`, rodar `testar_server_exe.bat` (sobe o server compilado + cliente Python; admin).
   3. **Confirmar runtime:** interface detecta o jogo (sai do "loading.") + farme → drop aparece no painel = **Tesseract+OCR embutidos OK**.
-  4. Se OK: rodar o build também com `client`, e atualizar o **LEIAME.txt** dos amigos (tirar "instalar Tesseract"). Depois: gerar o `BotTO_para_amigos.zip` com a pasta portátil dentro.
+  4. Se OK: rodar o build também com `client` → baixar `run_client.exe`.
+
+**📦 PACOTE PARA OS AMIGOS (versão `.exe` — autocontido, ZERO instalação):**
+O dono precisa montar e **mandar o pacote COMPLETO** (zip) pros 4 amigos. Conteúdo:
+  - `run_server.exe` (Tesseract + Images **embutidos** — onefile)
+  - `run_client.exe` (Images embutidas)
+  - `Iniciar BotTO.bat` (abre servidor + interface com 1 clique, pede admin) — criado local, gitignorado
+  - `LEIAME.txt` (instruções pros amigos) — criado local, gitignorado
+  - `alertas_drop.txt` (lista de alertas; pode mandar uma default)
+  - ❌ **NÃO** incluir o `discord_webhook.txt` (é SECRETO/pessoal — cada amigo cria o seu; o LEIAME explica)
+  - Amigos **NÃO precisam** de Python nem Tesseract — está tudo nos `.exe`. Só precisam do **jogo instalado** (site oficial).
+  - Eles **não abrem o servidor na mão** — o `Iniciar BotTO.bat` sobe os dois.
 - 🩺 **Dica de diagnóstico** (se o `.exe` crashar de novo): `Start-Process C:\Bot\BotTO\run_server.exe -RedirectStandardError $env:TEMP\err.txt -PassThru` + ler o traceback. `gh` NÃO está instalado nesta máquina → acompanhar o CI por print (Win+Shift+S).
 
 ---
