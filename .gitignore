@@ -46,10 +46,12 @@ BotTO_para_amigos.zip
 start_botto.bat
 testar_server_exe.bat
 Iniciar BotTO.bat
+Criar atalho do Talisman Bot.bat
 LEIAME.txt
 install.bat
 run_server.exe
 run_client.exe
+*.build1.bak
 discord_webhook.txt
 .obsidian/
 .claude/settings.local.json

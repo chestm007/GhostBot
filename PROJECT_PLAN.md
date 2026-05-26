@@ -8,29 +8,36 @@
 
 ---
 
-## 🔖 RETOMAR AQUI — 2026-05-26 (fim do dia)
+## 🔖 RETOMAR AQUI — 2026-05-26 (sessão "bora continuar")
 
-**Onde paramos:** embutindo o **Tesseract no `.exe`** via GitHub Actions.
+**Onde paramos:** montando o **pacote `.exe` pros amigos**. Server validado, client buildando.
 
-- ✅ Feito hoje: botão **"🎯 Pegar alvo"** (aba Attack), **detecção de mochila cheia** (📦 Discord + venda automática), **Discord em embeds** (cards), **Tesseract portátil** (`tools/make_portable_tesseract.py` → `src/GhostBot/Tesseract-OCR/`, gitignorada), **CI** que embute Tesseract+Images no `.exe`. Tudo **pushado** no fork (`minha-versao-estavel`, último commit `43e4afb`).
-- 🟡 **Build #1 do `.exe` (server) buildou mas o `run_server.exe` CRASHAVA no runtime:** `ModuleNotFoundError: pytesseract` (faltava nas deps do `pyproject.toml`) + a pasta `Images/` não estava sendo embutida. **Corrigido no commit `43e4afb`** (pytesseract nas deps + `include-data-dir` da Images).
-- ▶️ **PRÓXIMO PASSO (amanhã):**
-  1. **Re-rodar** o workflow "Build Executable" (`executable_kind=server`) — agora com a correção.
-  2. Baixar o novo `run_server.exe`, pôr em `C:\Bot\BotTO`, rodar `testar_server_exe.bat` (sobe o server compilado + cliente Python; admin).
-  3. **Confirmar runtime:** interface detecta o jogo (sai do "loading.") + farme → drop aparece no painel = **Tesseract+OCR embutidos OK**.
-  4. Se OK: rodar o build também com `client` → baixar `run_client.exe`.
+- ✅ **`gh` CLI instalado** (`winget install GitHub.cli`, v2.92.0) **e logado** como `LpiresUrt` (escopos repo+workflow). Fica em `C:\Program Files\GitHub CLI\gh.exe` (não entra no PATH sozinho → `$env:Path += ';C:\Program Files\GitHub CLI'`). ⚠️ Repo tem 2 remotes → **sempre `-R LpiresUrt/BotTO`** no `gh` (senão mira no upstream `chestm007` = HTTP 403). Agora dá pra disparar/baixar build pela linha de comando.
+- ✅ **SERVER BUILD #2 = SUCCESS** (run `26450634537`, 15m16s, correção `43e4afb`). `run_server.exe` (55,7 MB) instalado em `C:\Bot\BotTO` (build #1 → `.build1.bak`). **Smoke test passou:** log = `Images path detected...` + `Server listening...`, **sem** o `ModuleNotFoundError: pytesseract` do build #1. Imagens embutidas + IPC OK.
+  - 📥 **Download do artifact:** `gh run download` FALHA (`archive: false` no workflow → artifact é o exe CRU, não zip). Baixar pela API: `Invoke-WebRequest .../actions/artifacts/<id>/zip -Headers @{Authorization="Bearer $(gh auth token)"}` (o arquivo vem com assinatura `MZ` = exe direto).
+- 🔴 **DESCOBERTA: o Tesseract NÃO embute no `.exe`.** O nuitka (`--include-data-dir`/`--include-data-files`) **ignora `.dll`/`.exe`** de propósito → só o `tessdata/` entrou no binário, o `tesseract.exe`+DLLs ficaram de fora. Passava despercebido na máquina de dev (cai no Tesseract do sistema), mas quebraria o OCR na máquina do amigo.
+  - ✅ **SOLUÇÃO (validada): Tesseract vai como PASTA `Tesseract-OCR/` AO LADO do `.exe`** no zip (não dentro). O `_find_tesseract` já procura `pasta_do_exe/Tesseract-OCR/tesseract.exe` antes do fallback. Pro amigo é idêntico (extrai, clica, zero instalação). **`run_server.exe` atual já serve** — não precisa rebuildar por isso. Pasta montada com `python tools/make_portable_tesseract.py` (72 MB, roda sozinha).
+  - 🧹 TODO (não bloqueia): tirar o passo de embutir Tesseract do `build-executable.yml` (não funciona, só infla o .exe).
+- ✅ **CLIENT BUILD OK** (run `26452436569`; 1ª tentativa o Upload Artifact falhou — transitório — `gh run rerun --failed` resolveu). Smoke test passou.
+- ⚠️ **Defender bloqueou o `run_client.exe`** (falso-positivo de nuitka; o server passou). Resolvido com exclusão escopada na pasta do pacote (`C:\Bot\Talisman Bot`) + rebaixar lá. ⚠️ exclusão ainda ativa: `Remove-MpPreference -ExclusionPath "C:\Bot\Talisman Bot"` quando não precisar.
+- ✅ **PACOTE MONTADO E VALIDADO: `C:\Bot\Talisman Bot.zip` (139 MB).** Extração testada (motor do Explorer) = estrutura correta.
+- ▶️ **PRÓXIMO PASSO:**
+  1. Dono sobe o `Talisman Bot.zip` num link (Drive/WeTransfer — 139 MB não cabe no Discord 25 MB) e manda pros 4 amigos.
+  2. **Validar OCR ao vivo** (pendente): rodar `run_server.exe` da pasta do pacote com o JOGO aberto + farmar → drop no painel/Discord = Tesseract da pasta-irmã OK.
+  3. (Opcional) limpar o passo de embutir Tesseract do `build-executable.yml`; remover a exclusão do Defender.
 
-**📦 PACOTE PARA OS AMIGOS (versão `.exe` — autocontido, ZERO instalação):**
-O dono precisa montar e **mandar o pacote COMPLETO** (zip) pros 4 amigos. Conteúdo:
-  - `run_server.exe` (Tesseract + Images **embutidos** — onefile)
-  - `run_client.exe` (Images embutidas)
-  - `Iniciar BotTO.bat` (abre servidor + interface com 1 clique, pede admin) — criado local, gitignorado
-  - `LEIAME.txt` (instruções pros amigos) — criado local, gitignorado
-  - `alertas_drop.txt` (lista de alertas; pode mandar uma default)
-  - ✅ `discord_webhook.txt` **do dono, COMPARTILHADO** (decisão 2026-05-26: server privado de 4, dono confia) → feed central do time, amigos não configuram nada. Se vazar: apagar+recriar o webhook.
-  - Amigos **NÃO precisam** de Python nem Tesseract — está tudo nos `.exe`. Só precisam do **jogo instalado** (site oficial).
-  - Eles **não abrem o servidor na mão** — o `Iniciar BotTO.bat` sobe os dois.
-- 🩺 **Dica de diagnóstico** (se o `.exe` crashar de novo): `Start-Process C:\Bot\BotTO\run_server.exe -RedirectStandardError $env:TEMP\err.txt -PassThru` + ler o traceback. `gh` NÃO está instalado nesta máquina → acompanhar o CI por print (Win+Shift+S).
+**📦 PACOTE PARA OS AMIGOS (versão `.exe` — ZERO instalação):**
+O dono monta e **manda o zip COMPLETO** pros 4 amigos. Conteúdo:
+  - `run_server.exe` + `run_client.exe`
+  - **pasta `Tesseract-OCR/`** (ao lado dos exes — o OCR de drop depende dela; ~72 MB)
+  - `Images/`? NÃO — as imagens (.bmp) já estão embutidas nos exes.
+  - `Iniciar BotTO.bat` (abre servidor + interface com 1 clique, pede admin) — local, gitignorado
+  - `LEIAME.txt` (instruções) — local, gitignorado
+  - `alertas_drop.txt` (lista de alertas default)
+  - ✅ `discord_webhook.txt` **do dono, COMPARTILHADO** (decisão 2026-05-26) → feed central; se vazar, apagar+recriar.
+  - Amigos só precisam do **jogo instalado** (site oficial). NÃO abrem o servidor na mão (o `.bat` sobe os dois).
+- 🎨 **ÍCONES:** os `.exe` já saem com a logo (build embute `logo.ico`). O `.bat` não aceita ícone próprio → incluir um **`Criar atalho do Talisman Bot.bat`** que o amigo roda 1× e gera um atalho com a logo na Área de Trabalho dele (atalho `.lnk` feito aqui quebra lá por caminho absoluto).
+- 🏷️ **Renomear "GhostBot"?** Decidido NÃO mexer no nome interno (pacote/imports, ~398×): risco alto, zero ganho visível. O que o amigo vê já é "Talisman Bot" (título, logo, ícone, LEIAME). Único semi-visível = pasta de config `~/GhostBot`.
 
 ---
 
