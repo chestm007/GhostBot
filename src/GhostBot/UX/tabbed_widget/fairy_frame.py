@@ -76,6 +76,24 @@ class FairyFrame(TabFrame):
         )
         self._buff_combo.add_row()
 
+        # --- Modo Helper (cura + segue o aliado por tecla P; cross-PC, sem detectar) ---
+        helper_row = tk.Frame(self, bg=T.BG_PANEL)
+        helper_row.grid(row=8, column=0, columnspan=12, sticky="ew", padx=2, pady=(8, 2))
+        self._vars['helper_mode'] = create_entry(
+            helper_row, "Modo Helper:", 0, 0, ("bot_config.fairy.helper_mode", bool),
+            hint="Liga o modo Helper: segue um aliado (tecla P) e cura sempre, só por tecla. "
+                 "Selecione o char Helper na lista e dê Start — o bot faz o resto.",
+        )
+        self._vars['heal_interval'] = create_int_slider(
+            helper_row, "Curar a cada:", 1, 0, "bot_config.fairy.heal_interval",
+            default=2, min_val=1, max_val=15, suffix="s",
+            hint="No modo Helper: aperta a tecla de cura a cada X segundos (e depois P, pra seguir).",
+        )
+        self._vars['follow'] = create_entry(
+            helper_row, "Tecla Seguir:", 1, 4, ("bot_config.fairy.follow", str), entry_width=3,
+            hint="Tecla que segue o aliado selecionado (padrão P).",
+        )
+
     def _set_spot_as_current(self, field: str):
         self._vars[field].set(eval(self.master.getvar('char_info.position')))
 
@@ -89,6 +107,9 @@ class FairyFrame(TabFrame):
             self.setvar('bot_config.fairy.spot', _format_spot(config.fairy.spot))
             self.setvar('bot_config.fairy.buff_interval', str(config.fairy.buff_interval_mins or ''))
             self.setvar('bot_config.fairy.buff_self', bool(config.fairy.buff_self))
+            self.setvar('bot_config.fairy.helper_mode', bool(config.fairy.helper_mode))
+            self.setvar('bot_config.fairy.follow', str((config.fairy.bindings or {}).get('follow', '')))
+            self.setvar('bot_config.fairy.heal_interval', str(config.fairy.heal_interval_secs or ''))
             self._buff_combo.set_attacks(config.fairy.buffs or [])
         else:
             self.clear()
@@ -98,6 +119,7 @@ class FairyFrame(TabFrame):
             heal=self._nullable_string(self.getvar('bot_config.fairy.heal')),
             cure=self._nullable_string(self.getvar('bot_config.fairy.cure')),
             revive=self._nullable_string(self.getvar('bot_config.fairy.revive')),
+            follow=self._nullable_string(self.getvar('bot_config.fairy.follow')),
         )
         return FairyConfig(
             bindings=self._populate_bindings(bindings),
@@ -107,6 +129,8 @@ class FairyFrame(TabFrame):
             buffs=self._buff_combo.get_attacks() or None,
             buff_interval_mins=var_or_none(self.getvar('bot_config.fairy.buff_interval')),
             buff_self=var_or_none(self.getvar('bot_config.fairy.buff_self')),
+            helper_mode=var_or_none(self.getvar('bot_config.fairy.helper_mode')),
+            heal_interval_secs=var_or_none(self.getvar('bot_config.fairy.heal_interval')),
         )
 
     def _clear(self):

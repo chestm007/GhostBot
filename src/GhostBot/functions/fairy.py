@@ -21,8 +21,11 @@ class Fairy(Locational):
         self.config: FairyConfig = client.config.fairy
         self._bot_controller = bot_controller
         self._last_buff_time = 0  # timestamp do último ciclo de buff (0 = nunca buffou)
+        self._last_heal_time = 0  # Helper: timestamp da última cura
 
     def _run(self) -> bool:
+        if self.config.helper_mode:
+            return self._run_helper()
         if self._client.hp_percent < float(self.config.heal_self_threshold):
             self._heal_self()
         for index, member in sorted(self._detect_team_members().items(), key=lambda i: i[1].hp_percent, reverse=True):
@@ -34,6 +37,37 @@ class Fairy(Locational):
             self._buff_team()
 
         self._goto_start_location()
+        return True
+
+    def _run_helper(self) -> bool:
+        """Modo Helper (cross-PC): cura + segue UM aliado so por TECLA, sem detectar.
+        Loop: a cada heal_interval_secs aperta a tecla de cura + P (segue); no intervalo
+        de buff aperta o combo de buffs + P. SEMPRE termina com P pra nao perder o follow.
+        O usuario seleciona o char Helper na lista e da Start; o jogo segue o alvo dele."""
+        follow = (self.config.bindings or {}).get('follow') or 'p'
+        heal = (self.config.bindings or {}).get('heal')
+        interval = int(self.config.heal_interval_secs or 2)
+        now = time.time()
+
+        # Cura periodica + P (mantem o follow)
+        if now - self._last_heal_time >= interval:
+            if heal:
+                self._client.press_key(heal)
+            self._client.press_key(follow)
+            self._last_heal_time = now
+
+        # Buff periodico + P
+        if self._should_buff_team():
+            self._log_info('Helper: buffando aliado...')
+            for key, delay_ms in (self.config.buffs or []):
+                if not self._client.running:
+                    return True
+                self._client.press_key(key)
+                time.sleep(int(delay_ms) / 1000)
+            self._client.press_key(follow)
+            self._last_buff_time = time.time()
+
+        time.sleep(0.3)   # evita busy-loop (timing da cura fica preciso a ~0.3s)
         return True
 
     def _heal_self(self):

@@ -151,6 +151,7 @@ class FairyConfig(FunctionConfig):
         heal: NotRequired[int | str]
         cure: NotRequired[int | str]
         revive: NotRequired[int | str]
+        follow: NotRequired[int | str]
     bindings: Bindings = None
     heal_team_threshold: float = None
     heal_self_threshold: float = None
@@ -159,6 +160,9 @@ class FairyConfig(FunctionConfig):
     buffs: list[list[str | int]] = None  # [[tecla, ms], ...]
     buff_interval_mins: int = None
     buff_self: bool = None
+    # Modo Helper (cross-PC): cura + segue (tecla P, default) um aliado SO por tecla.
+    helper_mode: bool = None
+    heal_interval_secs: int = None   # "cura sempre" a cada X segundos
 
 @dataclass
 class SellConfig(FunctionConfig):
