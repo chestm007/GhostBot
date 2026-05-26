@@ -40,8 +40,8 @@
     ghost-bot-server = "GhostBot.run_server:main"
 
 [project.urls]
-    Repository = 'https://github.com/chestm007/GhostBot'
-    Homepage = 'https://github.com/chestm007/GhostBot'
+    Repository = 'https://github.com/LpiresUrt/BotTO'
+    Homepage = 'https://github.com/LpiresUrt/BotTO'
 
 [project.optional-dependencies]
     test = [

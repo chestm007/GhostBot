@@ -223,7 +223,7 @@ Reordenado pelo dono. O que atacar, em ordem:
 
 **Status:** não iniciado. Algumas tarefas relacionadas já adiantadas via UX revolution.
 
-- ⏳ Configuração das 5 classes (Wizard, Monk, Assassin, Fairy, Tamer)
+- ⏳ Configuração das 5 classes — **SIMPLIFICADO (insight do dono 2026-05-26):** o bot é por TECLA → o combo é genérico; cada jogador configura as próprias teclas e salva o próprio **SCRIPT** (Sprint 7). NÃO precisa de código por classe (Wizard/Monk/Assassin/Tamer). **Exceção: a Fairy** precisa de lógica especial — modo **Helper** (mira o aliado → segue → cura + rebufa sempre). ⚠️ A lógica de heal de time ATUAL (`fairy.py:_heal_team_member`) lê o HP de OUTRO bot na MESMA máquina (multi-conta) → NÃO serve pros amigos em PCs separados; o Helper cross-PC precisa de outra fonte de cura (timer ou leitura da barra de HP do grupo na tela).
 - 🔄 Instalação nos PCs dos 4 amigos — **EM ANDAMENTO:** pacote `.exe` autocontido FEITO E VALIDADO ao vivo (`C:\Bot\Talisman Bot.zip`, 139 MB, zero instalação). Falta só o dono subir num link e os amigos rodarem.
 - ⏳ Teste: os 5 farmando simultaneamente
 - ⏳ Item Blacklist (Discovery Mode) — **UI parcialmente pronta** via Sell tab (Lixo/Bons/Raros). Falta: lógica de "pegar tudo + log de drops + UI checkbox".

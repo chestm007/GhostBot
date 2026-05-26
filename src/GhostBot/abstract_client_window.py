@@ -45,10 +45,6 @@ class AbstractClientWindow(ABC):
         self.press_key(_key)
         return self
 
-    def target_self(self, _key='F1') -> Self:
-        self.press_key(_key)
-        return self
-
     def sit(self, _key='x') -> Self:
         self.press_key(_key)
         return self

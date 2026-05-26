@@ -163,6 +163,10 @@ class Win32ClientWindow(AbstractClientWindow):
         return
 
     def left_click(self, pos):
+        import traceback
+        _c = traceback.extract_stack()[-2]
+        self.logger.warning(">>> LEFT_CLICK %s  <- %s:%s %s()", pos,
+                             _c.filename.split('\\')[-1], _c.lineno, _c.name)
         lparam = win32api.MAKELONG(*pos)
         win32gui.SendMessage(self.window_handle, win32messages.WM_MOUSEMOVE, None, lparam)
         time.sleep(0.1)

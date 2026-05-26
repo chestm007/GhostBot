@@ -1,26 +1,16 @@
+"""Buff -- EM RECONSTRUCAO (zerado em 2026-05-26). Por enquanto NAO faz nada."""
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING
 
-from GhostBot.functions.runner import Runner, run_at_interval
-from GhostBot.lib.math import seconds
-
-if TYPE_CHECKING:
-    from GhostBot.controller.bot_controller import BotClientWindow
-    from GhostBot.config import BuffConfig
+from GhostBot.functions.runner import Runner
 
 
-@run_at_interval(run_on_start=True)
 class Buffs(Runner):
-
-    def __init__(self, client: BotClientWindow):
+    def __init__(self, client):
         super().__init__(client)
-        self.config: BuffConfig = client.config.buff
-        self._interval = seconds(minutes=int(self.config.interval))
 
-    def _run(self) -> None:
-        self._log_info(f'Buffing.')
-        for _key, _sleep in self.config.buffs:
-            self._client.press_key(_key)
-            time.sleep(_sleep/1000)
+    def _run(self) -> bool:
+        # stub inerte -- nao faz nada (sem busy-loop)
+        time.sleep(1)
+        return True

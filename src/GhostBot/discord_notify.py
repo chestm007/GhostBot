@@ -66,7 +66,7 @@ def _post(payload: dict) -> bool:
         headers={
             "Content-Type": "application/json",
             # Discord bloqueia o User-Agent padrao do urllib (HTTP 403). Manda um proprio.
-            "User-Agent": "TalismanBot/1.0 (+https://github.com/chestm007/GhostBot)",
+            "User-Agent": "TalismanBot/1.0",
         },
         method="POST",
     )

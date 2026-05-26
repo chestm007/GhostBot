@@ -37,7 +37,7 @@ Install python, clone this repository, and `pip install .` in the root directory
 
 ### Roadmap
 
-check out the [issues](https://github.com/chestm007/GhostBot/issues) page
+check out the [issues](https://github.com/LpiresUrt/BotTO/issues) page
 
 ### Development
 

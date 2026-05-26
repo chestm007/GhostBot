@@ -162,7 +162,7 @@ class FairyConfig(FunctionConfig):
     buff_self: bool = None
     # Modo Helper (cross-PC): cura + segue (tecla P, default) um aliado SO por tecla.
     helper_mode: bool = None
-    heal_interval_secs: int = None   # "cura sempre" a cada X segundos
+    heal_interval_secs: float = None   # "cura sempre" a cada X segundos (decimal, ex: 2.5)
 
 @dataclass
 class SellConfig(FunctionConfig):
