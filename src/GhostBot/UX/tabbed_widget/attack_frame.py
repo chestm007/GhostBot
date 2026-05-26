@@ -72,6 +72,16 @@ class AttackFrame(TabFrame):
                      "spot, abra o MAPA (M), ponha o mouse no seu personagem no mapa e clique "
                      "'📍 Capturar spot'. É o MESMO da aba Sell (sincronizado: mexe num, muda no outro).",
             ),
+            boss_lock=create_entry(
+                self, "Travar no Boss", 7, 0, ("bot_config.attack.boss_lock", bool),
+                hint="Se marcado, o bot dá TAB até achar o NOME do boss (abaixo) e ataca SÓ ele "
+                     "(ignora mobs comuns). Pra boss runs.",
+            ),
+            boss_name=create_entry(
+                self, "Nome do Boss:", 8, 0, ("bot_config.attack.boss_name", str), entry_width=18,
+                hint="Nome (ou parte) do boss pra travar o alvo. Ex.: 'Jing Gou'. Só vale com "
+                     "'Travar no Boss' marcado.",
+            ),
         )
 
         # Combo dinâmico: 1 linha vazia inicialmente, usuário adiciona/remove
@@ -147,6 +157,8 @@ class AttackFrame(TabFrame):
             self.setvar('bot_config.attack.spot', _format_spot(config.attack.spot))
             self.setvar('bot_config.attack.return_spot_map_offset',
                         _format_spot(config.attack.return_spot_map_offset))
+            self.setvar('bot_config.attack.boss_lock', bool(config.attack.boss_lock))
+            self.setvar('bot_config.attack.boss_name', config.attack.boss_name or '')
 
             self._combo.set_attacks(config.attack.attacks or [])
         else:
@@ -169,6 +181,8 @@ class AttackFrame(TabFrame):
             roam_distance=var_or_none(self.getvar('bot_config.attack.battle_roam')),
             spot=var_or_none(self.getvar('bot_config.attack.spot')),
             return_spot_map_offset=var_or_none(self.getvar('bot_config.attack.return_spot_map_offset')),
+            boss_lock=var_or_none(self.getvar('bot_config.attack.boss_lock')),
+            boss_name=var_or_none(self.getvar('bot_config.attack.boss_name')),
         )
 
     def _clear(self):

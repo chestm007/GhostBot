@@ -119,6 +119,10 @@ class Attack(Locational):
                     self._goto_start_location()    # so VIAJA; nao ataca mob no caminho
                     return True
 
+        # BOSS LOCK: ataca SO o boss (da TAB ate o nome bater). Ignora mobs comuns.
+        if self.config.boss_lock and self.config.boss_name:
+            return self._run_boss(self.config.boss_name.strip())
+
         if not self._client.has_alive_target:# or (self._distance_to_target() or 0) > self.roam_distance:
             self._client.set_action("🔍 Procurando alvo")
             self._client.new_target()
@@ -144,6 +148,42 @@ class Attack(Locational):
                 self._client.new_target()
                 return True
         return False
+
+    def _target_is_boss(self, boss: str) -> bool:
+        """True se o alvo atual esta vivo e o nome bate (contem) com o boss."""
+        if not self._client.has_alive_target:
+            return False
+        tname = (self._client.target_name or '').lower()
+        return bool(tname) and boss.lower() in tname
+
+    def _find_boss(self, boss: str) -> bool:
+        """Da TAB ate o alvo ser o boss. True se achou, False se nao apareceu."""
+        for _ in range(10):
+            if not self._client.running:
+                return False
+            self._client.new_target()      # TAB
+            time.sleep(0.3)                # deixa o nome do alvo atualizar
+            if self._target_is_boss(boss):
+                return True
+        return False
+
+    def _run_boss(self, boss: str) -> bool:
+        """Modo boss: garante que o alvo e o boss (TAB ate achar) e ataca SO ele."""
+        if not self._target_is_boss(boss):
+            if not self._find_boss(boss):
+                self._client.set_action(f"🔍 Procurando boss: {boss}")
+                return True   # boss nao apareceu -> espera (nao bate em mob comum)
+        self._client.set_action(f"👑 BOSS: {boss}")
+        while self._client.target_hp is not None and self._client.target_hp >= 0 and self._client.running:
+            if not self._target_is_boss(boss):
+                return True   # alvo deixou de ser o boss -> re-acha no proximo ciclo
+            self._battle_pots()
+            if not self._cur_attack_queue:
+                self._cur_attack_queue = list(self.config.attacks)
+            key, interval = self._cur_attack_queue.pop(0)
+            self._client.press_key(key)
+            time.sleep(int(interval) / 1000)
+        return True
 
     @staticmethod
     def _as_decimal(threshold) -> float:

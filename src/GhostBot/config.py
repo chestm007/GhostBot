@@ -111,6 +111,8 @@ class AttackConfig(FunctionConfig):
     roam_distance: int = None
     spot: tuple[int, int] = None
     return_spot_map_offset: tuple[int, int] = None  # offset do spot no MAPA (retorno por mapa); compartilhado com o sell
+    boss_lock: bool = False   # se True, ataca SO o boss (nome abaixo) -- da TAB ate achar
+    boss_name: str = None     # nome (ou parte) do boss pra travar o alvo
 
 @dataclass
 class RegenConfig(FunctionConfig):

@@ -121,10 +121,8 @@ class Sell(Locational):
             return
         self._log_info('Voltando ao spot de farm %s', str(self._return_spot))
         self._client.goto_spot_via_map(tuple(offset))   # abre mapa -> isca + spot -> fecha mapa
-        # espera chegar no spot (coords do mundo = _return_spot, vindo de config.attack.spot)
-        t0 = time.time()
-        while linear_distance(self._client.location, self._return_spot) > 3 and self._client.running:
-            if time.time() - t0 > 60:
-                self._log_info('Timeout voltando ao spot')
-                break
-            time.sleep(1)
+        time.sleep(2)   # da tempo do char COMECAR a andar antes de checar movimento
+        # CHEGOU = parou de andar (ou ja esta perto). O '> 3' antigo era apertado demais:
+        # o clique no mapa para uns 5-15 do ponto, nunca batia <=3, e o char ficava 60s
+        # parado no spot sem voltar a atacar. block_while_moving desbloqueia ao parar/chegar.
+        self._client.block_while_moving(self._return_spot)
