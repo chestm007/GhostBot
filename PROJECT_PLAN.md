@@ -171,7 +171,7 @@ Aplicada nesta sessão sobre tudo que o bot já tinha:
 - ⏳ Teste: os 5 farmando simultaneamente
 - ⏳ Item Blacklist (Discovery Mode) — **UI parcialmente pronta** via Sell tab (Lixo/Bons/Raros). Falta: lógica de "pegar tudo + log de drops + UI checkbox".
 - ⏳ Sistema de Montaria (montar/desmontar + auto-mount em viagem)
-- ⏳ Detecção de Mochila Cheia via OCR — **OCR instalado mas não wired**
+- ✅ Detecção de Mochila Cheia via OCR — **FEITA** (lê "Your item box is full." no mesmo OCR do chat → 📦 Discord + venda automática; timer = rede de segurança)
 - ⏳ Star Paths (Farm Spot ↔ Cidade ↔ NPC) — estrutura existe no código
 - ⏳ Petfood como módulo independente — **já existe no código**, UI feita
 - ⏳ Helper Mode v1 (link 1-pra-1 entre 2 chars)
@@ -210,7 +210,7 @@ Plano original mantido. Não iniciado.
 
 - ⏳ Telemetria sessão + histórico + por papel — **Dashboard já tem kills + tempo**
 - ⏳ Tier de Itens (5 níveis) — **3 categorias já existem na UI (Lixo/Bons/Raros), expandir pra 5 níveis**
-- ✅ Discord Webhook — **COMPLETO (sessão 2026-05-25):** detecção de drop por OCR + webhook (`discord_notify.py`) + thread paralela + dashboard (painel de drops + triagem ✅/❌ + barra de ação + alerta de morte 💀) + **alerta de MOCHILA CHEIA 📦 (vende automático)** + **alertas em EMBEDS** (cards com cor/char/horário; cor por tipo, pronta pra raridade). Falta só: **filtro por cor de raridade** (depende da detecção de raridade) e **Tesseract no .exe**.
+- ✅ Discord Webhook — **COMPLETO (sessão 2026-05-25):** detecção de drop por OCR + webhook (`discord_notify.py`) + thread paralela + dashboard (painel de drops + triagem ✅/❌ + barra de ação + alerta de morte 💀) + **alerta de MOCHILA CHEIA 📦 (vende automático)** + **alertas em EMBEDS** (cards com cor/char/horário; cor por tipo, pronta pra raridade). Falta só: **filtro por cor de raridade** (depende da detecção de raridade) e **Tesseract no nuitka/.exe** (o caminho ZIP já tem: `tools/make_portable_tesseract.py` monta `src/GhostBot/Tesseract-OCR/` portátil, gitignorada, que vai no zip — código já a acha; falta só o `--include-data-dir` no build-executable.yml).
 - ⏳ Acesso Mobile via Tailscale
 - ⏳ Dashboard HTML local (5 chars em tempo real)
 - ⏳ Auto-Venda Completa (13 etapas)
