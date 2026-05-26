@@ -210,7 +210,7 @@ Plano original mantido. Não iniciado.
 
 - ⏳ Telemetria sessão + histórico + por papel — **Dashboard já tem kills + tempo**
 - ⏳ Tier de Itens (5 níveis) — **3 categorias já existem na UI (Lixo/Bons/Raros), expandir pra 5 níveis**
-- ✅ Discord Webhook — **COMPLETO (sessão 2026-05-25):** detecção de drop por OCR + webhook (`discord_notify.py`) + thread paralela + dashboard (painel de drops + triagem ✅/❌ + barra de ação + alerta de morte 💀). Falta só o polimento: msg bonita (embeds/raridade), filtro por cor de raridade, Tesseract no .exe.
+- ✅ Discord Webhook — **COMPLETO (sessão 2026-05-25):** detecção de drop por OCR + webhook (`discord_notify.py`) + thread paralela + dashboard (painel de drops + triagem ✅/❌ + barra de ação + alerta de morte 💀) + **alerta de MOCHILA CHEIA 📦 (vende automático)** + **alertas em EMBEDS** (cards com cor/char/horário; cor por tipo, pronta pra raridade). Falta só: **filtro por cor de raridade** (depende da detecção de raridade) e **Tesseract no .exe**.
 - ⏳ Acesso Mobile via Tailscale
 - ⏳ Dashboard HTML local (5 chars em tempo real)
 - ⏳ Auto-Venda Completa (13 etapas)
