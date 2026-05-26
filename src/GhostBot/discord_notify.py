@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,11 +21,23 @@ from GhostBot import logger
 
 _path_base = os.path.dirname(__file__)
 
-_WEBHOOK_CANDIDATES = [
-    os.path.join(os.path.expanduser("~"), "GhostBot", "discord_webhook.txt"),
-    os.path.normpath(os.path.join(_path_base, "..", "..", "discord_webhook.txt")),
-    os.path.join(_path_base, "discord_webhook.txt"),
-]
+
+def _webhook_candidates() -> list[str]:
+    """Pastas onde discord_webhook.txt pode estar (fonte E .exe compilado)."""
+    bases = [
+        os.path.join(os.path.expanduser("~"), "GhostBot"),        # config por jogador
+        os.path.normpath(os.path.join(_path_base, "..", "..")),   # raiz do repo (fonte)
+        _path_base,
+    ]
+    try:  # pasta do .exe (e /GhostBot) -- onde o pacote dos amigos poe o arquivo
+        exe_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+        bases += [exe_dir, os.path.join(exe_dir, "GhostBot")]
+    except Exception:
+        pass
+    return [os.path.join(b, "discord_webhook.txt") for b in bases]
+
+
+_WEBHOOK_CANDIDATES = _webhook_candidates()
 
 
 def load_webhook_url() -> str | None:

@@ -207,11 +207,22 @@ def read_chat_items(client: "AbstractClientWindow") -> list[str] | None:
 # ----------------------------------------------------------------------------
 # Watchlist (alertas_drop.txt)
 # ----------------------------------------------------------------------------
-_WATCHLIST_CANDIDATES = [
-    os.path.join(os.path.expanduser("~"), "GhostBot", "alertas_drop.txt"),
-    os.path.normpath(os.path.join(_path_base, "..", "..", "alertas_drop.txt")),
-    os.path.join(_path_base, "alertas_drop.txt"),
-]
+def _watchlist_candidates() -> list[str]:
+    """Pastas onde alertas_drop.txt pode estar (fonte E .exe compilado)."""
+    bases = [
+        os.path.join(os.path.expanduser("~"), "GhostBot"),        # config por jogador
+        os.path.normpath(os.path.join(_path_base, "..", "..")),   # raiz do repo (fonte)
+        _path_base,
+    ]
+    try:  # pasta do .exe (e /GhostBot) -- onde o pacote dos amigos poe o arquivo
+        exe_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+        bases += [exe_dir, os.path.join(exe_dir, "GhostBot")]
+    except Exception:
+        pass
+    return [os.path.join(b, "alertas_drop.txt") for b in bases]
+
+
+_WATCHLIST_CANDIDATES = _watchlist_candidates()
 
 
 def default_watchlist_path() -> str:
