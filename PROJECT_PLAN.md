@@ -59,7 +59,7 @@
 
 ---
 
-## ✅ SPRINT 0 — Fundação (23/mai → 03/jun) — **~90% concluída**
+## ✅ SPRINT 0 — Fundação (23/mai → 03/jun) — **~98% concluída** (só falta "Inventory Full" via OCR)
 
 ### Concluído
 - ✅ Python 3.11+ instalado + `pip install .` do fork
@@ -76,9 +76,9 @@
 - ✅ Char de teste subiu de Lv 1 → Lv 2 durante a validação
 
 ### Pendente Sprint 0
-- 🔄 OCR: **`pytesseract` validado em runtime + tratamento tunado pro chat** (drop detection, 2026-05-25). Falta ainda "Inventory Full" e nome de mob/alvo.
-- ⏳ Tutoriais RaaskiBot v3.0 no YouTube (referência pras 17 features)
-- ⏳ Primeiro farm de teste do **Assassin real** do dono (não só char de teste)
+- 🔄 OCR: **`pytesseract` validado em runtime + tratamento tunado pro chat** (drop detection, 2026-05-25). ✅ Nome de mob/alvo **resolvido por POINTER** (`get_target_name`, usado no Boss-lock + botão "Pegar alvo"). **Falta só "Inventory Full".**
+- ✅ ~~Tutoriais RaaskiBot v3.0 no YouTube~~ — concluído (referência pras features absorvida).
+- ✅ ~~Primeiro farm de teste do **Assassin real** do dono~~ — concluído (farm real validado, não mais só char de teste).
 
 ---
 
@@ -116,6 +116,18 @@ Aplicada nesta sessão sobre tudo que o bot já tinha:
 - 🐛 `_battle_pots` tinha condições HP/MP swapped (checava `battle_hp_pot` mas comparava `battle_mana_threshold`)
 - 🐛 Threshold sliders ficavam triggering sempre (ui mandava `60` mas código esperava `0.6`) — agora `_as_decimal` converte automaticamente se valor > 1
 - 🐛 Dead code removido: `target_hp_full()` e `is_target_dead()` em `pointers.py`
+
+### Bug fixes (sessão 2026-05-25 — retorno ao spot / regen / venda / drop)
+- 🐛 **Regen "sentava e não voltava a atacar"** — `_goto_start_location` exigia dist ≤ 2, mas o clique no minimapa só EMPURRA o char (sem precisão fina) → ficava em nudge infinito, nunca terminava o descanso, nunca atacava. Fix: chega com dist ≤ 8 + desiste se não aproxima + teto de tentativas (commit `21c5090`).
+- 🐛 **Retorno ia pro LUGAR ERRADO** ("local que não escolhi") — `move_to_pos` pra dist > 50 caía no `_move_to_pos_via_map` (mapa-calculado do upstream, que erra de lugar). Fix: novo `move_to_pos_minimap()` (só minimapa, relativo ao char); mapa-calculado banido pra movimento in-zone (commit `5463278`).
+- 🐛 **Runaway (char andava sem parar "pra esquerda")** — clicar na BORDA do minimapa = auto-walk contínuo no TO + sem timeout. Fix: clique recuado pra DENTRO do minimapa (70% do alcance, char vai e PARA) + timeout 5s (commit `c8e9dbc`).
+- 🐛 **Parava pra farmar no meio do caminho de volta** — mob no caminho cancelava a viagem (anti-trava desistia dentro do raio → farmava ali). Fix: modo "voltando" persiste até CENTRALIZAR no spot (não ataca enquanto volta; anti-trava após 6 ciclos) (commit `7b7397c`).
+- 🐛 **Congelamento pós-venda (até ~60s parado no spot sem atacar)** — a volta da venda exigia dist ≤ 3, impossível pelo clique no mapa. Fix: reconhece a chegada quando o char PARA de andar (`block_while_moving`) (commit `0f186e2`).
+- 🐛 **"Spot de farm (mapa)" sumia com a aba Sell desativada** — o campo salvava na config da Sell; com Sell off o Save descartava (virava None). Fix: campo movido pra `AttackConfig.return_spot_map_offset` (commit `5c77cac`).
+- 🐛 **Drop "às vezes detecta, às vezes não"** — o DropWatch lia o chat só ENTRE as ações do loop; em combate pesado lia raramente e o drop sumia. Fix: DropWatch + DeathAlert rodam em THREAD paralela própria (~2s fixos) (commit `7ceb920`).
+- 🐛 **Drop contado errado (2 iguais = 1)** — dedup pro Discord também suprimia a contagem do Dashboard. Fix: `poll()` retorna `(alerts, deltas)` — alerts com dedup (Discord não spamma), deltas conta cada ocorrência nova (commit `0bdc26a`).
+- 🐛 **Regen desperdiçava pot / sentava demais** — saía do descanso cedo demais e re-sentava. Fix: recupera até ~95% antes de voltar (commit `f4a1340`) + descanso máx 16s e volta a atacar na hora se mob agressivo (commit `045ccbb`).
+- 🐛 **Discord HTTP 403** — User-Agent padrão do urllib bloqueado pelo Discord. Fix: header `User-Agent: TalismanBot/1.0` em `discord_notify.py`.
 
 ### Nova lógica em `attack.py`
 - ✨ **`_wait_resource_refill`** — depois de usar pot HP/MP, bot **para de atacar** e espera o recurso encher (≥95%). Por detecção, não tempo. Sai se HP cai de novo (sob ataque) ou após 30s. Resolve o problema de "atacar interrompe regen do pot".
@@ -174,7 +186,7 @@ Plano original mantido. Não iniciado.
 - Toggle "Cave Mode" separado de Farm Mode
 - Dropdown "Papel: TANK / HEALER / DPS" por char
 - 3 rotações por char: Farm / Boss-DPS / Boss-Tank
-- Boss Target Lock por nome configurável
+- ✅ **Boss Target Lock por nome configurável** — FEITO (commit `0f186e2`): checkbox "Travar no Boss" + campo "Nome do Boss" na aba Attack; dá TAB até o nome bater e ataca SÓ ele. + botão **"🎯 Pegar alvo"** (commit `0d95dc7`) preenche o nome com o alvo selecionado no jogo (zero digitação). Testado ao vivo, funcionou.
 - Lógica TANK / DPS / FAIRY específica
 - Painel Debug em tempo real
 - Auto-stop e Cave Stats
