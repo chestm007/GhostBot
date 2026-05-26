@@ -34,6 +34,10 @@ dist/
 
 src/GhostBot.egg-info/
 
+# Tesseract portatil (~72MB): montado localmente com
+# tools/make_portable_tesseract.py e empacotado no zip dos amigos. Fora do git.
+src/GhostBot/Tesseract-OCR/
+
 # --- dev/build junk (sessao 2026-05-24) ---
 tmp_*.png
 tmp_*.bmp
