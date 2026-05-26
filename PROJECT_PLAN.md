@@ -162,6 +162,13 @@ Aplicada nesta sessão sobre tudo que o bot já tinha:
 - 🐛 **Regen desperdiçava pot / sentava demais** — saía do descanso cedo demais e re-sentava. Fix: recupera até ~95% antes de voltar (commit `f4a1340`) + descanso máx 16s e volta a atacar na hora se mob agressivo (commit `045ccbb`).
 - 🐛 **Discord HTTP 403** — User-Agent padrão do urllib bloqueado pelo Discord. Fix: header `User-Agent: TalismanBot/1.0` em `discord_notify.py`.
 
+### Bug fixes (sessão 2026-05-26 — empacotamento `.exe` pros amigos)
+- 🐛 **Dashboard travado em "loading." no `.exe`** (combate funcionava, mas sem dados na tela) — um **submódulo externo** (`GhostBot/lib/talisman_online_python` → repo do `chestm007`) empacotava uma versão ANTIGA do `pointers.py` SEM `get_xp` → `to_json` estourava `AttributeError` a cada poll → a interface nunca recebia os dados. Fix: submódulo **REMOVIDO** (fork autossuficiente) + `submodules: recursive` tirado dos 3 workflows (commit `d625eed`).
+- 🐛 **Discord não postava + watchlist vazia no `.exe`** — `discord_webhook.txt` e `alertas_drop.txt` não eram achados (o código não olhava na pasta do `.exe`, só em `~/GhostBot`, raiz-do-repo e temp). Fix: candidatos passam a incluir a pasta do exe (`sys.argv[0]`), igual o `_find_tesseract` (commit `8ba1d4a`).
+- 🐛 **Tesseract não embutia no `.exe`** — nuitka ignora `.dll`/`.exe` no `include-data-dir`. Fix: Tesseract vai como **pasta ao lado** do exe no pacote (`_find_tesseract` já procura lá); validado.
+- 🐛 **Build #1 do server crashava** — `pytesseract` faltava nas deps do `pyproject.toml` + `Images/` não-embutida. Fix: commit `43e4afb`.
+- ✨ **Interface auto-recupera a lista de personagens** — fechar e reabrir a interface não some mais com o char (pede a lista a cada ~3s) (commit `cfd34e9`).
+
 ### Nova lógica em `attack.py`
 - ✨ **`_wait_resource_refill`** — depois de usar pot HP/MP, bot **para de atacar** e espera o recurso encher (≥95%). Por detecção, não tempo. Sai se HP cai de novo (sob ataque) ou após 30s. Resolve o problema de "atacar interrompe regen do pot".
 
@@ -192,6 +199,23 @@ Aplicada nesta sessão sobre tudo que o bot já tinha:
 | **Categorização de itens (Lixo/Bons/Raros)** | UI completa + drag-and-drop | Lógica de auto-vender/alertar vem em Sprint 4. Precisa task #6 (nomes de itens). |
 | **Pausa após pot pra HP encher** | Implementado em `attack.py` | Por detecção, não tempo |
 | **Set de team** (configurar nomes dos 4 amigos pra Fairy buffar) | Não iniciado | Aguarda time conectar pra validar TEAM_NAME |
+| **Pacote `.exe` autocontido pros amigos** | ✅ FEITO e validado ao vivo | run_server + run_client + Tesseract (pasta ao lado) + launcher 1-clique + ícone; zip 139 MB no Drive. Fork autossuficiente (sem submódulo externo). |
+| **Interface auto-recupera a lista de chars** | ✅ FEITO | fecha/reabre sem o char sumir (pede a lista a cada ~3s) — commit `cfd34e9` |
+| **`gh` CLI (disparar/baixar builds)** | ✅ FEITO | logado como LpiresUrt; builds e download do `.exe` pela linha de comando |
+
+---
+
+## 🎯 ORDEM DE PRIORIDADE (atualizada 2026-05-26)
+
+Reordenado pelo dono. O que atacar, em ordem:
+1. **Sprint 1 — FINALIZAR** (em andamento): amigos testando o `.exe` → 5 farmando juntos + classes + montaria + blacklist + Star Paths + Helper.
+2. **Sprint 2 — Cave Bot Genérico.**
+3. **Sprint 7 — "Bots prontos" (Scripts/Presets) + Save robusto** ⬆️ (SUBIU — no lugar da Segurança).
+4. **Sprint 4 (resto)** — Auto-relog + ajustes da Auto-Venda + filtro por cor de raridade + resiliência.
+5. **Sprint 5 — Buffer + Login + Discord Bot interativo + tag v1.0.**
+6. **Sprint 3 — Segurança** ⬇️ (foi pro FIM — "não tão importantes").
+
+💡 **IDEIAS (sem previsão, não faremos agora):** acesso mobile via Tailscale (cada um usa o próprio PC), dashboard HTML local, e a Sprint 6 (BC dedicada, Hollow Residuals, anti-detecção avançado).
 
 ---
 
@@ -226,7 +250,7 @@ Plano original mantido. Não iniciado.
 
 ---
 
-## 📅 SPRINT 3 — Segurança (02/jul → 15/jul)
+## 📅 SPRINT 3 — Segurança — ⬇️ PRIORIDADE BAIXA, movida pro FIM (decisão do dono 2026-05-26: "não são tão importantes")
 
 Plano original mantido. Não iniciado.
 
@@ -244,11 +268,11 @@ Plano original mantido. Não iniciado.
 - ⏳ Telemetria sessão + histórico + por papel — **Dashboard já tem kills + tempo**
 - ⏳ Tier de Itens (5 níveis) — **3 categorias já existem na UI (Lixo/Bons/Raros), expandir pra 5 níveis**
 - ✅ Discord Webhook — **COMPLETO (sessão 2026-05-25):** detecção de drop por OCR + webhook (`discord_notify.py`) + thread paralela + dashboard (painel de drops + triagem ✅/❌ + barra de ação + alerta de morte 💀) + **alerta de MOCHILA CHEIA 📦 (vende automático)** + **alertas em EMBEDS** (cards com cor/char/horário; cor por tipo, pronta pra raridade). Falta: **filtro por cor de raridade** (depende da detecção de raridade) e **fechar o Tesseract no `.exe`** — caminho ZIP pronto (`tools/make_portable_tesseract.py` monta `src/GhostBot/Tesseract-OCR/` portátil, gitignorada; código já a acha). CI (`build-executable.yml`) já embute Tesseract+Images via `include-data-dir`; **`.exe` autocontido FEITO E VALIDADO ao vivo (2026-05-26):** Tesseract vai como PASTA ao lado do exe (nuitka não embute `.dll`/`.exe`), webhook/lista achados na pasta do exe, fork autossuficiente (submódulo removido). Pacote `C:\Bot\Talisman Bot.zip` testado (dashboard + drop no Discord + morte). **Falta só:** filtro por cor de raridade.
-- ⏳ Acesso Mobile via Tailscale
-- ⏳ Dashboard HTML local (5 chars em tempo real)
-- ⏳ Auto-Venda Completa (13 etapas)
+- 💡 **[IDEIA — não faremos por enquanto]** Acesso Mobile via Tailscale — cada um usa o próprio PC (decisão do dono 2026-05-26).
+- 💡 **[IDEIA — não faremos por enquanto]** Dashboard HTML local (5 chars em tempo real).
+- ✅ **Auto-Venda — FEITA e rodando ótimo** (ciclo de venda em produção + venda automática na mochila cheia). Resta só **AJUSTES** finos se aparecerem.
 - ⏳ Resiliência (retry + modo "só voltar")
-- ⏳ Auto-relog básico
+- 🔜 **Auto-relog básico — FAREMOS** (na fila; decisão do dono 2026-05-26).
 
 ---
 
@@ -272,7 +296,7 @@ Plano original mantido. Não iniciado.
 
 ---
 
-## 📅 SPRINT 7 — "Bots prontos" (Scripts/Presets de config) + Save robusto (backlog, sem data)
+## 📅 SPRINT 7 — "Bots prontos" (Scripts/Presets de config) + Save robusto — ⬆️ PRIORIDADE ALTA (subiu no lugar da Segurança; decisão do dono 2026-05-26)
 
 **Pedido do dono (2026-05-26):** poder salvar uma configuração de bot como um "script" reutilizável ("bots simples prontos") e trocar entre eles com 1 clique.
 
