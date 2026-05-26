@@ -27,7 +27,7 @@ O dono precisa montar e **mandar o pacote COMPLETO** (zip) pros 4 amigos. Conte�
   - `Iniciar BotTO.bat` (abre servidor + interface com 1 clique, pede admin) — criado local, gitignorado
   - `LEIAME.txt` (instruções pros amigos) — criado local, gitignorado
   - `alertas_drop.txt` (lista de alertas; pode mandar uma default)
-  - ❌ **NÃO** incluir o `discord_webhook.txt` (é SECRETO/pessoal — cada amigo cria o seu; o LEIAME explica)
+  - ✅ `discord_webhook.txt` **do dono, COMPARTILHADO** (decisão 2026-05-26: server privado de 4, dono confia) → feed central do time, amigos não configuram nada. Se vazar: apagar+recriar o webhook.
   - Amigos **NÃO precisam** de Python nem Tesseract — está tudo nos `.exe`. Só precisam do **jogo instalado** (site oficial).
   - Eles **não abrem o servidor na mão** — o `Iniciar BotTO.bat` sobe os dois.
 - 🩺 **Dica de diagnóstico** (se o `.exe` crashar de novo): `Start-Process C:\Bot\BotTO\run_server.exe -RedirectStandardError $env:TEMP\err.txt -PassThru` + ler o traceback. `gh` NÃO está instalado nesta máquina → acompanhar o CI por print (Win+Shift+S).
