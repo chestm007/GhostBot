@@ -57,8 +57,11 @@ jobs:
           script-name: src/GhostBot/run_${{ inputs.executable_kind }}.py
           mode: app
           windows-icon-from-ico: src/GhostBot/Images/logo.ico
-          # so o server embute o Tesseract (client/UI nao faz OCR -> fica leve)
-          include-data-dir: ${{ inputs.executable_kind == 'server' && 'src/GhostBot/Tesseract-OCR=GhostBot/Tesseract-OCR' || '' }}
+          # Images/ (templates BMP + logo) sempre; Tesseract SO no server
+          # (client/UI nao faz OCR -> fica leve). 2a linha vira vazia no client.
+          include-data-dir: |
+            src/GhostBot/Images=GhostBot/Images
+            ${{ inputs.executable_kind == 'server' && 'src/GhostBot/Tesseract-OCR=GhostBot/Tesseract-OCR' || '' }}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
