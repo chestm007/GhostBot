@@ -99,8 +99,22 @@ class AttackFrame(TabFrame):
             master=self, text="📍 Capturar spot", command=self._capture_farm_spot
         ).grid(row=6, column=2, padx=4)
 
+        ttk.Button(
+            master=self, text="🎯 Pegar alvo", command=self._grab_target_name
+        ).grid(row=8, column=2, padx=4)
+
     def _set_spot_as_current(self, field: str):
         self._vars[field].set(eval(self.master.getvar('char_info.position')))
+
+    def _grab_target_name(self):
+        """Pega o nome do alvo SELECIONADO no jogo e poe no campo 'Nome do Boss'
+        (evita erro de digitacao). Reusa o que o servidor ja manda em char_info.target_name.
+        Sem alvo valido -> avisa no proprio campo em vez de colar lixo."""
+        name = (self.master.getvar('char_info.target_name') or '').strip()
+        if name.lower() in ('', 'none', 'loading.', 'loading'):
+            self._vars['boss_name'].set("(selecione um alvo no jogo)")
+            return
+        self._vars['boss_name'].set(name)
 
     def _capture_farm_spot(self):
         """Captura o spot de farm de uma vez: a posicao X,Y do char (mede distancia)
