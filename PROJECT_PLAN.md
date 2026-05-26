@@ -4,7 +4,22 @@
 **Base:** Fork do `chestm007/GhostBot`, branch local `minha-versao-estavel`
 **Stack:** Python 3.11+ no Windows 11 + Tesseract OCR + Cheat Engine + Discord Webhook + Tailscale
 **Cronograma original:** 23/mai → 12/ago (12 semanas + Sprint 6 opcional)
-**Última atualização do doc:** 2026-05-25
+**Última atualização do doc:** 2026-05-26
+
+---
+
+## 🔖 RETOMAR AQUI — 2026-05-26 (fim do dia)
+
+**Onde paramos:** embutindo o **Tesseract no `.exe`** via GitHub Actions.
+
+- ✅ Feito hoje: botão **"🎯 Pegar alvo"** (aba Attack), **detecção de mochila cheia** (📦 Discord + venda automática), **Discord em embeds** (cards), **Tesseract portátil** (`tools/make_portable_tesseract.py` → `src/GhostBot/Tesseract-OCR/`, gitignorada), **CI** que embute Tesseract+Images no `.exe`. Tudo **pushado** no fork (`minha-versao-estavel`, último commit `43e4afb`).
+- 🟡 **Build #1 do `.exe` (server) buildou mas o `run_server.exe` CRASHAVA no runtime:** `ModuleNotFoundError: pytesseract` (faltava nas deps do `pyproject.toml`) + a pasta `Images/` não estava sendo embutida. **Corrigido no commit `43e4afb`** (pytesseract nas deps + `include-data-dir` da Images).
+- ▶️ **PRÓXIMO PASSO (amanhã):**
+  1. **Re-rodar** o workflow "Build Executable" (`executable_kind=server`) — agora com a correção.
+  2. Baixar o novo `run_server.exe`, pôr em `C:\Bot\BotTO`, rodar `testar_server_exe.bat` (sobe o server compilado + cliente Python; admin).
+  3. **Confirmar runtime:** interface detecta o jogo (sai do "loading.") + farme → drop aparece no painel = **Tesseract+OCR embutidos OK**.
+  4. Se OK: rodar o build também com `client`, e atualizar o **LEIAME.txt** dos amigos (tirar "instalar Tesseract"). Depois: gerar o `BotTO_para_amigos.zip` com a pasta portátil dentro.
+- 🩺 **Dica de diagnóstico** (se o `.exe` crashar de novo): `Start-Process C:\Bot\BotTO\run_server.exe -RedirectStandardError $env:TEMP\err.txt -PassThru` + ler o traceback. `gh` NÃO está instalado nesta máquina → acompanhar o CI por print (Win+Shift+S).
 
 ---
 
@@ -210,7 +225,7 @@ Plano original mantido. Não iniciado.
 
 - ⏳ Telemetria sessão + histórico + por papel — **Dashboard já tem kills + tempo**
 - ⏳ Tier de Itens (5 níveis) — **3 categorias já existem na UI (Lixo/Bons/Raros), expandir pra 5 níveis**
-- ✅ Discord Webhook — **COMPLETO (sessão 2026-05-25):** detecção de drop por OCR + webhook (`discord_notify.py`) + thread paralela + dashboard (painel de drops + triagem ✅/❌ + barra de ação + alerta de morte 💀) + **alerta de MOCHILA CHEIA 📦 (vende automático)** + **alertas em EMBEDS** (cards com cor/char/horário; cor por tipo, pronta pra raridade). Falta só: **filtro por cor de raridade** (depende da detecção de raridade) e **Tesseract no nuitka/.exe** (o caminho ZIP já tem: `tools/make_portable_tesseract.py` monta `src/GhostBot/Tesseract-OCR/` portátil, gitignorada, que vai no zip — código já a acha; falta só o `--include-data-dir` no build-executable.yml).
+- ✅ Discord Webhook — **COMPLETO (sessão 2026-05-25):** detecção de drop por OCR + webhook (`discord_notify.py`) + thread paralela + dashboard (painel de drops + triagem ✅/❌ + barra de ação + alerta de morte 💀) + **alerta de MOCHILA CHEIA 📦 (vende automático)** + **alertas em EMBEDS** (cards com cor/char/horário; cor por tipo, pronta pra raridade). Falta: **filtro por cor de raridade** (depende da detecção de raridade) e **fechar o Tesseract no `.exe`** — caminho ZIP pronto (`tools/make_portable_tesseract.py` monta `src/GhostBot/Tesseract-OCR/` portátil, gitignorada; código já a acha). CI (`build-executable.yml`) já embute Tesseract+Images via `include-data-dir`; **build #1 do server crashou** por `pytesseract` faltando nas deps + Images não-embutida → **corrigido (commit `43e4afb`)**; ⏭️ **re-rodar o build e validar o `run_server.exe` em runtime** (ver "🔖 RETOMAR AQUI" no topo).
 - ⏳ Acesso Mobile via Tailscale
 - ⏳ Dashboard HTML local (5 chars em tempo real)
 - ⏳ Auto-Venda Completa (13 etapas)
