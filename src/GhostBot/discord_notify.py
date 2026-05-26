@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 
 from GhostBot import logger
@@ -39,16 +40,16 @@ def load_webhook_url() -> str | None:
     return None
 
 
-def send(content: str, username: str = "Talisman Bot") -> bool:
-    """Posta uma mensagem simples no canal via webhook. True se enviou OK."""
+def _post(payload: dict) -> bool:
+    """Posta um payload (content e/ou embeds) no webhook. True se enviou OK."""
     url = load_webhook_url()
     if not url:
         logger.warning("discord_notify :: sem URL de webhook (crie discord_webhook.txt)")
         return False
-    payload = json.dumps({"content": content, "username": username}).encode("utf-8")
+    data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         url,
-        data=payload,
+        data=data,
         headers={
             "Content-Type": "application/json",
             # Discord bloqueia o User-Agent padrao do urllib (HTTP 403). Manda um proprio.
@@ -67,23 +68,59 @@ def send(content: str, username: str = "Talisman Bot") -> bool:
         return False
 
 
-def send_drop_alert(item: str, category: str, char: str | None = None) -> bool:
-    """Monta e envia o alerta de drop conforme a categoria (want / unknown)."""
-    who = f" — **{char}**" if char else ""
+def send(content: str, username: str = "Talisman Bot") -> bool:
+    """Posta uma mensagem de TEXTO simples no canal via webhook."""
+    return _post({"content": content, "username": username})
+
+
+def send_embed(embed: dict, username: str = "Talisman Bot") -> bool:
+    """Posta um EMBED (card bonito) no canal via webhook."""
+    return _post({"embeds": [embed], "username": username})
+
+
+# Cores (decimal) dos cards. Paleta do logo (verde/dourado) + semaforo.
+_GOLD = 0xFCB400    # drop alvo
+_GRAY = 0x95A5A6    # item novo (a decidir)
+_RED = 0xE03131     # morte
+_ORANGE = 0xE67E22  # mochila cheia
+
+
+def _embed(title: str, description: str, color: int, char: str | None = None) -> dict:
+    """Monta um embed padrao: titulo + descricao + cor + char no rodape + horario."""
+    e = {
+        "title": title,
+        "description": description,
+        "color": color,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    if char:
+        e["footer"] = {"text": f"👤 {char}"}
+    return e
+
+
+def send_drop_alert(item: str, category: str, char: str | None = None,
+                    color: int | None = None) -> bool:
+    """Alerta de drop como embed, conforme a categoria (want / unknown).
+
+    `color`: override opcional da cor do card. Quando a deteccao de RARIDADE
+    (pela cor do nome no jogo) ficar pronta, e so passar a cor da raridade aqui
+    -- o resto do card ja esta montado."""
     if category == "want":
-        msg = f"🎯 **DROP ALVO:** {item}{who}"
+        embed = _embed("🎯 Drop alvo!", f"**{item}**", color or _GOLD, char)
     else:  # unknown / item novo
-        msg = f"❓ Item novo: **{item}**{who}  _(decida em qual lista colocar)_"
-    return send(msg)
+        embed = _embed(
+            "❓ Item novo",
+            f"**{item}**\n_Decida em qual lista colocar (✅ Quero / ❌ Não quero no app)._",
+            color or _GRAY, char,
+        )
+    return send_embed(embed)
 
 
 def send_death_alert(char: str | None = None) -> bool:
     """Avisa no Discord que o personagem morreu (HP chegou a 0)."""
-    who = f" — **{char}**" if char else ""
-    return send(f"💀 **MORTE!** O personagem morreu{who}")
+    return send_embed(_embed("💀 Morte!", "O personagem morreu.", _RED, char))
 
 
 def send_inventory_full_alert(char: str | None = None) -> bool:
     """Avisa no Discord que a mochila encheu ('Your item box is full.')."""
-    who = f" — **{char}**" if char else ""
-    return send(f"📦 **MOCHILA CHEIA!** Indo vender{who}")
+    return send_embed(_embed("📦 Mochila cheia!", "Indo vender.", _ORANGE, char))

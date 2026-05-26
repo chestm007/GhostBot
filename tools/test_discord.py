@@ -10,7 +10,10 @@ import sys
 
 sys.path.insert(0, r"C:\Bot\BotTO\src")
 
-from GhostBot.discord_notify import load_webhook_url, send
+from GhostBot.discord_notify import (
+    load_webhook_url, send,
+    send_drop_alert, send_death_alert, send_inventory_full_alert,
+)
 
 url = load_webhook_url()
 if not url:
@@ -23,3 +26,12 @@ if not url:
 print(f"URL carregada: {url[:45]}...")
 ok = send("✅ Teste do **Talisman Bot** — webhook conectado com sucesso!")
 print("ENVIADO! Confere o canal do Discord." if ok else "FALHOU. Ver o log de erro acima.")
+
+# Previa dos 4 CARDS (embeds) novos -- pra ver como ficaram no canal.
+print("Mandando previa dos cards (embeds)...")
+char = "teste123"
+send_drop_alert("Large Ruby", "want", char)        # 🎯 dourado
+send_drop_alert("Animal Fur", "unknown", char)     # ❓ cinza
+send_inventory_full_alert(char)                    # 📦 laranja
+send_death_alert(char)                             # 💀 vermelho
+print("Previa enviada. Confere os 4 cards no canal do Discord.")
