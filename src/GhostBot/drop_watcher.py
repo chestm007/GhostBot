@@ -17,6 +17,7 @@ import difflib
 import logging
 import os
 import re
+import sys
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -42,8 +43,18 @@ _path_base = os.path.dirname(__file__)
 # uma copia embutida no pacote (pro futuro .exe que distribuimos pros amigos).
 # ----------------------------------------------------------------------------
 def _find_tesseract() -> str | None:
-    candidates = [
-        os.path.join(_path_base, "Tesseract-OCR", "tesseract.exe"),  # copia embutida (futuro)
+    # Pastas onde a copia PORTATIL pode estar (rodando do fonte OU compilado):
+    #  - _path_base = dir do pacote GhostBot. No fonte e' src/GhostBot; no nuitka
+    #    o data-dir incluido como GhostBot/Tesseract-OCR cai aqui (__file__ resolve).
+    #  - dir do executavel (.exe standalone/dist: a pasta fica ao lado / em GhostBot/).
+    bases = [_path_base]
+    try:
+        exe_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+        bases += [exe_dir, os.path.join(exe_dir, "GhostBot")]
+    except Exception:
+        pass
+    candidates = [os.path.join(b, "Tesseract-OCR", "tesseract.exe") for b in bases]
+    candidates += [  # fallback: instalacao do sistema
         r"C:\Program Files\Tesseract-OCR\tesseract.exe",
         r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
         os.path.expandvars(r"%LOCALAPPDATA%\Programs\Tesseract-OCR\tesseract.exe"),

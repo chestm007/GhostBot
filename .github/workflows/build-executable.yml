@@ -38,6 +38,18 @@ jobs:
           pip install --upgrade pip
           pip install .
 
+      # OCR (drop + mochila cheia) roda SO no server. Instala o Tesseract na
+      # versao que usamos local (5.5.0.20241111) e monta a copia portatil em
+      # src/GhostBot/Tesseract-OCR -> o nuitka embute via include-data-dir abaixo.
+      # (A pasta e' gitignorada, entao o runner precisa recria-la aqui.)
+      - name: Install Tesseract (server only)
+        if: inputs.executable_kind == 'server'
+        run: choco install tesseract --version=5.5.0.20241111 -y --no-progress
+
+      - name: Build portable Tesseract into the package (server only)
+        if: inputs.executable_kind == 'server'
+        run: python tools/make_portable_tesseract.py
+
       - name: compile ${{ inputs.executable_kind }} with nuitka
         uses: Nuitka/Nuitka-Action@main
         with:
@@ -45,6 +57,8 @@ jobs:
           script-name: src/GhostBot/run_${{ inputs.executable_kind }}.py
           mode: app
           windows-icon-from-ico: src/GhostBot/Images/logo.ico
+          # so o server embute o Tesseract (client/UI nao faz OCR -> fica leve)
+          include-data-dir: ${{ inputs.executable_kind == 'server' && 'src/GhostBot/Tesseract-OCR=GhostBot/Tesseract-OCR' || '' }}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
