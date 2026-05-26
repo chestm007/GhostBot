@@ -44,8 +44,11 @@ tmp_*.bmp
 *.PTR
 BotTO_para_amigos.zip
 start_botto.bat
+testar_server_exe.bat
 LEIAME.txt
 install.bat
+run_server.exe
+run_client.exe
 discord_webhook.txt
 .obsidian/
 .claude/settings.local.json
