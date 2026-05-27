@@ -4,20 +4,20 @@
 **Base:** Fork do `chestm007/GhostBot`, branch local `minha-versao-estavel`
 **Stack:** Python 3.11+ no Windows 11 + Tesseract OCR + Cheat Engine + Discord Webhook + Tailscale
 **Cronograma original:** 23/mai → 12/ago (12 semanas + Sprint 6 opcional)
-**Última atualização do doc:** 2026-05-26
+**Última atualização do doc:** 2026-05-27
 
 ---
 
-## 🔖 RETOMAR AQUI — 2026-05-26 (sessão 2 — Fairy CONSERTADA + auto-cura + seleção de team)
+## 🔖 RETOMAR AQUI — 2026-05-27 (sessão 3 — Fairy auto-cura CONFIRMADA + detecção de clients consertada)
 
-**Onde paramos:** Fairy Helper **FUNCIONANDO**. O bug histórico do "auto-select" (Fairy se curava a si mesma) foi **RESOLVIDO**. Auto-cura implementada. Falta só o dono **TESTAR a auto-cura amanhã** (reiniciar o server pelo fonte).
+**Onde paramos:** Fairy Helper **100% validado ao vivo** (auto-cura inclusa). Bug da detecção de clients (não apareciam na lista se o bot abria antes deles) **RESOLVIDO e confirmado ao vivo**. Duas frentes abertas, ambas de validação do dono: (1) distribuir o pacote `.exe` pros 4 amigos; (2) próxima feature = Cave Boss Bot.
 
-- ✅ **BUG RAIZ do "Fairy se auto-seleciona" RESOLVIDO** (saga de VÁRIAS sessões): `get_with_case` em `lib/vk_codes.py` somava `+0x20` em letras MAIÚSCULAS → a tecla 'seguir' `P`(0x50) virava **`0x70 = F1 = auto-selecionar a si mesmo`**. Cada P → se selecionava → o `2` seguinte curava ela. Fix: `return vk_codes[_key.lower()]` sempre (VK é case-insensitive; consertou TODA maiúscula). **Validado ao vivo** (cura+segue o aliado). NÃO era clique/código velho/TAB/auto-login. Provado com teste externo (mandar `0x50` direto = funcionava) vs bot (`'P'`→F1).
-- ✅ **Seleção de membros do grupo VALIDADA — tudo BACKSTAGE (sem mexer o mouse real):** **F1** = seleciona self; **clique backstage** (o `left_click` do bot = SendMessage) = seleciona membro. Coords `team_1..team_4` validadas ao vivo (1024x768; ~81px de espaçamento, x~29). `get_team_size()`/`team_name_N()` dizem quem está presente. ⚠️ **NÃO usar mouse REAL** (`SetCursorPos`) no código — decisão do dono.
-- ✅ **Fairy Helper: AUTO-CURA implementada** (`fairy.py`, **pendente teste ao vivo**): cada ciclo clica `team_1` (seleciona o aliado = 1º membro) → cura → P; se a HP DELA < 50% (`heal_self_threshold`): **F1 → cura → gap → clica 1º membro → P**. SEM UI nova (decisão do dono). Aliado = SEMPRE o 1º membro.
-- 🧹 Limpeza: removida a instrumentação de debug do `left_click`; apagados temporários de teste.
-- ▶️ **PRÓXIMO PASSO (amanhã):** reiniciar o `ghost-bot-server` PELO FONTE e testar a auto-cura (deixar a HP da Fairy < 50% → ela F1+cura+volta pro aliado). Depois: montar o **Cave Boss Bot** (aí SIM buffa TODOS — F1 self + clique em cada membro).
-- ⚠️ **Importante:** o ícone "Talisman Bot" (`start_botto.bat`) roda os console scripts (`ghost-bot-server.exe`/`ghost-bot-client.exe` da pasta Python) = **install editável = roda o FONTE ao vivo**. NÃO é o `run_server.exe` velho da raiz (compilado 10:42, sem o fix). Clicar no ícone JÁ roda o código novo.
+- ✅ **Fairy auto-cura CONFIRMADA 100% ao vivo (2026-05-27):** HP da própria Fairy < 50% → **F1 → cura → aguarda conjuração → re-seleciona 1º membro → P**. Funciona. Nota: `heal_self_threshold` NÃO tem campo na UI (`fairy_frame.py`) → cai sempre no default 50% (`fairy.py:100`). Mudar o limite hoje exige código (não foi pedido). **Frente da Fairy FECHADA.**
+- ✅ **BUG da detecção de clients RESOLVIDO** (`controller/bot_controller.py:_scan_for_clients`): se o bot abria ANTES dos clients, eles não apareciam na lista até reiniciar o bot. Causa: o atalho do scan pulava se o conjunto de PIDs não mudasse — mas um client aberto na tela de login (name=None) tem o mesmo PID depois de logar, então nunca era re-avaliado. Fix: só pula o scan se nada mudou **E** todo processo rodando já é um client na lista (`all_registered`). **Validado ao vivo** (abriu bot → abriu client depois → apareceu sozinho). Teste `test_async_bot_controller` passa.
+- ⏪ **(05-26) BUG RAIZ do "Fairy se auto-seleciona" RESOLVIDO** (saga de VÁRIAS sessões): `get_with_case` em `lib/vk_codes.py` somava `+0x20` em letras MAIÚSCULAS → a tecla 'seguir' `P`(0x50) virava **`0x70 = F1 = auto-selecionar a si mesmo`**. Fix: `return vk_codes[_key.lower()]` sempre. Validado ao vivo.
+- ⏪ **(05-26) Seleção de membros do grupo VALIDADA — tudo BACKSTAGE:** **F1** = self; **clique backstage** (`left_click` do bot = SendMessage) = membro. Coords `team_1..team_4` validadas (1024x768; ~81px). ⚠️ **NÃO usar mouse REAL** (`SetCursorPos`) — decisão do dono.
+- ▶️ **PRÓXIMOS PASSOS:** (1) dono sobe o pacote `C:\Bot\Talisman Bot.zip` (139 MB) num link e manda pros 4 amigos testarem (validação cross-machine); (2) montar o **Cave Boss Bot** (aí SIM buffa TODOS — F1 self + clique em cada membro presente, sem seguir).
+- ⚠️ **Importante:** o ícone "Talisman Bot" (`start_botto.bat`) roda os console scripts (`ghost-bot-server.exe`/`ghost-bot-client.exe` da pasta Python) = **install editável = roda o FONTE ao vivo**. NÃO é o `run_server.exe` velho da raiz. Clicar no ícone JÁ roda o código novo.
 
 ---
 
@@ -187,6 +187,10 @@ Aplicada nesta sessão sobre tudo que o bot já tinha:
 - 🧹 Removida a instrumentação de debug do `left_click` (`client_window.py`) que sobrou do diagnóstico.
 - ✨ **Fairy Helper: AUTO-CURA** (`fairy.py`, pendente teste ao vivo) — se a HP DELA < `heal_self_threshold` (default 50%): **F1 → cura → aguarda conjuração → clica 1º membro → P**. + o Helper agora SELECIONA o aliado (clique backstage no 1º membro, `_select_ally`) a cada ciclo — não depende mais de pré-seleção manual.
 
+### Bug fixes (sessão 2026-05-27 — Fairy auto-cura confirmada + detecção de clients)
+- ✅ **Fairy auto-cura validada 100% ao vivo** — o fluxo F1→cura→re-seleciona 1º membro→P funciona. Frente da Fairy fechada.
+- 🐛 **Clients não apareciam na lista se o bot abria ANTES deles** (`controller/bot_controller.py:_scan_for_clients`) — o atalho que pula o scan comparava só o conjunto de PIDs; um client aberto na tela de login (name=None) mantém o mesmo PID depois de logar → nunca era re-avaliado → só aparecia reiniciando o bot. Fix: só pula o scan se nada mudou **E** todo processo rodando já virou client na lista (`all_registered`). Validado ao vivo; teste `test_async_bot_controller` passa.
+
 ### Nova lógica em `attack.py`
 - ✨ **`_wait_resource_refill`** — depois de usar pot HP/MP, bot **para de atacar** e espera o recurso encher (≥95%). Por detecção, não tempo. Sai se HP cai de novo (sob ataque) ou após 30s. Resolve o problema de "atacar interrompe regen do pot".
 
@@ -212,7 +216,7 @@ Aplicada nesta sessão sobre tudo que o bot já tinha:
 
 | Feature | Status | Notas |
 |---|---|---|
-| **Fairy Helper (cura + segue + AUTO-CURA, 1 membro)** | ✅ código feito (pendente teste ao vivo) | Seleciona o 1º membro (clique backstage) → cura → P; auto-cura (HP dela <50%): F1→cura→volta pro 1º membro. Bug do "auto-select" (P→F1) RESOLVIDO. SEM UI nova (decisão do dono). |
+| **Fairy Helper (cura + segue + AUTO-CURA, 1 membro)** | ✅ FEITO e validado 100% ao vivo (2026-05-27) | Seleciona o 1º membro (clique backstage) → cura → P; auto-cura (HP dela <50%): F1→cura→volta pro 1º membro. Bug do "auto-select" (P→F1) RESOLVIDO. SEM UI nova (decisão do dono). |
 | **Seleção de membros do grupo (backstage)** | ✅ validado ao vivo | F1 = self; clique backstage (`left_click`) = membro. Coords `team_1..4` validadas (1024x768, ~81px). ⚠️ NÃO usar mouse real. |
 | **Fairy buff em GRUPO (TODOS os membros)** | reservado p/ Cave Boss Bot (Sprint 2) | F1 self + clique em cada membro presente (`get_team_size`/`team_name_N`); SEM seguir. Separado do Helper. |
 | **Dashboard com Kills + Tempo** | Funcionando | Detecta kill via transição HP alvo positivo→morto |

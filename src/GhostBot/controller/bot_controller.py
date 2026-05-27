@@ -336,13 +336,18 @@ class BotController(ABC):
                             self.logger.exception(e)
 
         current_client_proc_ids = {c.proc.process_id for c in self.clients.values()}
+        running_ids = [p.process_id for p in current_running_procs]
 
-        if [p.process_id for p in current_running_procs] == self._seen_clients:
+        # So pula o scan se NADA mudou E todos os processos rodando ja viraram
+        # clients na lista. Se um client existe mas ainda nao foi promovido (ex:
+        # abriu antes de logar -> name=None), segue escaneando ate ele logar --
+        # senao ele some da lista ate o bot ser reiniciado.
+        all_registered = all(pid in current_client_proc_ids for pid in running_ids)
+        if running_ids == self._seen_clients and all_registered:
             self.logger.debug('No change in running processes')
-            self._seen_clients = [p.process_id for p in current_running_procs]
             return
 
-        self._seen_clients = [p.process_id for p in current_running_procs]
+        self._seen_clients = running_ids
 
         remove_closed_clients()
 
