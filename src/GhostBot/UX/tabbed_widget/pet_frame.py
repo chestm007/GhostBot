@@ -36,10 +36,6 @@ class PetFrame(TabFrame):
                 default=5, min_val=1, max_val=60, suffix="min",
                 hint="De quanto em quanto tempo alimenta o pet do Tamer (minutos).",
             ),
-            respawn_interval=create_entry(
-                self._tamer_box, "Re-invocar a cada (min):", 3, 0, ("bot_config.pet.respawn_interval", str), entry_width=4,
-                hint="OPCIONAL: re-invoca de tempos em tempos (pet que expira sozinho). Vazio = só quando morrer.",
-            ),
         )
 
         # ---- Flag + bloco do PET NORMAL ----
@@ -77,7 +73,6 @@ class PetFrame(TabFrame):
             self.setvar('bot_config.pet.spawn', str(b.get('spawn', '') or ''))
             self.setvar('bot_config.pet.food', str(b.get('food', '') or ''))
             self.setvar('bot_config.pet.food_interval', str(config.pet.food_interval_mins or '5'))
-            self.setvar('bot_config.pet.respawn_interval', str(config.pet.spawn_interval_mins or ''))
             self.setvar('bot_config.pet.normal_pet', bool(config.pet.normal_pet))
             self.setvar('bot_config.pet.normal_food', str(b.get('normal_food', '') or ''))
             self.setvar('bot_config.pet.normal_food_interval', str(config.pet.normal_food_interval_mins or '10'))
@@ -96,7 +91,6 @@ class PetFrame(TabFrame):
             bindings=self._populate_bindings(bindings),
             tamer_pet=var_or_none(self.getvar('bot_config.pet.tamer_pet'), bool),
             food_interval_mins=var_or_none(self.getvar('bot_config.pet.food_interval')),
-            spawn_interval_mins=var_or_none(self.getvar('bot_config.pet.respawn_interval')),
             normal_pet=var_or_none(self.getvar('bot_config.pet.normal_pet'), bool),
             normal_food_interval_mins=var_or_none(self.getvar('bot_config.pet.normal_food_interval')),
         )

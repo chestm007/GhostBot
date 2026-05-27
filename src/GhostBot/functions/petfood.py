@@ -1,8 +1,8 @@
 """Pet -- sustentacao de DOIS tipos de pet, cada um com sua flag (decisao do dono):
 
-  - PET DO TAMER (combate): invoca no Start, RE-INVOCA se morrer (detecta `pet_active`),
-    alimenta a cada `food_interval_mins`, re-invocacao periodica OPCIONAL
-    (`spawn_interval_mins`; vazio = so quando morre). Tecla de spawn = TOGGLE.
+  - PET DO TAMER (combate): invoca no Start, RE-INVOCA se morrer (detecta `pet_active`)
+    e alimenta a cada `food_interval_mins`. So re-invoca quando MORRE (nao por tempo --
+    decisao do dono). Tecla de spawn = TOGGLE.
   - PET NORMAL (companheiro): so ALIMENTA a cada `normal_food_interval_mins`
     (aperta a tecla `normal_food`). Sem invocar/re-invocar.
 
@@ -30,7 +30,6 @@ class Petfood(Runner):
         self.config: PetConfig = client.config.pet
         self._last_feed = 0.0          # comida do pet do Tamer
         self._last_normal_feed = 0.0   # comida do pet normal
-        self._last_refresh = time.time()   # nao renova logo no Start (acabou de invocar)
 
     def _run(self) -> bool:
         if self.config.tamer_pet:
@@ -60,12 +59,6 @@ class Petfood(Runner):
                 self._client.press_key(food)
                 self._last_feed = time.time()
 
-        # Re-invocacao periodica OPCIONAL (pet que expira) -- vazio = nao faz
-        if spawn and self.config.spawn_interval_mins:
-            if time.time() - self._last_refresh >= seconds(minutes=int(self.config.spawn_interval_mins)):
-                self._refresh_pet(spawn)
-                self._last_refresh = time.time()
-
     # ---------------------------------------------------------- PET NORMAL
     def _feed_normal_pet(self) -> None:
         food = (self.config.bindings or {}).get('normal_food')
@@ -86,15 +79,3 @@ class Petfood(Runner):
             if not self._client.running or self._client.pet_active:
                 return
             time.sleep(0.5)
-
-    def _refresh_pet(self, spawn) -> None:
-        """Renova o pet do Tamer: despawn (toggle) -> espera sumir -> invoca de novo."""
-        self._client.set_action("🐾 Renovando o pet")
-        self._log_info("renovando o pet do Tamer (despawn + spawn)")
-        if self._client.pet_active:
-            self._client.press_key(spawn)
-            for _ in range(self._SPAWN_POLL):
-                if not self._client.running or not self._client.pet_active:
-                    break
-                time.sleep(0.5)
-        self._spawn_pet(spawn)
