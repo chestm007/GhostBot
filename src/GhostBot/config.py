@@ -140,11 +140,17 @@ class BuffConfig(FunctionConfig):
 @dataclass
 class PetConfig(FunctionConfig):
     class Bindings(TypedDict):
-        spawn: NotRequired[int | str]
-        food: NotRequired[int | str]
+        spawn: NotRequired[int | str]         # invocar o pet do Tamer (toggle)
+        food: NotRequired[int | str]          # comida do pet do Tamer
+        normal_food: NotRequired[int | str]   # comida do pet NORMAL (companheiro)
     bindings: Bindings = None
+    # Pet do TAMER (combate): invoca/re-invoca-se-morrer/alimenta
+    tamer_pet: bool = None
     spawn_interval_mins: int = None
     food_interval_mins: int = None
+    # Pet NORMAL (companheiro): so alimenta periodicamente
+    normal_pet: bool = None
+    normal_food_interval_mins: int = None
 
 @dataclass
 class FairyConfig(FunctionConfig):
