@@ -22,13 +22,13 @@ class AttackFrame(TabFrame):
         self._class_combo.grid(row=0, column=1, padx=2, pady=(6, 2), sticky="w")
         self._class_combo.bind("<<ComboboxSelected>>", lambda _e: self._on_class_change())
 
-        # Faixa HP — Frame inteiro colorido, widgets dentro
+        # Faixa HP/MP (POTS) — gridadas nas rows 4-5 (ordem canonica: pots depois do combo)
         hp_row = tk.Frame(self, bg=HP_BG)
-        hp_row.grid(row=1, column=0, columnspan=12, sticky="ew", padx=2, pady=1)
+        hp_row.grid(row=4, column=0, columnspan=12, sticky="ew", padx=2, pady=1)
 
         # Faixa MP
         mp_row = tk.Frame(self, bg=MP_BG)
-        mp_row.grid(row=2, column=0, columnspan=12, sticky="ew", padx=2, pady=1)
+        mp_row.grid(row=5, column=0, columnspan=12, sticky="ew", padx=2, pady=1)
 
         # Espalha: faixas ocupam a largura toda; o "Tecla Pot" vai pra direita
         self.grid_columnconfigure(11, weight=1)
@@ -59,34 +59,34 @@ class AttackFrame(TabFrame):
                 bg=MP_BG,
             ),
             stuck=create_int_slider(
-                self, "Sem dano por (s):", 3, 0, "bot_config.attack.battle_stuck",
+                self, "Sem dano por (s):", 12, 0, "bot_config.attack.battle_stuck",
                 default=8, min_val=1, max_val=10, suffix="s",
                 hint="Se o HP do alvo não cair por esse tempo, o bot considera travado e troca de alvo",
             ),
             roam=create_int_slider(
-                self, "Distância máx do spot:", 4, 0, "bot_config.attack.battle_roam",
+                self, "Distância máx do spot:", 11, 0, "bot_config.attack.battle_roam",
                 default=40, min_val=15, max_val=100, suffix="un",
                 hint="Raio de farm ao redor do Spot. Se o personagem passar dessa distância, ele "
                      "recentraliza no Spot (pequenos cliques no minimapa). 15=bem grudado · 100=mais solto.",
             ),
             spot=create_entry(
-                self, "Spot (X,Y):", 6, 0, ("bot_config.attack.spot", str),
+                self, "Spot (X,Y):", 9, 0, ("bot_config.attack.spot", str),
                 hint="Coordenadas X,Y do ponto de farm — medem a distância pra saber quando voltar. "
                      "Preenchido por 'Posição atual' ou pelo '📍 Capturar spot' abaixo.",
             ),
             map_spot=create_entry(
-                self, "Spot de farm (mapa):", 7, 0, ("bot_config.attack.return_spot_map_offset", str),
+                self, "Spot de farm (mapa):", 10, 0, ("bot_config.attack.return_spot_map_offset", str),
                 hint="Pra ONDE o bot volta quando sai do raio de farm (clique no MAPA aberto). Fique no "
                      "spot, abra o MAPA (M), ponha o mouse no seu personagem no mapa e clique "
                      "'📍 Capturar spot'. É o MESMO da aba Sell (sincronizado: mexe num, muda no outro).",
             ),
             boss_lock=create_entry(
-                self, "Travar no Boss", 8, 0, ("bot_config.attack.boss_lock", bool),
+                self, "Travar no Boss", 1, 0, ("bot_config.attack.boss_lock", bool),
                 hint="Se marcado, o bot dá TAB até achar o NOME do boss (abaixo) e ataca SÓ ele "
                      "(ignora mobs comuns). Pra boss runs.",
             ),
             boss_name=create_entry(
-                self, "Nome do Boss:", 9, 0, ("bot_config.attack.boss_name", str), entry_width=18,
+                self, "Nome do Boss:", 2, 0, ("bot_config.attack.boss_name", str), entry_width=18,
                 hint="Nome (ou parte) do boss pra travar o alvo. Ex.: 'Jing Gou'. Só vale com "
                      "'Travar no Boss' marcado.",
             ),
@@ -94,33 +94,33 @@ class AttackFrame(TabFrame):
 
         # Combo dinâmico: 1 linha vazia inicialmente, usuário adiciona/remove
         self._combo = ComboWidget(
-            self, "Combo:", grid_row=5, grid_column=0,
+            self, "Combo:", grid_row=3, grid_column=0,
             hint="Sequência de teclas que o bot aperta em loop. Cada linha: tecla + intervalo em milissegundos. Adicione quantas quiser.",
         )
         self._combo.add_row()  # 1 linha vazia pra começar
 
         ttk.Button(
             master=self, text="Posição atual", command=lambda: self._set_spot_as_current('spot')
-        ).grid(row=6, column=2, padx=4)
+        ).grid(row=9, column=2, padx=4)
 
         ttk.Button(
             master=self, text="📍 Capturar spot", command=self._capture_farm_spot
-        ).grid(row=7, column=2, padx=4)
+        ).grid(row=10, column=2, padx=4)
 
         ttk.Button(
             master=self, text="🎯 Pegar alvo", command=self._grab_target_name
-        ).grid(row=9, column=2, padx=4)
+        ).grid(row=2, column=2, padx=4)
 
         # ---- Extras por CLASSE (aparecem conforme o dropdown) ----
         # Tamer: tecla de ataque do pet. Fairy: tecla de cura (usada no lugar do pot HP).
         self._tamer_extra = tk.Frame(self, bg=T.BG_MAIN)
-        self._tamer_extra.grid(row=10, column=0, columnspan=12, sticky="w")
+        self._tamer_extra.grid(row=8, column=0, columnspan=12, sticky="w")
         self._vars['pet_attack'] = create_entry(
             self._tamer_extra, "Tecla ataque do pet:", 0, 0, ("bot_config.attack.pet_attack", str), entry_width=3,
             hint="Tamer: tecla que manda o pet atacar. O bot aperta ao pegar CADA novo alvo.",
         )
         self._fairy_extra = tk.Frame(self, bg=T.BG_MAIN)
-        self._fairy_extra.grid(row=10, column=0, columnspan=12, sticky="w")
+        self._fairy_extra.grid(row=8, column=0, columnspan=12, sticky="w")
         self._vars['heal'] = create_entry(
             self._fairy_extra, "Tecla de Cura:", 0, 0, ("bot_config.attack.heal", str), entry_width=3,
             hint="Fairy: ao cair do 'Pot HP em %', ela aperta ESTA cura (em vez de pot de vida). MP segue por pot.",
@@ -128,12 +128,12 @@ class AttackFrame(TabFrame):
 
         # ---- Buffs periódicos (vieram da extinta aba Buff) ----
         self._vars['buff_interval'] = create_int_slider(
-            self, "Buffar a cada:", 11, 0, "bot_config.attack.buff_interval",
+            self, "Buffar a cada:", 6, 0, "bot_config.attack.buff_interval",
             default=15, min_val=1, max_val=60, suffix="min",
             hint="De quanto em quanto tempo reaplica os buffs (minutos). Buffs duram ~10-20 min.",
         )
         self._buff_combo = ComboWidget(
-            self, "Buffs:", grid_row=12, grid_column=0,
+            self, "Buffs:", grid_row=7, grid_column=0,
             hint="Sequência de buffs aplicada periodicamente (auto-buff, sem trocar alvo). Tecla + intervalo (ms).",
             show_tab_button=False,
         )
