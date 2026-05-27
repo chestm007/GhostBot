@@ -192,7 +192,11 @@ def get_with_case(_key: int | str | None) -> int:
     """Fetch the keycode for the key from our map"""
     try:
         if isinstance(_key, str) and len(_key) == 1:  # if `key` is [a-zA-Z]
-            return vk_codes[_key.lower()] + 0x20 if _key.isupper() else vk_codes[_key.lower()]
+            # VK codes NAO tem maiuscula/minuscula: 'P' e 'p' sao a MESMA tecla fisica.
+            # O '+0x20' antigo p/ maiusculas corrompia TODA letra maiuscula -- ex.:
+            # 'P'(0x50) virava 0x70 = F1 (= auto-selecionar a si mesmo). Era o bug do
+            # "a Fairy se seleciona do nada": a tecla 'seguir' (P) virava F1.
+            return vk_codes[_key.lower()]
         else:
             return vk_codes[_key]
     except (AttributeError, KeyError) as e:
