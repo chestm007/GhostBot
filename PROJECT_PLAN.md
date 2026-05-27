@@ -345,7 +345,7 @@ Plano original mantido. Não iniciado.
 **Pedido do dono (2026-05-26):** poder salvar uma configuração de bot como um "script" reutilizável ("bots simples prontos") e trocar entre eles com 1 clique.
 
 **Requisitos:**
-1. **Botão "Salvar script":** salva a configuração ATUAL (todas as abas — Attack, Regen, Buff, Fairy, Pet, Sell) como um preset com NOME.
+1. **Botão "Salvar script":** salva a configuração ATUAL (todas as abas — Attack, Fairy, Boss, Pet, Sell) como um preset com NOME.
 2. **Lista de scripts na LATERAL DIREITA:** espelha a lista de personagens logados da esquerda. Cada item mostra o **NOME do script** + a **última atualização** em formato abreviado **`dd/mm/yy hh:mm`**.
 3. **Aplicar por clique:** clicar num script da lista **SUBSTITUI** a configuração atual (carrega o preset nas abas do personagem selecionado).
 4. **🔴 Save SUPER confiável (crítico nesta sprint):** o botão **Save tem bugs hoje** — falha em **silêncio** se `config.validate()` barrar (o `.yml` não salva e o usuário não sabe). Como o save é o coração desta feature, esta sprint precisa:
