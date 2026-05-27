@@ -54,9 +54,17 @@ class FunctionsFrame(tk.Frame):
             ("Regen", 'regen_enabled'), ("Pet", 'pet_enabled'), ("Sell", 'sell_enabled'),
             ("Boss", 'boss_enabled'),
         )
+        self._other_checks = []   # (var_key, checkbutton) das funcoes NAO-boss
         for _i, (_txt, _key) in enumerate(_checks):
-            ttk.Checkbutton(master=checks_frame, text=_txt, style="TCheckbutton", width=13,
-                            variable=self._vars[_key]).grid(row=_i, column=0, sticky="w", pady=1)
+            _cb = ttk.Checkbutton(master=checks_frame, text=_txt, style="TCheckbutton", width=13,
+                                  variable=self._vars[_key])
+            _cb.grid(row=_i, column=0, sticky="w", pady=1)
+            if _key != 'boss_enabled':
+                self._other_checks.append((_key, _cb))
+        # Regra "Boss e' so Boss": ligar o Boss desmarca e DESABILITA o resto (o modo boss
+        # nao roda junto com o farm normal). O trace pega tanto o clique do usuario quanto
+        # o load de config (quando main.py seta bot_config.boss.enabled).
+        self._vars['boss_enabled'].trace_add('write', lambda *a: self._sync_boss_only())
 
         char_info_frame = tk.Frame(master=self)
         char_info_frame.grid(row=0, column=1, rowspan=5)
@@ -149,6 +157,18 @@ class FunctionsFrame(tk.Frame):
         self.drops_container.pack(fill="x", padx=4, pady=(0, 6))
         self._last_drops = None
         self.update_drops({})  # placeholder inicial
+
+    def _sync_boss_only(self):
+        """Regra 'Boss e' so Boss': com o Boss ligado, desmarca e DESABILITA as outras
+        funcoes (nao da pra marcar). Boss desligado -> reabilita. Chamado pelo trace do
+        bot_config.boss.enabled (clique do usuario ou load de config)."""
+        boss_on = bool(self._vars['boss_enabled'].get())
+        for _key, _cb in getattr(self, '_other_checks', []):
+            if boss_on:
+                self._vars[_key].set(False)
+                _cb.state(['disabled'])
+            else:
+                _cb.state(['!disabled'])
 
     def update_drops(self, drops: dict):
         """Entrada thread-safe (chamada pela thread do IPC): so redesenha quando

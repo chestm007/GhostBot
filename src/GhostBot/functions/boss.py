@@ -1,12 +1,16 @@
 """Modo Cave Boss -- papel por char (Tank / DPS / Fairy).
 
 A aba "Boss" da UI escolhe o papel; este runner age conforme `config.boss.role`.
+Os 3 papeis estao implementados (2026-05-27):
 
-Passo 1 (2026-05-27): TANK funcional -- trava no boss (TAB ate o nome), ataca com o
-combo SEM parar, e a cada `buff_interval_secs` reaplica os buffs do tank (so aperta a
-tecla; buff de tank e auto-cast, nao troca de alvo). Pots HP/MP opcionais (tecla em
-branco = desligado -- o tank normalmente nao usa MP). DPS e Fairy ficam como placeholder
-(em construcao) ate os proximos passos.
+- TANK: trava no boss (TAB ate o nome), ataca com o combo SEM parar, e a cada
+  `buff_interval_secs` reaplica os buffs do tank (so aperta a tecla; auto-cast, nao
+  troca de alvo). Pots HP/MP opcionais (tecla vazia = off; tank deixa MP vazio).
+- DPS: bate no boss; se PUXA AGGRO (perde vida em combate -- inferimos, nao da pra ler
+  o aggro do boss direto) recua com F1 -> espera sair de combate -> o tank repuxa ->
+  volta. MP baixo: F1 -> espera sair de combate -> pot. Aggro sempre ligado.
+- FAIRY: spama a tecla de cura no ALVO ATUAL a cada `heal_interval_secs`; o jogador
+  troca o alvo (sem mira automatica -- nao da pra ler o HP dos outros membros).
 
 Reusa a mesma logica de boss-lock do Attack (_target_is_boss / _find_boss).
 """
@@ -52,7 +56,7 @@ class Boss(Runner):
 
         # MP baixo (antes de engajar) -> recua e recupera
         if self._mp_low():
-            return self._recover_mp()
+            return self._recover_mp(boss)
 
         if not self._target_is_boss(boss):
             if not self._find_boss(boss):
@@ -67,11 +71,11 @@ class Boss(Runner):
             # AGGRO: perdi vida em combate -> puxei o aggro -> recua (F1) e espera o tank
             cur_hp = self._safe_hp()
             if last_hp is not None and cur_hp is not None and cur_hp < last_hp:
-                return self._backoff("🛑 Puxei aggro → F1, esperando o tank repuxar")
+                return self._backoff_aggro(boss)
             last_hp = cur_hp
             # MP baixo no meio da luta -> recua e recupera
             if self._mp_low():
-                return self._recover_mp()
+                return self._recover_mp(boss)
             self._hp_pot_simple()   # pot HP opcional (tecla vazia = off)
             if not self._cur_attack_queue:
                 self._cur_attack_queue = list(self.config.attacks or [])
@@ -83,32 +87,37 @@ class Boss(Runner):
             time.sleep(int(interval) / 1000)
         return True
 
-    def _backoff(self, action_msg: str) -> bool:
-        """Recua: F1 (seleciona a si mesmo -> para de atacar o boss) + espera sair de combate.
-        O tank repuxa o aggro pela ameaca dele. Volta a atacar no proximo ciclo."""
-        self._client.set_action(action_msg)
-        self._log_info("DPS: %s", action_msg)
+    def _backoff_aggro(self, boss: str) -> bool:
+        """Puxou aggro: F1 (seleciona a si mesmo -> para de atacar o boss) -> espera sair de
+        combate (o tank repuxa pela ameaca) -> TAB pra re-pegar o boss -> volta a bater."""
+        self._client.set_action("🛑 Puxei aggro → F1, esperando o tank repuxar")
+        self._log_info("DPS: puxei aggro -> F1 + espera sair de combate")
         self._client.press_key('f1')
         self._wait_out_of_combat()
+        self._find_boss(boss)   # TAB de volta pro boss -> continua no proximo ciclo
         return True
 
-    def _recover_mp(self) -> bool:
-        """MP baixo: recua (F1), espera sair de combate, toma o pot MP, deixa subir um pouco
-        (pra nao recuar de novo na hora). Sem pot configurado, so recua e espera."""
-        self._backoff("💧 MP baixo → F1, recuperando fora de combate")
+    def _recover_mp(self, boss: str) -> bool:
+        """MP baixo: F1 (para de atacar) -> espera sair de combate -> toma o pot MP -> deixa
+        subir um pouco -> TAB pra RE-PEGAR o alvo (pedido do dono) -> volta a bater. Sem pot
+        configurado, so recua, espera e re-pega."""
+        self._client.set_action("💧 MP baixo → F1, recuperando fora de combate")
+        self._log_info("DPS: MP baixo -> F1 + recupera")
+        self._client.press_key('f1')
+        self._wait_out_of_combat()
         mp_key = (self.config.bindings or {}).get('battle_mana_pot')
-        if not mp_key:
-            return True
-        self._client.press_key(mp_key)
-        thr = self._as_decimal(self.config.battle_mana_threshold) if self.config.battle_mana_threshold is not None else 0.5
-        start = time.time()
-        while self._client.running and (time.time() - start) < 8:
-            time.sleep(0.5)
-            try:
-                if self._client.mana_percent >= thr:
+        if mp_key:
+            self._client.press_key(mp_key)
+            thr = self._as_decimal(self.config.battle_mana_threshold) if self.config.battle_mana_threshold is not None else 0.5
+            start = time.time()
+            while self._client.running and (time.time() - start) < 8:
+                time.sleep(0.5)
+                try:
+                    if self._client.mana_percent >= thr:
+                        break
+                except Exception:
                     break
-            except Exception:
-                break
+        self._find_boss(boss)   # TAB de volta pro alvo -> continua batendo
         return True
 
     def _wait_out_of_combat(self, timeout_s: int = 20) -> None:

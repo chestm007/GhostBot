@@ -98,6 +98,11 @@ Como não lê HP dos outros, as opções são:
 - **F1 = self:** confirmar ao vivo que F1 realmente tira o alvo do boss e para o dano (era o mesmo
   F1 que a Fairy usa pra se selecionar — já validado lá).
 
-## ⚠️ Uso: ligar SÓ o "Boss"
-Pro modo boss, deixar **só o checkbox "Boss"** marcado na Dashboard (desmarcar Attack/Sell/etc.) —
-senão o farm normal e o Boss rodam juntos e brigam pelo controle do char.
+## ✅ Regra "Boss é só Boss" (ENFORCED na UI)
+Ligar o checkbox **"Boss"** na Dashboard **desmarca e desabilita** os outros (Attack/Fairy/Buff/
+Regen/Pet/Sell) — não dá pra marcar o resto. Desligar o Boss reabilita. Garante que o modo boss
+não roda junto com o farm normal (`FunctionsFrame._sync_boss_only`, trace no `bot_config.boss.enabled`).
+
+## 🔁 DPS — re-pega o alvo (TAB) depois do F1
+Tanto no recuo por aggro quanto na recuperação de MP, depois do **F1** + espera sair de combate
+(+ pot, no caso do MP), o DPS dá **TAB** (`_find_boss`) pra re-travar no boss e voltar a bater na hora.
