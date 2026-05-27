@@ -34,12 +34,111 @@ class Boss(Runner):
         if role == 'tank':
             return self._run_tank()
         if role == 'dps':
-            self._client.set_action("⚔️ DPS no boss (em construção)")
-            return True
+            return self._run_dps()
         if role == 'fairy':
             return self._run_fairy()
         self._client.set_action("🐉 Boss: selecione um Papel na aba")
         return True
+
+    # ------------------------------------------------------------------- DPS
+    def _run_dps(self) -> bool:
+        """Bate no boss; se PUXAR AGGRO (perde vida em combate) recua: F1 -> espera sair de
+        combate -> o tank repuxa -> volta. Mesma logica pra MP baixo: F1 -> espera sair de
+        combate -> pot. (Nao da pra ler o aggro do boss direto; inferimos pela queda de HP.)"""
+        boss = (self.config.boss_name or '').strip()
+        if not boss:
+            self._client.set_action("🐉 DPS: configure o Nome do Boss")
+            return True
+
+        # MP baixo (antes de engajar) -> recua e recupera
+        if self._mp_low():
+            return self._recover_mp()
+
+        if not self._target_is_boss(boss):
+            if not self._find_boss(boss):
+                self._client.set_action(f"🔍 Procurando boss: {boss}")
+                return True
+
+        self._client.set_action(f"⚔️ DPS no boss: {boss}")
+        last_hp = self._safe_hp()
+        while self._client.target_hp is not None and self._client.target_hp >= 0 and self._client.running:
+            if not self._target_is_boss(boss):
+                return True
+            # AGGRO: perdi vida em combate -> puxei o aggro -> recua (F1) e espera o tank
+            cur_hp = self._safe_hp()
+            if last_hp is not None and cur_hp is not None and cur_hp < last_hp:
+                return self._backoff("🛑 Puxei aggro → F1, esperando o tank repuxar")
+            last_hp = cur_hp
+            # MP baixo no meio da luta -> recua e recupera
+            if self._mp_low():
+                return self._recover_mp()
+            self._hp_pot_simple()   # pot HP opcional (tecla vazia = off)
+            if not self._cur_attack_queue:
+                self._cur_attack_queue = list(self.config.attacks or [])
+            if not self._cur_attack_queue:
+                self._client.set_action("⚔️ DPS: configure o Combo de ataque")
+                return True
+            key, interval = self._cur_attack_queue.pop(0)
+            self._client.press_key(key)
+            time.sleep(int(interval) / 1000)
+        return True
+
+    def _backoff(self, action_msg: str) -> bool:
+        """Recua: F1 (seleciona a si mesmo -> para de atacar o boss) + espera sair de combate.
+        O tank repuxa o aggro pela ameaca dele. Volta a atacar no proximo ciclo."""
+        self._client.set_action(action_msg)
+        self._log_info("DPS: %s", action_msg)
+        self._client.press_key('f1')
+        self._wait_out_of_combat()
+        return True
+
+    def _recover_mp(self) -> bool:
+        """MP baixo: recua (F1), espera sair de combate, toma o pot MP, deixa subir um pouco
+        (pra nao recuar de novo na hora). Sem pot configurado, so recua e espera."""
+        self._backoff("💧 MP baixo → F1, recuperando fora de combate")
+        mp_key = (self.config.bindings or {}).get('battle_mana_pot')
+        if not mp_key:
+            return True
+        self._client.press_key(mp_key)
+        thr = self._as_decimal(self.config.battle_mana_threshold) if self.config.battle_mana_threshold is not None else 0.5
+        start = time.time()
+        while self._client.running and (time.time() - start) < 8:
+            time.sleep(0.5)
+            try:
+                if self._client.mana_percent >= thr:
+                    break
+            except Exception:
+                break
+        return True
+
+    def _wait_out_of_combat(self, timeout_s: int = 20) -> None:
+        """Espera o personagem SAIR de combate (o tank repuxou). Bounded por timeout e
+        respeita o Stop (client.running)."""
+        start = time.time()
+        while self._client.running and self._client.in_battle and (time.time() - start) < timeout_s:
+            time.sleep(0.5)
+
+    def _mp_low(self) -> bool:
+        thr = self.config.battle_mana_threshold
+        if thr is None:
+            return False
+        try:
+            return self._client.mana_percent < self._as_decimal(thr)
+        except Exception:
+            return False
+
+    def _hp_pot_simple(self) -> None:
+        """Pot HP em combate (opcional, em branco = off). HP only -- o MP do DPS usa o recuo."""
+        hp_key = (self.config.bindings or {}).get('battle_hp_pot')
+        hp_thr = self.config.battle_hp_threshold
+        if hp_key and hp_thr is not None and self._client.hp_percent < self._as_decimal(hp_thr):
+            self._client.press_key(hp_key)
+
+    def _safe_hp(self):
+        try:
+            return self._client.hp
+        except Exception:
+            return None
 
     # ----------------------------------------------------------------- FAIRY
     def _run_fairy(self) -> bool:

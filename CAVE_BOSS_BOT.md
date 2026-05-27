@@ -74,14 +74,29 @@ Como não lê HP dos outros, as opções são:
 3. ✅ **Papel FAIRY** — FEITO (2026-05-27). Opção (a): spama a tecla de cura no ALVO ATUAL a cada
    `heal_interval_secs`; o jogador troca o alvo (clica em quem precisa). Sem mira automática (não lê
    HP de outros). Pots HP/MP próprios opcionais. Na aba, papel Fairy esconde Nome do Boss + Combo.
-4. ⏳ **Papel DPS** — PRÓXIMO. o mais complexo (controle de aggro por "apanhei em combate" + controle de MP).
+4. ✅ **Papel DPS** — FEITO (2026-05-27). Bate no boss (boss-lock + combo); **aggro automático**:
+   detecta "puxei aggro" por **perder vida em combate** → F1 → espera sair de combate (`in_battle`
+   → False) → o tank repuxa → volta. **MP**: usa o Pot MP comum — ao cair do %, F1 → espera sair de
+   combate → pot → volta. Reaproveita os campos comuns (sem campo novo); aggro sempre ligado.
 
-## 🔓 Decisões (resolvidas / em aberto)
+## ✅ TODOS OS 3 PAPÉIS PRONTOS (2026-05-27). Falta só validar o DPS ao vivo + ajustes finos.
+
+## 🔓 Decisões (resolvidas)
 - ✅ **Arquitetura:** runner novo (`functions/boss.py` + `BossConfig`), separado do farm.
 - ✅ **Tank buff:** só aperta a tecla (auto-cast, sem F1). Buffs + intervalo = config na aba.
 - ✅ **MP opcional:** pot só dispara com tecla preenchida; tank deixa MP vazio.
-- ⏭️ **Fairy:** opção (a)/(b)/(c) acima — DEFINIR no passo 3.
-- ⏳ **DPS:** confirmar o gatilho exato do "puxei aggro" (queda de HP em combate) e o limiar.
+- ✅ **Fairy:** opção (a) — spam no alvo atual, jogador troca.
+- ✅ **DPS aggro:** gatilho = **queda de HP em combate** (`hp` caiu desde o último tick do combo).
+  Sem limiar fino por ora (qualquer queda recua). Aggro **sempre ligado** (sem toggle) — adicionar
+  liga/desliga e/ou limiar SE der falso-positivo no teste ao vivo (ex.: AoE leve do boss).
+
+## ⚠️ A VALIDAR ao vivo (DPS) / possíveis ajustes
+- **Falso-positivo de aggro:** se o boss tem AoE que tira um tiquinho de todos, o DPS pode recuar à
+  toa. Ajuste fácil se acontecer: exigir queda > X% pra contar como aggro (vira config).
+- **Tempo de "sair de combate":** `_wait_out_of_combat` espera até 20s. Se o tank demora a repuxar,
+  ajustar o timeout.
+- **F1 = self:** confirmar ao vivo que F1 realmente tira o alvo do boss e para o dano (era o mesmo
+  F1 que a Fairy usa pra se selecionar — já validado lá).
 
 ## ⚠️ Uso: ligar SÓ o "Boss"
 Pro modo boss, deixar **só o checkbox "Boss"** marcado na Dashboard (desmarcar Attack/Sell/etc.) —

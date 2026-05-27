@@ -97,8 +97,17 @@ class BossFrame(TabFrame):
 
         # ---- Blocos DPS / FAIRY (placeholders -- proximos passos) ----
         self._dps_frame = tk.Frame(self, bg=T.BG_MAIN)
-        ttk.Label(self._dps_frame, text="— DPS — (em construção: controle de aggro + recuperar MP)",
-                  anchor="w", foreground=T.FG_MUTED).grid(row=0, column=0, sticky="w", padx=4, pady=6)
+        ttk.Label(self._dps_frame, text="— DPS —", anchor="w").grid(
+            row=0, column=0, columnspan=6, sticky="w", padx=4, pady=(6, 2))
+        ttk.Label(
+            self._dps_frame,
+            text=("Bate sem parar no boss (use Nome do Boss + Combo acima).\n"
+                  "• Aggro (automático): se você perder vida em combate (= puxou o aggro), aperta "
+                  "F1 e espera sair de combate → o tank repuxa → volta a bater.\n"
+                  "• MP: configure o 'Pot MP' acima — ao cair do %, recua (F1), espera sair de "
+                  "combate e toma o pot."),
+            anchor="w", foreground=T.FG_MUTED, justify="left", wraplength=580,
+        ).grid(row=1, column=0, columnspan=8, sticky="w", padx=4, pady=(2, 4))
         self._fairy_frame = tk.Frame(self, bg=T.BG_MAIN)
         ttk.Label(self._fairy_frame, text="— Fairy —", anchor="w").grid(
             row=0, column=0, columnspan=4, sticky="w", padx=4, pady=(6, 2))
