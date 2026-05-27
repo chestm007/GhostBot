@@ -8,10 +8,12 @@
 
 ---
 
-## 🔖 RETOMAR AQUI — 2026-05-27 (sessão 3 — Fairy auto-cura CONFIRMADA + detecção de clients consertada)
+## 🔖 RETOMAR AQUI — 2026-05-27 (sessão 4 — Cave Boss Bot: 3 papéis + cooldown de pots)
 
-**Onde paramos:** Fairy Helper **100% validado ao vivo** (auto-cura inclusa). Bug da detecção de clients (não apareciam na lista se o bot abria antes deles) **RESOLVIDO e confirmado ao vivo**. Duas frentes abertas, ambas de validação do dono: (1) distribuir o pacote `.exe` pros 4 amigos; (2) próxima feature = Cave Boss Bot.
+**Onde paramos:** **Cave Boss Bot CONSTRUÍDO** — aba "Boss" dinâmica (dropdown de papel) com os **3 papéis (Tank/DPS/Fairy)**; regra "Boss é só Boss" (liga Boss → bloqueia o resto); cooldown de pots de 16s no bot todo. **Falta só o dono VALIDAR o Boss ao vivo** (avisou que testa e dá retorno). Antes: Fairy Helper validado, detecção de clients consertada. Frentes abertas: validar o Boss; Bug 1 do Defender (PRIORIDADE quando o dono pedir); distribuir o `.exe`.
 
+- 🐉 **CAVE BOSS BOT — 3 PAPÉIS FEITOS (2026-05-27), spec em `CAVE_BOSS_BOT.md`:** aba "Boss" = runner novo separado (`functions/boss.py` + `BossConfig`); dropdown de Papel muda os campos (ideia do dono). **TANK:** trava no boss + combo + buffs a cada Xs (só aperta a tecla; NÃO pota — as Fairies curam). **DPS:** bate; puxou aggro (perdeu HP em combate) → F1 → espera sair de combate → TAB → volta; MP baixo → F1 → espera → pot → TAB → volta. **FAIRY:** spama a cura no ALVO ATUAL (jogador troca o alvo; não lê HP de outros). Regra "Boss só Boss" na UI. ⏳ A VALIDAR ao vivo (esp. DPS: gatilho de aggro pode precisar de limiar p/ AoE leve).
+- 💊 **POTS: cooldown de 16s (geral)** — pot no TO é regen ao longo de ~16s; o bot re-potava (pot duplicado). Fix em attack/boss/regen (`Runner._pot_ready/_use_pot`). Vale pro farm normal também.
 - ✅ **Fairy auto-cura CONFIRMADA 100% ao vivo (2026-05-27):** HP da própria Fairy < 50% → **F1 → cura → aguarda conjuração → re-seleciona 1º membro → P**. Funciona. Nota: `heal_self_threshold` NÃO tem campo na UI (`fairy_frame.py`) → cai sempre no default 50% (`fairy.py:100`). Mudar o limite hoje exige código (não foi pedido). **Frente da Fairy FECHADA.**
 - ✅ **BUG da detecção de clients RESOLVIDO** (`controller/bot_controller.py:_scan_for_clients`): se o bot abria ANTES dos clients, eles não apareciam na lista até reiniciar o bot. Causa: o atalho do scan pulava se o conjunto de PIDs não mudasse — mas um client aberto na tela de login (name=None) tem o mesmo PID depois de logar, então nunca era re-avaliado. Fix: só pula o scan se nada mudou **E** todo processo rodando já é um client na lista (`all_registered`). **Validado ao vivo** (abriu bot → abriu client depois → apareceu sozinho). Teste `test_async_bot_controller` passa.
 - ⏪ **(05-26) BUG RAIZ do "Fairy se auto-seleciona" RESOLVIDO** (saga de VÁRIAS sessões): `get_with_case` em `lib/vk_codes.py` somava `+0x20` em letras MAIÚSCULAS → a tecla 'seguir' `P`(0x50) virava **`0x70 = F1 = auto-selecionar a si mesmo`**. Fix: `return vk_codes[_key.lower()]` sempre. Validado ao vivo.
@@ -19,7 +21,7 @@
 - 🧪 **AMIGOS TESTARAM o pacote `.exe` (2026-05-27) → 2 bugs reportados (prints `Bug1.png`/`Bug2.png` em `OneDrive\Desktop\TO Bot\`):**
   - 🔴 **BUG 1 (PRIORIDADE — RESOLVER ASSIM QUE O DONO PEDIR):** a **interface não abre** na máquina do amigo — só a janela preta do servidor (`run_server.exe`) abre; o `run_client.exe` não. Causa quase certa: **Windows Defender bloqueia o `run_client.exe` na execução** (falso-positivo do nuitka, JÁ conhecido — na máquina do dono foi resolvido com exclusão de pasta no Defender; os amigos não têm). O `Iniciar BotTO.bat` confere se o arquivo EXISTE (existe), mas não detecta que o Defender mata a execução. Amigo usa **Windows Defender padrão**. ⏳ Aguardando diagnóstico do amigo (dois cliques só no `run_client.exe` → o que aparece). **NÃO reempacotar ainda** — acumular mudanças antes.
   - ✅ **BUG 2 (CONSERTADO):** `Criar atalho do Talisman Bot.bat` falhava com `DirectoryNotFoundException` ao salvar o atalho — chutava `%USERPROFILE%\Desktop`, que não existe quando o OneDrive redireciona a Área de Trabalho (padrão Win11). Fix: descobre o Desktop real via `[Environment]::GetFolderPath('Desktop')` (com fallback). Aplicado nas 2 cópias (repo + pasta do pacote). Não bloqueava (já tinha plano B), só assustava.
-- ▶️ **PRÓXIMOS PASSOS:** (1) acumular mudanças no pacote (Bug 1 + outras) ANTES de gerar o novo `.exe`/zip; (2) montar o **Cave Boss Bot** (buffa TODOS — F1 self + clique em cada membro presente, sem seguir); (3) quando o dono pedir: atacar o Bug 1 (Defender) e só então reempacotar + redistribuir pros amigos.
+- ▶️ **PRÓXIMOS PASSOS:** (1) dono **valida o Cave Boss ao vivo** (vai testar e dar retorno); (2) acumular mudanças no pacote (Bug 1 + Boss + pots) ANTES de gerar o novo `.exe`/zip; (3) quando o dono pedir: atacar o **Bug 1 (Defender)** e só então reempacotar + redistribuir pros amigos.
 - ⚠️ **Importante:** o ícone "Talisman Bot" (`start_botto.bat`) roda os console scripts (`ghost-bot-server.exe`/`ghost-bot-client.exe` da pasta Python) = **install editável = roda o FONTE ao vivo**. NÃO é o `run_server.exe` velho da raiz. Clicar no ícone JÁ roda o código novo.
 
 ---
@@ -224,7 +226,9 @@ Aplicada nesta sessão sobre tudo que o bot já tinha:
 |---|---|---|
 | **Fairy Helper (cura + segue + AUTO-CURA, 1 membro)** | ✅ FEITO e validado 100% ao vivo (2026-05-27) | Seleciona o 1º membro (clique backstage) → cura → P; auto-cura (HP dela <50%): F1→cura→volta pro 1º membro. Bug do "auto-select" (P→F1) RESOLVIDO. SEM UI nova (decisão do dono). |
 | **Seleção de membros do grupo (backstage)** | ✅ validado ao vivo | F1 = self; clique backstage (`left_click`) = membro. Coords `team_1..4` validadas (1024x768, ~81px). ⚠️ NÃO usar mouse real. |
-| **Fairy buff em GRUPO (TODOS os membros)** | reservado p/ Cave Boss Bot (Sprint 2) | F1 self + clique em cada membro presente (`get_team_size`/`team_name_N`); SEM seguir. Separado do Helper. |
+| **🐉 Cave Boss Bot (aba "Boss", 3 papéis)** | ✅ CONSTRUÍDO (2026-05-27), a validar ao vivo | Aba dinâmica (dropdown Tank/DPS/Fairy → campos mudam). TANK: boss-lock + combo + buffs/Xs (não pota). DPS: boss-lock + recuo por aggro (perdeu HP→F1→espera→TAB) + recuperar MP. FAIRY: spam de cura no alvo atual. Regra "Boss só Boss". Spec em `CAVE_BOSS_BOT.md`. |
+| **POTS com cooldown de 16s** | ✅ FEITO | Pot = regen de ~16s; cooldown por tecla evita pot duplicado. Em attack/boss/regen. |
+| **Fairy buff em GRUPO (TODOS os membros)** | reservado p/ uma rotina futura | Buffar todo o grupo (F1 self + clique em cada membro). NÃO entrou no Cave Boss (o tank/dps se buffam sozinhos; a Fairy do boss cura, não buffa em grupo). Separado do Helper. |
 | **Dashboard com Kills + Tempo** | Funcionando | Detecta kill via transição HP alvo positivo→morto |
 | **Categorização de itens (Lixo/Bons/Raros)** | UI completa + drag-and-drop | Lógica de auto-vender/alertar vem em Sprint 4. Precisa task #6 (nomes de itens). |
 | **Pausa após pot pra HP encher** | Implementado em `attack.py` | Por detecção, não tempo |
@@ -266,18 +270,21 @@ Reordenado pelo dono. O que atacar, em ordem:
 
 ---
 
-## 📅 SPRINT 2 — Cave Bot Genérico (18/jun → 01/jul)
+## 📅 SPRINT 2 — Cave Bot Genérico (18/jun → 01/jul) — **GRANDE PARTE FEITA via Cave Boss Bot**
 
-Plano original mantido. Não iniciado.
+O **Cave Boss Bot** (aba "Boss") foi construído em 2026-05-27 e cobre o coração do Sprint 2.
+Spec viva em `CAVE_BOSS_BOT.md`.
 
-- Toggle "Cave Mode" separado de Farm Mode
-- Dropdown "Papel: TANK / HEALER / DPS" por char
-- 3 rotações por char: Farm / Boss-DPS / Boss-Tank
-- ✅ **Boss Target Lock por nome configurável** — FEITO (commit `0f186e2`): checkbox "Travar no Boss" + campo "Nome do Boss" na aba Attack; dá TAB até o nome bater e ataca SÓ ele. + botão **"🎯 Pegar alvo"** (commit `0d95dc7`) preenche o nome com o alvo selecionado no jogo (zero digitação). Testado ao vivo, funcionou.
-- Lógica TANK / DPS / FAIRY específica
-  - 🟢 **Base PRONTA pro buff em grupo da Fairy:** seleção de membros validada ao vivo (F1=self, clique backstage=membro; coords `team_1..4`; `get_team_size`/`team_name_N`). Falta montar o loop "buffa TODOS" (F1 self + clique em cada membro presente, sem seguir).
-- Painel Debug em tempo real
-- Auto-stop e Cave Stats
+- ✅ **Toggle "Cave Mode" separado do Farm** — virou a **aba "Boss"** + checkbox "Boss" na Dashboard, com a regra **"Boss é só Boss"** (liga Boss → desmarca/bloqueia Attack/Sell/etc.).
+- ✅ **Dropdown "Papel: Tank / DPS / Fairy" por char** — FEITO (aba dinâmica; os campos mudam pelo papel).
+- ✅ **Boss Target Lock por nome configurável** — FEITO (commit `0f186e2`): "Travar no Boss" + "Nome do Boss" na aba Attack (e reusado no Boss); + botão **"🎯 Pegar alvo"** (`0d95dc7`). Testado ao vivo.
+- ✅ **Lógica TANK / DPS / FAIRY específica** — FEITA (a validar ao vivo):
+  - TANK: boss-lock + combo + buffs a cada Xs (auto-cast, sem pot — Fairies curam).
+  - DPS: boss-lock + recuo por aggro (perdeu HP em combate → F1 → espera sair de combate → TAB → volta) + recuperar MP (F1 → espera → pot → TAB).
+  - FAIRY: spam de cura no ALVO ATUAL (jogador troca o alvo; não lê HP de outros).
+- ⏳ **3 rotações por char (Farm / Boss-DPS / Boss-Tank)** — parcial: Farm (aba Attack) + Boss (aba Boss) prontos; "rotações salvas/preset" casa com o Sprint 7.
+- ⏳ **Painel Debug em tempo real / Auto-stop / Cave Stats** — não iniciados.
+- ⏭️ **Buff em GRUPO da Fairy (todos os membros)** — base pronta (`team_1..4`, `get_team_size`/`team_name_N`); NÃO entrou no Cave Boss (lá a Fairy cura, não buffa em grupo). Fica pra uma rotina futura se o dono quiser.
 
 ---
 
