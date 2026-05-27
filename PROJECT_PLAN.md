@@ -8,7 +8,20 @@
 
 ---
 
-## 🔖 RETOMAR AQUI — 2026-05-26 (sessão "bora continuar")
+## 🔖 RETOMAR AQUI — 2026-05-26 (sessão 2 — Fairy CONSERTADA + auto-cura + seleção de team)
+
+**Onde paramos:** Fairy Helper **FUNCIONANDO**. O bug histórico do "auto-select" (Fairy se curava a si mesma) foi **RESOLVIDO**. Auto-cura implementada. Falta só o dono **TESTAR a auto-cura amanhã** (reiniciar o server pelo fonte).
+
+- ✅ **BUG RAIZ do "Fairy se auto-seleciona" RESOLVIDO** (saga de VÁRIAS sessões): `get_with_case` em `lib/vk_codes.py` somava `+0x20` em letras MAIÚSCULAS → a tecla 'seguir' `P`(0x50) virava **`0x70 = F1 = auto-selecionar a si mesmo`**. Cada P → se selecionava → o `2` seguinte curava ela. Fix: `return vk_codes[_key.lower()]` sempre (VK é case-insensitive; consertou TODA maiúscula). **Validado ao vivo** (cura+segue o aliado). NÃO era clique/código velho/TAB/auto-login. Provado com teste externo (mandar `0x50` direto = funcionava) vs bot (`'P'`→F1).
+- ✅ **Seleção de membros do grupo VALIDADA — tudo BACKSTAGE (sem mexer o mouse real):** **F1** = seleciona self; **clique backstage** (o `left_click` do bot = SendMessage) = seleciona membro. Coords `team_1..team_4` validadas ao vivo (1024x768; ~81px de espaçamento, x~29). `get_team_size()`/`team_name_N()` dizem quem está presente. ⚠️ **NÃO usar mouse REAL** (`SetCursorPos`) no código — decisão do dono.
+- ✅ **Fairy Helper: AUTO-CURA implementada** (`fairy.py`, **pendente teste ao vivo**): cada ciclo clica `team_1` (seleciona o aliado = 1º membro) → cura → P; se a HP DELA < 50% (`heal_self_threshold`): **F1 → cura → gap → clica 1º membro → P**. SEM UI nova (decisão do dono). Aliado = SEMPRE o 1º membro.
+- 🧹 Limpeza: removida a instrumentação de debug do `left_click`; apagados temporários de teste.
+- ▶️ **PRÓXIMO PASSO (amanhã):** reiniciar o `ghost-bot-server` PELO FONTE e testar a auto-cura (deixar a HP da Fairy < 50% → ela F1+cura+volta pro aliado). Depois: montar o **Cave Boss Bot** (aí SIM buffa TODOS — F1 self + clique em cada membro).
+- ⚠️ **Importante:** o ícone "Talisman Bot" (`start_botto.bat`) roda os console scripts (`ghost-bot-server.exe`/`ghost-bot-client.exe` da pasta Python) = **install editável = roda o FONTE ao vivo**. NÃO é o `run_server.exe` velho da raiz (compilado 10:42, sem o fix). Clicar no ícone JÁ roda o código novo.
+
+---
+
+## 📦 Sessão anterior (2026-05-26 manhã) — pacote `.exe` pros amigos
 
 **Onde paramos:** montando o **pacote `.exe` pros amigos**. Server validado, client buildando.
 
@@ -169,6 +182,11 @@ Aplicada nesta sessão sobre tudo que o bot já tinha:
 - 🐛 **Build #1 do server crashava** — `pytesseract` faltava nas deps do `pyproject.toml` + `Images/` não-embutida. Fix: commit `43e4afb`.
 - ✨ **Interface auto-recupera a lista de personagens** — fechar e reabrir a interface não some mais com o char (pede a lista a cada ~3s) (commit `cfd34e9`).
 
+### Bug fixes (sessão 2026-05-26 — parte 2: Fairy "auto-select" + auto-cura)
+- 🐛 **Fairy se auto-selecionava / curava a SI MESMA** (bug histórico, várias sessões de debug) — `get_with_case` (`lib/vk_codes.py`) somava `+0x20` em letras MAIÚSCULAS → a tecla 'seguir' `P`(0x50) virava **`0x70 = F1 = auto-selecionar a si mesmo`**. Cada P (seguir) → se selecionava → o `2` (cura) seguinte curava ela. Fix: `return vk_codes[_key.lower()]` sempre (VK não tem caixa; consertou TODA letra maiúscula, ex.: 'A' virava numpad). Validado ao vivo. **NÃO era** clique fantasma / código velho / `.exe` stale / TAB / auto-login (todos descartados no caminho).
+- 🧹 Removida a instrumentação de debug do `left_click` (`client_window.py`) que sobrou do diagnóstico.
+- ✨ **Fairy Helper: AUTO-CURA** (`fairy.py`, pendente teste ao vivo) — se a HP DELA < `heal_self_threshold` (default 50%): **F1 → cura → aguarda conjuração → clica 1º membro → P**. + o Helper agora SELECIONA o aliado (clique backstage no 1º membro, `_select_ally`) a cada ciclo — não depende mais de pré-seleção manual.
+
 ### Nova lógica em `attack.py`
 - ✨ **`_wait_resource_refill`** — depois de usar pot HP/MP, bot **para de atacar** e espera o recurso encher (≥95%). Por detecção, não tempo. Sai se HP cai de novo (sob ataque) ou após 30s. Resolve o problema de "atacar interrompe regen do pot".
 
@@ -194,7 +212,9 @@ Aplicada nesta sessão sobre tudo que o bot já tinha:
 
 | Feature | Status | Notas |
 |---|---|---|
-| **Fairy Team Buff** | UI + lógica feitos | Valida quando time conectar |
+| **Fairy Helper (cura + segue + AUTO-CURA, 1 membro)** | ✅ código feito (pendente teste ao vivo) | Seleciona o 1º membro (clique backstage) → cura → P; auto-cura (HP dela <50%): F1→cura→volta pro 1º membro. Bug do "auto-select" (P→F1) RESOLVIDO. SEM UI nova (decisão do dono). |
+| **Seleção de membros do grupo (backstage)** | ✅ validado ao vivo | F1 = self; clique backstage (`left_click`) = membro. Coords `team_1..4` validadas (1024x768, ~81px). ⚠️ NÃO usar mouse real. |
+| **Fairy buff em GRUPO (TODOS os membros)** | reservado p/ Cave Boss Bot (Sprint 2) | F1 self + clique em cada membro presente (`get_team_size`/`team_name_N`); SEM seguir. Separado do Helper. |
 | **Dashboard com Kills + Tempo** | Funcionando | Detecta kill via transição HP alvo positivo→morto |
 | **Categorização de itens (Lixo/Bons/Raros)** | UI completa + drag-and-drop | Lógica de auto-vender/alertar vem em Sprint 4. Precisa task #6 (nomes de itens). |
 | **Pausa após pot pra HP encher** | Implementado em `attack.py` | Por detecção, não tempo |
@@ -223,7 +243,7 @@ Reordenado pelo dono. O que atacar, em ordem:
 
 **Status:** não iniciado. Algumas tarefas relacionadas já adiantadas via UX revolution.
 
-- ⏳ Configuração das 5 classes — **SIMPLIFICADO (insight do dono 2026-05-26):** o bot é por TECLA → o combo é genérico; cada jogador configura as próprias teclas e salva o próprio **SCRIPT** (Sprint 7). NÃO precisa de código por classe (Wizard/Monk/Assassin/Tamer). **Exceção: a Fairy** precisa de lógica especial — modo **Helper** (mira o aliado → segue → cura + rebufa sempre). ⚠️ A lógica de heal de time ATUAL (`fairy.py:_heal_team_member`) lê o HP de OUTRO bot na MESMA máquina (multi-conta) → NÃO serve pros amigos em PCs separados; o Helper cross-PC precisa de outra fonte de cura (timer ou leitura da barra de HP do grupo na tela).
+- ⏳ Configuração das 5 classes — **SIMPLIFICADO (insight do dono 2026-05-26):** o bot é por TECLA → o combo é genérico; cada jogador configura as próprias teclas e salva o próprio **SCRIPT** (Sprint 7). NÃO precisa de código por classe (Wizard/Monk/Assassin/Tamer). **Exceção: a Fairy** precisa de lógica especial — modo **Helper** ✅ **FEITO** (seleciona o 1º membro por clique backstage → cura → segue com P → rebufa; + **auto-cura** via F1 quando a HP dela cai <50%). Por tecla/clique, sem ler HP do aliado → serve cross-PC. A lógica antiga `_heal_team_member` (lia HP de outro bot na MESMA máquina) foi substituída.
 - 🔄 Instalação nos PCs dos 4 amigos — **EM ANDAMENTO:** pacote `.exe` autocontido FEITO E VALIDADO ao vivo (`C:\Bot\Talisman Bot.zip`, 139 MB, zero instalação). Falta só o dono subir num link e os amigos rodarem.
 - ⏳ Teste: os 5 farmando simultaneamente
 - ⏳ Item Blacklist (Discovery Mode) — **UI parcialmente pronta** via Sell tab (Lixo/Bons/Raros). Falta: lógica de "pegar tudo + log de drops + UI checkbox".
@@ -231,7 +251,7 @@ Reordenado pelo dono. O que atacar, em ordem:
 - ✅ Detecção de Mochila Cheia via OCR — **FEITA** (lê "Your item box is full." no mesmo OCR do chat → 📦 Discord + venda automática; timer = rede de segurança)
 - ⏳ Star Paths (Farm Spot ↔ Cidade ↔ NPC) — estrutura existe no código
 - ⏳ Petfood como módulo independente — **já existe no código**, UI feita
-- ⏳ Helper Mode v1 (link 1-pra-1 entre 2 chars)
+- ✅ **Helper Mode v1 FEITO** (cura + segue + auto-cura o 1º membro do grupo; tudo por tecla/clique backstage). O bug `P→F1` que travava tudo (Fairy se curava sozinha) foi RESOLVIDO; Helper validado ao vivo. Auto-cura pendente só de teste ao vivo.
 - ⏳ Cheat Engine: pointers de boss + nome do item no chão
 
 ---
@@ -245,6 +265,7 @@ Plano original mantido. Não iniciado.
 - 3 rotações por char: Farm / Boss-DPS / Boss-Tank
 - ✅ **Boss Target Lock por nome configurável** — FEITO (commit `0f186e2`): checkbox "Travar no Boss" + campo "Nome do Boss" na aba Attack; dá TAB até o nome bater e ataca SÓ ele. + botão **"🎯 Pegar alvo"** (commit `0d95dc7`) preenche o nome com o alvo selecionado no jogo (zero digitação). Testado ao vivo, funcionou.
 - Lógica TANK / DPS / FAIRY específica
+  - 🟢 **Base PRONTA pro buff em grupo da Fairy:** seleção de membros validada ao vivo (F1=self, clique backstage=membro; coords `team_1..4`; `get_team_size`/`team_name_N`). Falta montar o loop "buffa TODOS" (F1 self + clique em cada membro presente, sem seguir).
 - Painel Debug em tempo real
 - Auto-stop e Cave Stats
 
