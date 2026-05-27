@@ -79,6 +79,8 @@ class Attack(Locational):
     def __init__(self, client: BotClientWindow):
         super().__init__(client)
         self.config: AttackConfig = client.config.attack
+        # Classe pro farm: 'dps' (padrao) | 'tamer' (comanda o pet) | 'fairy' (se cura, sem pot HP)
+        self._char_class = (getattr(self.config, 'char_class', None) or 'dps').strip().lower()
         try:
             self._stuck_interval = int(self.config.stuck_interval or 10)
             self.roam_distance = int(self.config.roam_distance or 40)
@@ -129,6 +131,7 @@ class Attack(Locational):
             return True
 
         self._client.set_action(f"⚔️ Atacando {self._client.target_name or 'alvo'}")
+        self._command_pet()   # Tamer: manda o pet atacar este alvo (1x por mob)
         while self._client.target_hp is not None and self._client.target_hp >= 0 and self._client.running:
             if self._client.target_name == self._client.name:  # if were targeting ourselves, get a new target
                 return True
@@ -174,6 +177,7 @@ class Attack(Locational):
                 self._client.set_action(f"🔍 Procurando boss: {boss}")
                 return True   # boss nao apareceu -> espera (nao bate em mob comum)
         self._client.set_action(f"👑 BOSS: {boss}")
+        self._command_pet()   # Tamer: manda o pet atacar o boss (1x por engajamento)
         while self._client.target_hp is not None and self._client.target_hp >= 0 and self._client.running:
             if not self._target_is_boss(boss):
                 return True   # alvo deixou de ser o boss -> re-acha no proximo ciclo
@@ -184,6 +188,15 @@ class Attack(Locational):
             self._client.press_key(key)
             time.sleep(int(interval) / 1000)
         return True
+
+    def _command_pet(self) -> None:
+        """Tamer: aperta a tecla de ataque do pet pra mandar o pet atacar o alvo atual.
+        Chamado 1x ao engajar o alvo (o while segura o mob ate morrer) = 1 comando por mob."""
+        if self._char_class != 'tamer':
+            return
+        key = (self.config.bindings or {}).get('pet_attack')
+        if key:
+            self._client.press_key(key)
 
     @staticmethod
     def _as_decimal(threshold) -> float:
@@ -203,12 +216,19 @@ class Attack(Locational):
             if self._client.mana_percent < self._as_decimal(mp_thr) and self._use_pot(mp_key):
                 self._wait_resource_refill("MP")
 
-        # HP pot
-        hp_key = self.config.bindings.get('battle_hp_pot')
+        # HP: a FAIRY se CURA (skill, em vez de pot -- ela nao usa pot de vida); DPS/Tamer
+        # usam pot de HP (com cooldown de 16s). MP segue por pot pra todos (a cura gasta mana).
         hp_thr = self.config.battle_hp_threshold
-        if hp_key is not None and hp_thr is not None:
-            if self._client.hp_percent < self._as_decimal(hp_thr) and self._use_pot(hp_key):
-                self._wait_resource_refill("HP")
+        if hp_thr is not None and self._client.hp_percent < self._as_decimal(hp_thr):
+            if self._char_class == 'fairy':
+                heal_key = self.config.bindings.get('heal')
+                if heal_key:
+                    self._client.press_key(heal_key)   # cura nao e pot -> sem cooldown de pot
+                    self._wait_resource_refill("HP")
+            else:
+                hp_key = self.config.bindings.get('battle_hp_pot')
+                if hp_key and self._use_pot(hp_key):
+                    self._wait_resource_refill("HP")
 
     def _wait_resource_refill(self, resource: str, full_pct: float = 0.95, timeout_s: int = POT_DURATION_SECS):
         """Apos usar pot, espera HP/MP encher antes de voltar a atacar.

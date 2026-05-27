@@ -104,6 +104,8 @@ class AttackConfig(FunctionConfig):
     class Bindings(TypedDict):
         battle_hp_pot: NotRequired[int | str]
         battle_mana_pot: NotRequired[int | str]
+        pet_attack: NotRequired[int | str]   # Tamer: comanda o pet a atacar (no alvo novo)
+        heal: NotRequired[int | str]         # Fairy: cura a si mesma (em vez de pot de HP)
     attacks: list[list[str | int]]
     bindings: Bindings = None
     stuck_interval: int = None
@@ -114,6 +116,7 @@ class AttackConfig(FunctionConfig):
     return_spot_map_offset: tuple[int, int] = None  # offset do spot no MAPA (retorno por mapa); compartilhado com o sell
     boss_lock: bool = False   # se True, ataca SO o boss (nome abaixo) -- da TAB ate achar
     boss_name: str = None     # nome (ou parte) do boss pra travar o alvo
+    char_class: str = None    # 'dps' (padrao) | 'tamer' | 'fairy' -- extras por classe no farm
 
 @dataclass
 class RegenConfig(FunctionConfig):
