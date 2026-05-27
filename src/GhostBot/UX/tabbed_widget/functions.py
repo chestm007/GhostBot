@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from GhostBot.UX.tabbed_widget.attack_frame import AttackFrame
+from GhostBot.UX.tabbed_widget.boss_frame import BossFrame
 from GhostBot.UX.tabbed_widget.buff_frame import BuffFrame
 from GhostBot.UX.tabbed_widget.fairy_frame import FairyFrame
 from GhostBot.UX.tabbed_widget.pet_frame import PetFrame
@@ -19,6 +20,7 @@ class FunctionsFrame(tk.Frame):
         self._vars = dict(
             attack_enabled=tk.BooleanVar(master=self, name="bot_config.attack.enabled", value=False),
             fairy_enabled=tk.BooleanVar(master=self, name="bot_config.fairy.enabled", value=False),
+            boss_enabled=tk.BooleanVar(master=self, name="bot_config.boss.enabled", value=False),
             buff_enabled=tk.BooleanVar(master=self, name="bot_config.buff.enabled", value=False),
             regen_enabled=tk.BooleanVar(master=self, name="bot_config.regen.enabled", value=False),
             pet_enabled=tk.BooleanVar(master=self, name="bot_config.pet.enabled", value=False),
@@ -49,6 +51,7 @@ class FunctionsFrame(tk.Frame):
         ttk.Checkbutton(master=self, text="Regen", style="TCheckbutton", width=13, variable=self._vars['regen_enabled']).grid(row=3, column=0)
         ttk.Checkbutton(master=self, text="Pet", style="TCheckbutton", width=13, variable=self._vars['pet_enabled']).grid(row=4, column=0)
         ttk.Checkbutton(master=self, text="Sell", style="TCheckbutton", width=13, variable=self._vars['sell_enabled']).grid(row=5, column=0)
+        ttk.Checkbutton(master=self, text="Boss", style="TCheckbutton", width=13, variable=self._vars['boss_enabled']).grid(row=6, column=0)
 
         char_info_frame = tk.Frame(master=self)
         char_info_frame.grid(row=0, column=1, rowspan=5)
@@ -205,7 +208,7 @@ class FunctionsFrame(tk.Frame):
         # As abas agora ficam dentro de containers de scroll (ScrollableFrame), entao nao sao
         # mais irmas diretas no notebook. Procura cada uma na arvore toda da janela.
         _types = ((AttackFrame, 'attack'), (BuffFrame, 'buff'), (RegenFrame, 'regen'),
-                  (PetFrame, 'pet'), (FairyFrame, 'fairy'), (SellFrame, 'sell'))
+                  (PetFrame, 'pet'), (FairyFrame, 'fairy'), (BossFrame, 'boss'), (SellFrame, 'sell'))
         found = {}
 
         def _walk(w):

@@ -20,6 +20,7 @@ from GhostBot.UX.pyuiWidgets.listBox import ScrollableListbox
 from GhostBot.UX.pyuiWidgets.tabbedWidget import TabbedWidget
 
 from GhostBot.UX.tabbed_widget.attack_frame import AttackFrame
+from GhostBot.UX.tabbed_widget.boss_frame import BossFrame
 from GhostBot.UX.tabbed_widget.buff_frame import BuffFrame
 from GhostBot.UX.tabbed_widget.fairy_frame import FairyFrame
 from GhostBot.UX.tabbed_widget.functions import FunctionsFrame
@@ -185,6 +186,7 @@ class GhostBot(tk.Tk):
         self._functions_frame = _functions_frame = _make_tab(FunctionsFrame, "Dashboard")
         self._attack_frame = _make_tab(AttackFrame, "Attack")
         self._fairy_frame = _make_tab(FairyFrame, "Fairy")
+        self._boss_frame = _make_tab(BossFrame, "Boss")
         self._buff_frame = _make_tab(BuffFrame, "Buff")
         self._regen_frame = _make_tab(RegenFrame, "Regen", client=self.client)
         self._pet_frame = _make_tab(PetFrame, "Pet")
@@ -278,11 +280,13 @@ class GhostBot(tk.Tk):
         self.tabbed_widget.setvar("bot_config.buff.enabled", bool(bot_config.buff))
         self.tabbed_widget.setvar("bot_config.regen.enabled", bool(bot_config.regen))
         self.tabbed_widget.setvar("bot_config.fairy.enabled", bool(bot_config.fairy))
+        self.tabbed_widget.setvar("bot_config.boss.enabled", bool(bot_config.boss))
         self.tabbed_widget.setvar('bot_config.sell.enabled', bool(bot_config.sell))
 
         self._attack_frame.display_config(bot_config)
         self._buff_frame.display_config(bot_config)
         self._fairy_frame.display_config(bot_config)
+        self._boss_frame.display_config(bot_config)
         self._pet_frame.display_config(bot_config)
         self._regen_frame.display_config(bot_config)
         self._sell_frame.display_config(bot_config)

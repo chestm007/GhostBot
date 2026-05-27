@@ -5,6 +5,7 @@ __all__ = [
     'AttackConfig',
     'RegenConfig',
     'FairyConfig',
+    'BossConfig',
     'SellConfig',
     'BuffConfig',
     'PetConfig',
@@ -165,6 +166,25 @@ class FairyConfig(FunctionConfig):
     heal_interval_secs: float = None   # "cura sempre" a cada X segundos (decimal, ex: 2.5)
 
 @dataclass
+class BossConfig(FunctionConfig):
+    """Modo Cave Boss. role = 'tank' | 'dps' | 'fairy'. Campos compartilhados +
+    especificos por papel (a UI mostra so os do papel selecionado).
+    Passo 1 (2026-05-27): TANK funcional; DPS/Fairy em construcao."""
+    class Bindings(TypedDict):
+        battle_hp_pot: NotRequired[int | str]
+        battle_mana_pot: NotRequired[int | str]
+        heal: NotRequired[int | str]   # fairy (papel futuro)
+    role: str = None
+    attacks: list[list[str | int]] = None   # combo de ataque (tank/dps)
+    boss_name: str = None
+    bindings: Bindings = None
+    battle_hp_threshold: float = None
+    battle_mana_threshold: float = None
+    # Tank: buffs auto-aplicados (so aperta a tecla, sem trocar alvo) a cada buff_interval_secs
+    buffs: list[list[str | int]] = None
+    buff_interval_secs: float = None
+
+@dataclass
 class SellConfig(FunctionConfig):
     class Bindings(TypedDict):
         mount: NotRequired[int | str]
@@ -204,6 +224,7 @@ class Config:
     attack: AttackConfig = None
     buff: BuffConfig = None
     fairy: FairyConfig = None
+    boss: BossConfig = None
     pet: PetConfig = None
     regen: RegenConfig = None
     sell: SellConfig = None

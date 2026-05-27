@@ -2,9 +2,10 @@ from GhostBot.functions.runner import Runner, Locational
 from GhostBot.functions.attack import Attack
 from GhostBot.functions.buffs import Buffs
 from GhostBot.functions.fairy import Fairy
+from GhostBot.functions.boss import Boss
 from GhostBot.functions.petfood import Petfood
 from GhostBot.functions.regen import Regen
 from GhostBot.functions.sell import Sell
 from GhostBot.functions.drop_watch import DropWatch, DeathAlert
 
-__all__ = ['Runner', 'Locational', 'Attack', 'Buffs', 'Fairy', 'Petfood', 'Regen', 'Sell', 'DropWatch', 'DeathAlert']
+__all__ = ['Runner', 'Locational', 'Attack', 'Buffs', 'Fairy', 'Boss', 'Petfood', 'Regen', 'Sell', 'DropWatch', 'DeathAlert']
