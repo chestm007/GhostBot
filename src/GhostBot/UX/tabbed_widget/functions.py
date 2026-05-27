@@ -3,10 +3,8 @@ from tkinter import ttk
 
 from GhostBot.UX.tabbed_widget.attack_frame import AttackFrame
 from GhostBot.UX.tabbed_widget.boss_frame import BossFrame
-from GhostBot.UX.tabbed_widget.buff_frame import BuffFrame
 from GhostBot.UX.tabbed_widget.fairy_frame import FairyFrame
 from GhostBot.UX.tabbed_widget.pet_frame import PetFrame
-from GhostBot.UX.tabbed_widget.regen_frame import RegenFrame
 from GhostBot.UX.tabbed_widget.sell_frame import SellFrame
 from GhostBot.config import Config
 from GhostBot.UX import theme as T
@@ -21,8 +19,6 @@ class FunctionsFrame(tk.Frame):
             attack_enabled=tk.BooleanVar(master=self, name="bot_config.attack.enabled", value=False),
             fairy_enabled=tk.BooleanVar(master=self, name="bot_config.fairy.enabled", value=False),
             boss_enabled=tk.BooleanVar(master=self, name="bot_config.boss.enabled", value=False),
-            buff_enabled=tk.BooleanVar(master=self, name="bot_config.buff.enabled", value=False),
-            regen_enabled=tk.BooleanVar(master=self, name="bot_config.regen.enabled", value=False),
             pet_enabled=tk.BooleanVar(master=self, name="bot_config.pet.enabled", value=False),
             sell_enabled=tk.BooleanVar(master=self, name="bot_config.sell.enabled", value=False),
 
@@ -50,9 +46,8 @@ class FunctionsFrame(tk.Frame):
         checks_frame = tk.Frame(master=self, bg=T.BG_MAIN)
         checks_frame.grid(row=0, column=0, rowspan=8, sticky="nw", padx=4, pady=4)
         _checks = (
-            ("Attack", 'attack_enabled'), ("Fairy", 'fairy_enabled'), ("Buff", 'buff_enabled'),
-            ("Regen", 'regen_enabled'), ("Pet", 'pet_enabled'), ("Sell", 'sell_enabled'),
-            ("Boss", 'boss_enabled'),
+            ("Attack", 'attack_enabled'), ("Fairy", 'fairy_enabled'), ("Pet", 'pet_enabled'),
+            ("Sell", 'sell_enabled'), ("Boss", 'boss_enabled'),
         )
         self._other_checks = []   # (var_key, checkbutton) das funcoes NAO-boss
         for _i, (_txt, _key) in enumerate(_checks):
@@ -232,8 +227,8 @@ class FunctionsFrame(tk.Frame):
 
         # As abas agora ficam dentro de containers de scroll (ScrollableFrame), entao nao sao
         # mais irmas diretas no notebook. Procura cada uma na arvore toda da janela.
-        _types = ((AttackFrame, 'attack'), (BuffFrame, 'buff'), (RegenFrame, 'regen'),
-                  (PetFrame, 'pet'), (FairyFrame, 'fairy'), (BossFrame, 'boss'), (SellFrame, 'sell'))
+        _types = ((AttackFrame, 'attack'), (PetFrame, 'pet'), (FairyFrame, 'fairy'),
+                  (BossFrame, 'boss'), (SellFrame, 'sell'))
         found = {}
 
         def _walk(w):

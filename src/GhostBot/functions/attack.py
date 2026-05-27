@@ -90,10 +90,12 @@ class Attack(Locational):
             self.roam_distance = 40
         self._returning = False     # modo 'voltando ao spot': persiste ate CENTRALIZAR
         self._return_cycles = 0
+        self._last_buff_time = 0    # buffs periodicos (vieram da extinta aba Buff)
 
     def _run(self) -> bool:
         self._client.close_inventory()
         self._client.dismount()
+        self._maybe_buff()   # buffs periodicos (a cada buff_interval_mins)
 
         context = AttackContext(self._client, self._stuck_interval)
 
@@ -197,6 +199,23 @@ class Attack(Locational):
         key = (self.config.bindings or {}).get('pet_attack')
         if key:
             self._client.press_key(key)
+
+    def _maybe_buff(self) -> None:
+        """Buffs periodicos (vieram da extinta aba Buff): a cada buff_interval_mins aperta o
+        combo de buffs. Auto-buff (aplica em si), nao precisa de alvo nem de estar fora de combate."""
+        buffs = self.config.buffs
+        interval = self.config.buff_interval_mins
+        if not buffs or not interval:
+            return
+        if time.time() - self._last_buff_time < int(interval) * 60:
+            return
+        self._client.set_action("✨ Buffando")
+        for key, delay_ms in buffs:
+            if not self._client.running:
+                return
+            self._client.press_key(key)
+            time.sleep(int(delay_ms) / 1000)
+        self._last_buff_time = time.time()
 
     @staticmethod
     def _as_decimal(threshold) -> float:

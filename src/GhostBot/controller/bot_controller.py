@@ -13,7 +13,7 @@ from GhostBot.IPC.server import IPCServerLogHandler
 from GhostBot.client_window import Win32ClientWindow
 from GhostBot.config import ConfigLoader, LoginDetailsConfigLoader, GhostBotServerConfigLoader
 from GhostBot.enums.bot_status import BotStatus
-from GhostBot.functions import Attack, Buffs, Fairy, Boss, Petfood, Regen, Runner, Sell
+from GhostBot.functions import Attack, Fairy, Boss, Petfood, Runner, Sell
 from GhostBot.lib.math import linear_distance, position_difference, scale_minimap_move_distance, coords_to_map_screen_pos
 from GhostBot.lib.talisman_ui_locations import UI_locations
 from GhostBot.lib.win32.process import PymemProcess
@@ -484,10 +484,6 @@ class BotController(ABC):
             yield Sell(client)
         if client.config.pet is not None:
             yield Petfood(client)
-        if client.config.regen is not None:
-            yield Regen(client, bool(client.config.fairy))
-        if client.config.buff is not None:
-            yield Buffs(client)
         if client.config.attack is not None:
             yield Attack(client)
         if client.config.fairy is not None:

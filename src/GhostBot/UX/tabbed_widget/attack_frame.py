@@ -125,6 +125,20 @@ class AttackFrame(TabFrame):
             self._fairy_extra, "Tecla de Cura:", 0, 0, ("bot_config.attack.heal", str), entry_width=3,
             hint="Fairy: ao cair do 'Pot HP em %', ela aperta ESTA cura (em vez de pot de vida). MP segue por pot.",
         )
+
+        # ---- Buffs periódicos (vieram da extinta aba Buff) ----
+        self._vars['buff_interval'] = create_int_slider(
+            self, "Buffar a cada:", 11, 0, "bot_config.attack.buff_interval",
+            default=15, min_val=1, max_val=60, suffix="min",
+            hint="De quanto em quanto tempo reaplica os buffs (minutos). Buffs duram ~10-20 min.",
+        )
+        self._buff_combo = ComboWidget(
+            self, "Buffs:", grid_row=12, grid_column=0,
+            hint="Sequência de buffs aplicada periodicamente (auto-buff, sem trocar alvo). Tecla + intervalo (ms).",
+            show_tab_button=False,
+        )
+        self._buff_combo.add_row()
+
         self._on_class_change()
 
     def _on_class_change(self) -> None:
@@ -217,6 +231,8 @@ class AttackFrame(TabFrame):
             self.setvar('bot_config.attack.boss_name', config.attack.boss_name or '')
 
             self._combo.set_attacks(config.attack.attacks or [])
+            self.setvar('bot_config.attack.buff_interval', str(config.attack.buff_interval_mins or '15'))
+            self._buff_combo.set_attacks(config.attack.buffs or [])
         else:
             self.clear()
 
@@ -242,7 +258,10 @@ class AttackFrame(TabFrame):
             boss_lock=var_or_none(self.getvar('bot_config.attack.boss_lock')),
             boss_name=var_or_none(self.getvar('bot_config.attack.boss_name')),
             char_class=(self._class_var.get() or 'DPS').lower(),
+            buffs=self._buff_combo.get_attacks() or None,
+            buff_interval_mins=var_or_none(self.getvar('bot_config.attack.buff_interval')),
         )
 
     def _clear(self):
         self._combo.set_attacks([])
+        self._buff_combo.set_attacks([])

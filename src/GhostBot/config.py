@@ -117,6 +117,9 @@ class AttackConfig(FunctionConfig):
     boss_lock: bool = False   # se True, ataca SO o boss (nome abaixo) -- da TAB ate achar
     boss_name: str = None     # nome (ou parte) do boss pra travar o alvo
     char_class: str = None    # 'dps' (padrao) | 'tamer' | 'fairy' -- extras por classe no farm
+    # Buffs periodicos (vieram da extinta aba Buff): combo + intervalo em minutos
+    buffs: list[list[str | int]] = None
+    buff_interval_mins: int = None
 
 @dataclass
 class RegenConfig(FunctionConfig):
