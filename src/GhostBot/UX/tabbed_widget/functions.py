@@ -45,13 +45,18 @@ class FunctionsFrame(tk.Frame):
             current_action=tk.StringVar(master=self, name="char_info.current_action", value="—"),
         )
 
-        ttk.Checkbutton(master=self, text="Attack", style="TCheckbutton", width=13, variable=self._vars['attack_enabled']).grid(row=0, column=0)
-        ttk.Checkbutton(master=self, text="Fairy", style="TCheckbutton", width=13, variable=self._vars['fairy_enabled']).grid(row=1, column=0)
-        ttk.Checkbutton(master=self, text="Buff", style="TCheckbutton", width=13, variable=self._vars['buff_enabled']).grid(row=2, column=0)
-        ttk.Checkbutton(master=self, text="Regen", style="TCheckbutton", width=13, variable=self._vars['regen_enabled']).grid(row=3, column=0)
-        ttk.Checkbutton(master=self, text="Pet", style="TCheckbutton", width=13, variable=self._vars['pet_enabled']).grid(row=4, column=0)
-        ttk.Checkbutton(master=self, text="Sell", style="TCheckbutton", width=13, variable=self._vars['sell_enabled']).grid(row=5, column=0)
-        ttk.Checkbutton(master=self, text="Boss", style="TCheckbutton", width=13, variable=self._vars['boss_enabled']).grid(row=6, column=0)
+        # Todos os checkboxes de funcao num BLOCO proprio (topo-esquerda), soltos do grid
+        # dos paineis altos -- senao Sell/Boss caiam no nivel do painel de info/acao.
+        checks_frame = tk.Frame(master=self, bg=T.BG_MAIN)
+        checks_frame.grid(row=0, column=0, rowspan=8, sticky="nw", padx=4, pady=4)
+        _checks = (
+            ("Attack", 'attack_enabled'), ("Fairy", 'fairy_enabled'), ("Buff", 'buff_enabled'),
+            ("Regen", 'regen_enabled'), ("Pet", 'pet_enabled'), ("Sell", 'sell_enabled'),
+            ("Boss", 'boss_enabled'),
+        )
+        for _i, (_txt, _key) in enumerate(_checks):
+            ttk.Checkbutton(master=checks_frame, text=_txt, style="TCheckbutton", width=13,
+                            variable=self._vars[_key]).grid(row=_i, column=0, sticky="w", pady=1)
 
         char_info_frame = tk.Frame(master=self)
         char_info_frame.grid(row=0, column=1, rowspan=5)

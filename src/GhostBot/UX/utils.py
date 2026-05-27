@@ -81,7 +81,7 @@ def create_entry(
     elif v_type is bool:  # Checkbutton
         var = tk.BooleanVar(master=widget, name=v_name, value=False)
         _cb = ttk.Checkbutton(master=widget, text=label, variable=var, width=13)
-        _cb.grid(row=row, column=column, padx=2, pady=2)
+        _cb.grid(row=row, column=column, padx=4, pady=2, sticky="w")
         if hint:
             Tooltip(_cb, hint)
 

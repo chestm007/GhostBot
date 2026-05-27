@@ -183,6 +183,8 @@ class BossConfig(FunctionConfig):
     # Tank: buffs auto-aplicados (so aperta a tecla, sem trocar alvo) a cada buff_interval_secs
     buffs: list[list[str | int]] = None
     buff_interval_secs: float = None
+    # Fairy: spama a cura no ALVO ATUAL a cada heal_interval_secs (jogador troca o alvo)
+    heal_interval_secs: float = None
 
 @dataclass
 class SellConfig(FunctionConfig):

@@ -37,9 +37,23 @@ class Boss(Runner):
             self._client.set_action("⚔️ DPS no boss (em construção)")
             return True
         if role == 'fairy':
-            self._client.set_action("🧚 Fairy no boss (em construção)")
-            return True
+            return self._run_fairy()
         self._client.set_action("🐉 Boss: selecione um Papel na aba")
+        return True
+
+    # ----------------------------------------------------------------- FAIRY
+    def _run_fairy(self) -> bool:
+        """Cura no ALVO ATUAL (opcao 'a'): a Fairy so spama a tecla de cura; o jogador
+        troca o alvo (clica em quem precisa). Sem logica de mira -- nao da pra ler o HP
+        dos outros membros. Pots HP/MP proprios sao opcionais (tecla vazia = off)."""
+        heal = (self.config.bindings or {}).get('heal')
+        if not heal:
+            self._client.set_action("🧚 Fairy: configure a Tecla de Cura")
+            return True
+        self._battle_pots()   # cuida da PROPRIA Fairy (HP/MP), se configurado
+        self._client.set_action("💚 Curando (alvo atual)")
+        self._client.press_key(heal)
+        time.sleep(float(self.config.heal_interval_secs or 2))
         return True
 
     # ------------------------------------------------------------------ TANK

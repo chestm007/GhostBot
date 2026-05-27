@@ -100,8 +100,22 @@ class BossFrame(TabFrame):
         ttk.Label(self._dps_frame, text="— DPS — (em construção: controle de aggro + recuperar MP)",
                   anchor="w", foreground=T.FG_MUTED).grid(row=0, column=0, sticky="w", padx=4, pady=6)
         self._fairy_frame = tk.Frame(self, bg=T.BG_MAIN)
-        ttk.Label(self._fairy_frame, text="— Fairy — (em construção: cura na luta)",
-                  anchor="w", foreground=T.FG_MUTED).grid(row=0, column=0, sticky="w", padx=4, pady=6)
+        ttk.Label(self._fairy_frame, text="— Fairy —", anchor="w").grid(
+            row=0, column=0, columnspan=4, sticky="w", padx=4, pady=(6, 2))
+        self._vars.update(
+            heal_key=create_entry(
+                self._fairy_frame, "Tecla de Cura:", 1, 0, ("bot_config.boss.heal_key", str), entry_width=3,
+                hint="Tecla da skill de cura. A Fairy spama essa tecla no ALVO selecionado no jogo.",
+            ),
+            heal_interval=create_int_slider(
+                self._fairy_frame, "Curar a cada:", 2, 0, "bot_config.boss.heal_interval",
+                default=2, min_val=1, max_val=15, suffix="s",
+                hint="De quanto em quanto tempo aperta a cura (segundos). ~2s = tempo do cast.",
+            ),
+        )
+        ttk.Label(self._fairy_frame,
+                  text="Mira: o ALVO atual — selecione no jogo quem curar (a Fairy não escolhe sozinha).",
+                  anchor="w", foreground=T.FG_MUTED).grid(row=3, column=0, columnspan=6, sticky="w", padx=4, pady=(4, 2))
 
         self._role_blocks = {"Tank": self._tank_frame, "DPS": self._dps_frame, "Fairy": self._fairy_frame}
         self._on_role_change()
@@ -146,6 +160,11 @@ class BossFrame(TabFrame):
             self.setvar('bot_config.boss.buff_interval',
                         str(int(b.buff_interval_secs)) if b.buff_interval_secs else '30')
             self._tank_buffs.set_attacks(b.buffs or [])
+
+            heal_key = str(b.bindings.get('heal', '') or '') if b.bindings else ''
+            self.setvar('bot_config.boss.heal_key', heal_key)
+            self.setvar('bot_config.boss.heal_interval',
+                        str(int(b.heal_interval_secs)) if b.heal_interval_secs else '2')
             self._on_role_change()
         else:
             self.clear()
@@ -154,6 +173,7 @@ class BossFrame(TabFrame):
         bindings = dict(
             battle_hp_pot=self._nullable_string(self.getvar('bot_config.boss.battle_hp_key')),
             battle_mana_pot=self._nullable_string(self.getvar('bot_config.boss.battle_mp_key')),
+            heal=self._nullable_string(self.getvar('bot_config.boss.heal_key')),
         )
         return BossConfig(
             role=(self._role_var.get() or 'Tank').lower(),
@@ -164,6 +184,7 @@ class BossFrame(TabFrame):
             battle_mana_threshold=var_or_none(self.getvar('bot_config.boss.battle_mp_low')),
             buffs=self._tank_buffs.get_attacks() or None,
             buff_interval_secs=var_or_none(self.getvar('bot_config.boss.buff_interval'), float),
+            heal_interval_secs=var_or_none(self.getvar('bot_config.boss.heal_interval'), float),
         )
 
     def _clear(self) -> None:

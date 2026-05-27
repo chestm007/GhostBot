@@ -71,8 +71,10 @@ Como não lê HP dos outros, as opções são:
 2. ✅ **Papel TANK** — FEITO (2026-05-27, UI/UX validada pelo dono; lógica = reaproveitamento provado
    do Attack). Trava no boss (TAB até o nome) → ataca com o combo → reaplica os buffs do tank a cada
    X s (só aperta a tecla, auto-cast, sem trocar de alvo). Pots HP/MP opcionais (tecla vazia = off).
-3. ⏭️ **Papel FAIRY** — PRÓXIMO. spam de cura (definir o "quem curar" — ver acima).
-4. ⏳ **Papel DPS** — o mais complexo (controle de aggro por "apanhei em combate" + controle de MP).
+3. ✅ **Papel FAIRY** — FEITO (2026-05-27). Opção (a): spama a tecla de cura no ALVO ATUAL a cada
+   `heal_interval_secs`; o jogador troca o alvo (clica em quem precisa). Sem mira automática (não lê
+   HP de outros). Pots HP/MP próprios opcionais. Na aba, papel Fairy esconde Nome do Boss + Combo.
+4. ⏳ **Papel DPS** — PRÓXIMO. o mais complexo (controle de aggro por "apanhei em combate" + controle de MP).
 
 ## 🔓 Decisões (resolvidas / em aberto)
 - ✅ **Arquitetura:** runner novo (`functions/boss.py` + `BossConfig`), separado do farm.
