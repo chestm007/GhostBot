@@ -19,7 +19,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from GhostBot.functions.runner import Runner
+from GhostBot.functions.runner import Runner, POT_DURATION_SECS
 
 if TYPE_CHECKING:
     from GhostBot.controller.bot_controller import BotClientWindow
@@ -107,10 +107,11 @@ class Boss(Runner):
         self._wait_out_of_combat()
         mp_key = (self.config.bindings or {}).get('battle_mana_pot')
         if mp_key:
-            self._client.press_key(mp_key)
+            self._use_pot(mp_key)   # so pota se fora do cooldown (16s) -- evita pot duplicado
             thr = self._as_decimal(self.config.battle_mana_threshold) if self.config.battle_mana_threshold is not None else 0.5
+            # espera o MP subir (recuou, nao esta atacando -> o pot age). Ate a duracao do pot.
             start = time.time()
-            while self._client.running and (time.time() - start) < 8:
+            while self._client.running and (time.time() - start) < POT_DURATION_SECS:
                 time.sleep(0.5)
                 try:
                     if self._client.mana_percent >= thr:
@@ -137,11 +138,12 @@ class Boss(Runner):
             return False
 
     def _hp_pot_simple(self) -> None:
-        """Pot HP em combate (opcional, em branco = off). HP only -- o MP do DPS usa o recuo."""
+        """Pot HP em combate (opcional, em branco = off). HP only -- o MP do DPS usa o recuo.
+        Com cooldown (16s) pra nao re-potar enquanto o pot anterior ainda age."""
         hp_key = (self.config.bindings or {}).get('battle_hp_pot')
         hp_thr = self.config.battle_hp_threshold
         if hp_key and hp_thr is not None and self._client.hp_percent < self._as_decimal(hp_thr):
-            self._client.press_key(hp_key)
+            self._use_pot(hp_key)
 
     def _safe_hp(self):
         try:
@@ -182,7 +184,7 @@ class Boss(Runner):
             if not self._target_is_boss(boss):
                 return True   # alvo deixou de ser o boss -> re-acha no proximo ciclo
             self._maybe_buff()
-            self._battle_pots()
+            # TANK NAO pota no boss -- as Fairies curam o tank (decisao do dono).
             if not self._cur_attack_queue:
                 self._cur_attack_queue = list(self.config.attacks or [])
             if not self._cur_attack_queue:
@@ -235,16 +237,17 @@ class Boss(Runner):
         return v / 100 if v > 1 else v
 
     def _battle_pots(self) -> None:
-        """Pots HP/MP em combate. Opcionais: tecla em branco = desligado (o tank
-        normalmente deixa o MP vazio). Nao espera recuperar (tank nao pode soltar o boss)."""
+        """Pots HP/MP PROPRIOS, com cooldown (16s) pra nao re-potar. Usado pela FAIRY
+        (pots dela mesma). O TANK NAO chama isto -- as Fairies curam o tank no boss.
+        Opcionais: tecla em branco = desligado."""
         b = self.config.bindings or {}
 
         mp_key = b.get('battle_mana_pot')
         mp_thr = self.config.battle_mana_threshold
         if mp_key and mp_thr is not None and self._client.mana_percent < self._as_decimal(mp_thr):
-            self._client.press_key(mp_key)
+            self._use_pot(mp_key)
 
         hp_key = b.get('battle_hp_pot')
         hp_thr = self.config.battle_hp_threshold
         if hp_key and hp_thr is not None and self._client.hp_percent < self._as_decimal(hp_thr):
-            self._client.press_key(hp_key)
+            self._use_pot(hp_key)

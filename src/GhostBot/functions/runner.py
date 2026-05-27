@@ -13,6 +13,12 @@ if TYPE_CHECKING:
     from GhostBot.controller.bot_controller import BotClientWindow
 
 
+# Pots no TO sao REGEN ao longo de ~16s (nao instantaneos). Nao re-potar a mesma tecla
+# antes disso, senao desperdica pot (logo apos potar a % ainda parece baixa e o bot
+# potava de novo). Cooldown por tecla via Runner._pot_ready/_use_pot.
+POT_DURATION_SECS = 16
+
+
 def run_at_interval(run_on_start: bool = False, run_in_battle: bool = False):
     def inner(_clazz):
         _init = _clazz.__init__
@@ -84,6 +90,22 @@ class Runner(InjectedLoggingMixin, ABC):
     """
     def __init__(self, client: BotClientWindow):
         super().__init__(client)
+        self._pot_last_used: dict = {}   # tecla do pot -> timestamp do ultimo uso
+
+    def _pot_ready(self, key) -> bool:
+        """True se ja passou a duracao do pot (POT_DURATION_SECS) desde o ultimo uso DESTA
+        tecla -- evita re-potar enquanto o pot anterior ainda esta agindo (pot duplicado)."""
+        if not key:
+            return False
+        return (time.time() - self._pot_last_used.get(key, 0.0)) >= POT_DURATION_SECS
+
+    def _use_pot(self, key) -> bool:
+        """Usa o pot SO se nao estiver em cooldown (16s). Retorna True se usou."""
+        if not self._pot_ready(key):
+            return False
+        self._client.press_key(key)
+        self._pot_last_used[key] = time.time()
+        return True
 
     def run(self):
         if self._client.bot_status == BotStatus.running:

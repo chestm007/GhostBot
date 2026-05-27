@@ -47,13 +47,14 @@ class BossFrame(TabFrame):
         )
         self._combo.add_row()
 
-        # ---- Pots HP/MP (comuns, opcionais: tecla em branco = desligado) ----
-        pots = tk.Frame(self, bg=T.BG_MAIN)
-        pots.grid(row=2, column=0, columnspan=12, sticky="ew")
-        pots.grid_columnconfigure(11, weight=1)
-        hp_row = tk.Frame(pots, bg=HP_BG)
+        # ---- Pots HP/MP (DPS e Fairy; opcionais: tecla em branco = desligado) ----
+        # O TANK nao ve isto: no boss ele NAO pota -- as Fairies curam o tank.
+        self._pots_frame = tk.Frame(self, bg=T.BG_MAIN)
+        self._pots_frame.grid(row=2, column=0, columnspan=12, sticky="ew")
+        self._pots_frame.grid_columnconfigure(11, weight=1)
+        hp_row = tk.Frame(self._pots_frame, bg=HP_BG)
         hp_row.grid(row=0, column=0, columnspan=12, sticky="ew", padx=2, pady=1)
-        mp_row = tk.Frame(pots, bg=MP_BG)
+        mp_row = tk.Frame(self._pots_frame, bg=MP_BG)
         mp_row.grid(row=1, column=0, columnspan=12, sticky="ew", padx=2, pady=1)
         self._vars.update(
             hp_low=create_int_slider(
@@ -142,6 +143,11 @@ class BossFrame(TabFrame):
             self._common.grid_remove()
         else:
             self._common.grid()
+        # Tank NAO pota no boss (as Fairies curam) -> esconde os pots pro Tank
+        if role == "Tank":
+            self._pots_frame.grid_remove()
+        else:
+            self._pots_frame.grid()
 
     def _grab_target_name(self) -> None:
         """Poe o nome do alvo selecionado no jogo no campo 'Nome do Boss' (= aba Attack)."""

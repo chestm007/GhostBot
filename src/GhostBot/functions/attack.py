@@ -4,7 +4,7 @@ import time
 
 from typing import TYPE_CHECKING
 
-from GhostBot.functions.runner import Locational, InjectedLoggingMixin
+from GhostBot.functions.runner import Locational, InjectedLoggingMixin, POT_DURATION_SECS
 from GhostBot.lib.math import linear_distance
 
 if TYPE_CHECKING:
@@ -195,25 +195,26 @@ class Attack(Locational):
         if self.config.bindings is None:
             return
 
-        # MP pot
+        # MP pot -- so pota se passou a duracao do pot (16s); senao o anterior ainda
+        # esta agindo (evita pot duplicado). Apos potar, espera ele agir.
         mp_key = self.config.bindings.get('battle_mana_pot')
         mp_thr = self.config.battle_mana_threshold
         if mp_key is not None and mp_thr is not None:
-            if self._client.mana_percent < self._as_decimal(mp_thr):
-                self._client.press_key(mp_key)
+            if self._client.mana_percent < self._as_decimal(mp_thr) and self._use_pot(mp_key):
                 self._wait_resource_refill("MP")
 
         # HP pot
         hp_key = self.config.bindings.get('battle_hp_pot')
         hp_thr = self.config.battle_hp_threshold
         if hp_key is not None and hp_thr is not None:
-            if self._client.hp_percent < self._as_decimal(hp_thr):
-                self._client.press_key(hp_key)
+            if self._client.hp_percent < self._as_decimal(hp_thr) and self._use_pot(hp_key):
                 self._wait_resource_refill("HP")
 
-    def _wait_resource_refill(self, resource: str, full_pct: float = 0.95, timeout_s: int = 30):
+    def _wait_resource_refill(self, resource: str, full_pct: float = 0.95, timeout_s: int = POT_DURATION_SECS):
         """Apos usar pot, espera HP/MP encher antes de voltar a atacar.
-        Atacar interrompe o regen do pot, entao precisa parar.
+        Atacar interrompe o regen do pot, entao precisa parar. O pot age ao longo de
+        ~POT_DURATION_SECS (16s) -- por isso o timeout = duracao do pot (espera 'usar a
+        pot toda', a nao ser que encha antes).
         Interrompe se: cheio (>= full_pct), HP caindo (sob ataque), ou timeout."""
         self._log_debug(f'{resource} baixo, usou pot. Aguardando recuperar...')
         start = time.time()

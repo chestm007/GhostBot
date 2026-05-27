@@ -105,17 +105,20 @@ class Regen(Locational):
         return self._client.hp_percent < self._hp_threshold
 
     def _use_hp_pot(self) -> None:
-        # pot funciona EM PE e ONDE ESTA (nao vai pro spot) -- recupera primeiro
+        # pot funciona EM PE e ONDE ESTA (nao vai pro spot) -- recupera primeiro.
+        # _use_pot tem cooldown (16s) pra nao re-potar antes do pot anterior agir.
         if self._client.hp_percent < self._hp_threshold:
-            if self.config.bindings.get('hp_pot') is not None:
-                self._client.press_key(self.config.bindings.get('hp_pot'))
+            key = self.config.bindings.get('hp_pot')
+            if key is not None:
+                self._use_pot(key)
 
     def _use_mana_pot(self) -> None:
         if self._ignore_mana:
             return
         if self._client.mana_percent < self._mana_threshold:
-            if self.config.bindings.get('mana_pot') is not None:
-                self._client.press_key(self.config.bindings.get('mana_pot'))
+            key = self.config.bindings.get('mana_pot')
+            if key is not None:
+                self._use_pot(key)
 
     def _goto_spot_and_sit(self) -> None:
         self._goto_start_location()

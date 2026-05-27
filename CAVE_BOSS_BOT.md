@@ -106,3 +106,14 @@ não roda junto com o farm normal (`FunctionsFrame._sync_boss_only`, trace no `b
 ## 🔁 DPS — re-pega o alvo (TAB) depois do F1
 Tanto no recuo por aggro quanto na recuperação de MP, depois do **F1** + espera sair de combate
 (+ pot, no caso do MP), o DPS dá **TAB** (`_find_boss`) pra re-travar no boss e voltar a bater na hora.
+
+## 💊 Pots: cooldown de 16s (geral) + Tank NÃO pota
+- **Pots no TO são regen ao longo de ~16s** (não instantâneos). Antes, logo após potar a % ainda
+  parecia baixa → o bot potava de novo (pot duplicado, "acontecia muito"). Fix: **cooldown de 16s
+  por tecla de pot** (`Runner._pot_ready`/`_use_pot`, `POT_DURATION_SECS=16`) — aplicado em
+  **attack, boss e regen**. A espera de recuperação após potar também usa 16s (espera "usar a pot
+  toda", saindo antes se encher).
+- **Tank NÃO pota no boss** (decisão do dono — as Fairies curam o tank): o `_run_tank` não chama
+  `_battle_pots`, e a aba **esconde os campos de pot quando o papel é Tank**.
+- DPS: Pot HP opcional (cooldown) + recuperação de MP (recua, pota, espera, TAB). Fairy: pots
+  PRÓPRIOS opcionais (cooldown).
