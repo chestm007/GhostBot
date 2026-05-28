@@ -3,7 +3,7 @@ import os
 import threading
 import time
 import tkinter as tk
-from tkinter import ttk, filedialog
+from tkinter import ttk, filedialog, messagebox
 from tkinter import font as tkfont
 
 from GhostBot import logger
@@ -251,6 +251,11 @@ class GhostBot(tk.Tk):
         # Botoes em frame, alinhados a direita
         _btn_frame = ttk.Frame(self)
         _btn_frame.grid(row=1, column=1, sticky="e", padx=(3, 10), pady=(3, 8))
+        # Status do Save (verde = salvo / vermelho = falhou) -- feedback VISIVEL: antes o
+        # Save falhava em silencio quando a validacao barrava no servidor.
+        self._save_status = tk.Label(_btn_frame, text="", bg=T.BG_MAIN, fg=T.FG_MUTED,
+                                     font=("TkDefaultFont", 11), anchor="e", width=22)
+        self._save_status.pack(side="left", padx=(0, 8))
         ttk.Button(
             master=_btn_frame, text="Start", style="Accent.TButton",
             command=lambda: self.client.start_bot(self.selected_char())
@@ -263,9 +268,8 @@ class GhostBot(tk.Tk):
 
         self.client.add_callback(Command.CONFIG_GET, lambda message: self._update_char_config(Config.load_yaml(message.target)))
 
-        self.client.add_callback(
-            Command.CONFIG_SET, lambda message: self.log.insert_log(f'Config set for {message.target.get("char")}')
-        )
+        self.client.add_callback(Command.CONFIG_SET, self._on_config_saved)
+        self.client.add_callback(Command.ERROR, self._on_server_error)
 
         self.client.run()
 
@@ -282,6 +286,31 @@ class GhostBot(tk.Tk):
         self._boss_frame.display_config(bot_config)
         self._pet_frame.display_config(bot_config)
         self._sell_frame.display_config(bot_config)
+
+    def _set_save_status(self, text: str, color: str):
+        try:
+            self._save_status.config(text=text, fg=color)
+        except tk.TclError:
+            pass
+
+    def _on_config_saved(self, message):
+        # Servidor confirmou que gravou. Callback roda na thread do IPC -> marshala pra UI.
+        _tgt = message.target if isinstance(message.target, dict) else {}
+        _char = _tgt.get("char", "?")
+        self.log.insert_log(f'✓ Config salva para {_char}')
+        self.after(0, lambda: self._set_save_status(f'✓ Salvo {time.strftime("%H:%M:%S")}', T.GREEN_HI))
+
+    def _on_server_error(self, message):
+        # Falha vinda do servidor (ex: validacao do Save). Mostra VISIVEL (popup + label).
+        _tgt = message.target if isinstance(message.target, dict) else {}
+        _char = _tgt.get("char", "?")
+        _reason = _tgt.get("reason", "erro desconhecido")
+        self.log.insert_log(f'✗ FALHA ({_char}): {_reason}')
+        def _show():
+            self._set_save_status("✗ Falhou — veja o aviso", T.RED)
+            messagebox.showerror("Falha ao salvar",
+                                 f"Personagem: {_char}\n\n{_reason}", parent=self)
+        self.after(0, _show)
 
     def set_char_list(self, _char_list):
         # tk.Variable.get() devolve TUPLA pra lista (ou '' se vazio); _char_list eh LISTA.

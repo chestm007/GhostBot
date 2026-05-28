@@ -96,16 +96,34 @@ class GhostbotIPCServer(IPCServer):
                         return Message(Command.CONFIG_AUTOLOGIN_GET, json.dumps({}))
                     case Command.CONFIG_SET:
                         self.vdebug("dispatching CONFIG set")
-                        _client: BotClientWindow = self.bot_controller.get_client(message.target['char'])
-                        if _client is not None:
-                            self.vdebug("Setting config for %s", _client.name)
+                        _char = message.target['char']
+                        _client: BotClientWindow = self.bot_controller.get_client(_char)
+                        if _client is None:
+                            self.logger.info('char: %s - not found', _char)
+                            return Message(Command.ERROR, {
+                                'char': _char,
+                                'reason': f'Personagem "{_char}" nao encontrado. '
+                                          f'Selecione um personagem logado antes de salvar.'})
+                        # Validacao (load_yaml chama validate()) pode falhar -> NAO engolir o
+                        # erro. Responde um ERROR com o motivo pra interface mostrar. Sem isso
+                        # o Save falhava em SILENCIO (config nem gravava nem avisava).
+                        try:
                             conf = Config.load_yaml(message.target.get('config'))
-                            self.logger.info("char: %s - set config: %s", _client.name, conf)
+                        except Exception as e:
+                            self.logger.exception('CONFIG_SET validation failed for %s', _char)
+                            return Message(Command.ERROR, {
+                                'char': _char,
+                                'reason': f'Configuracao invalida (nada foi salvo):\n{e}'})
+                        try:
                             ConfigLoader(_client).save(conf)
                             _client.set_config(conf)
-                            return message
-                        self.logger.info('char: %s - not found', message.target['char'])
-                        return False
+                        except Exception as e:
+                            self.logger.exception('CONFIG_SET save failed for %s', _char)
+                            return Message(Command.ERROR, {
+                                'char': _char,
+                                'reason': f'Erro ao gravar a config no disco:\n{e}'})
+                        self.logger.info("char: %s - config salva com sucesso", _client.name)
+                        return message
                     case Command.CONFIG_AUTOLOGIN_SET:
                         self.logger.info("dispatching CONFIG_AUTOLOGIN_SET")
                         _conf_yaml = message.target

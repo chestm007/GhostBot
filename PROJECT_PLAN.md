@@ -8,7 +8,19 @@
 
 ---
 
-## 🔖 RETOMAR AQUI — 2026-05-27 (sessão 4 — Cave Boss Bot: 3 papéis + cooldown de pots)
+## 🔖 RETOMAR AQUI — 2026-05-28 (sessão 5 — Sprint 7: Save robusto FEITO+VALIDADO; lista de scripts é o próximo)
+
+**Onde paramos:** Começou a **Sprint 7 ("Bots prontos")**. **FASE 1 — Save robusto: ✅ FEITA e VALIDADA ao vivo (2026-05-28, "maravilhoso, salvou!!!").** O Save deixou de falhar em SILÊNCIO: o servidor agora responde sucesso OU um `ERROR` com o motivo, e a interface mostra **visível** (label verde "✓ Salvo HH:MM:SS" / popup vermelho + label no erro). **FASE 2 (a próxima):** lista de **scripts/presets** na lateral DIREITA (espelha a lista de personagens da esquerda) — botão "Salvar script", cada item = nome + `dd/mm/yy hh:mm`, clicar aplica o preset no char selecionado. **Decisão do dono:** só deixar trocar de script com o **bot PARADO** (Stop = emergência). Os 3 itens bloqueados (precisam dos amigos juntos) seguem como PRIORIDADE pra depois: Bug 1 do Defender, aggro do DPS no Cave Boss, distribuir o `.exe`.
+
+- 🔧 **SAVE ROBUSTO ✅ (Fase 1 da Sprint 7) — 2 arquivos:**
+  - `server.py` (`CONFIG_SET`): a validação (`Config.load_yaml` → `validate()`) podia jogar `TypeError` e o `try/except` do dispatcher engolia → nada gravava, nada avisava. Agora: char não encontrado / config inválida / erro de disco → cada um responde `Message(Command.ERROR, {char, reason})` com o motivo; sucesso → confirma de volta.
+  - `main.py`: label de status ao lado do Save (verde sucesso / vermelho falha) + callback `Command.ERROR` que abre `messagebox.showerror` com o motivo. Feedback agendado via `self.after(0,...)` (callback do IPC roda em OUTRA thread; tkinter não é thread-safe). Antes não havia callback de erro nenhum.
+  - ⚠️ Mexeu em servidor E interface → reiniciar os DOIS (fechar a janela não basta; matar o `ghost-bot-server`). Pelo ícone "Talisman Bot" sobe os dois com o código novo.
+  - ℹ️ Testes: 39 passam; 4 falhas são PRÉ-EXISTENTES (regen/config, sobra da remoção das abas Regen/Buff) — não introduzidas por esta mudança, fora do escopo.
+
+---
+
+## 🔖 RETOMAR (sessão 4 — 2026-05-27) — Cave Boss Bot: 3 papéis + cooldown de pots
 
 **Onde paramos:** **Cave Boss Bot CONSTRUÍDO** — aba "Boss" dinâmica (dropdown de papel) com os **3 papéis (Tank/DPS/Fairy)**; regra "Boss é só Boss" (liga Boss → bloqueia o resto); cooldown de pots de 16s no bot todo. **Falta só o dono VALIDAR o Boss ao vivo** (avisou que testa e dá retorno). Antes: Fairy Helper validado, detecção de clients consertada. Frentes abertas: validar o Boss; Bug 1 do Defender (PRIORIDADE quando o dono pedir); distribuir o `.exe`.
 
@@ -348,10 +360,7 @@ Plano original mantido. Não iniciado.
 1. **Botão "Salvar script":** salva a configuração ATUAL (todas as abas — Attack, Fairy, Boss, Pet, Sell) como um preset com NOME.
 2. **Lista de scripts na LATERAL DIREITA:** espelha a lista de personagens logados da esquerda. Cada item mostra o **NOME do script** + a **última atualização** em formato abreviado **`dd/mm/yy hh:mm`**.
 3. **Aplicar por clique:** clicar num script da lista **SUBSTITUI** a configuração atual (carrega o preset nas abas do personagem selecionado).
-4. **🔴 Save SUPER confiável (crítico nesta sprint):** o botão **Save tem bugs hoje** — falha em **silêncio** se `config.validate()` barrar (o `.yml` não salva e o usuário não sabe). Como o save é o coração desta feature, esta sprint precisa:
-   - **Feedback VISÍVEL** de sucesso/erro na própria interface (não só no log do servidor).
-   - Mostrar **o que** falhou na validação (campo/motivo).
-   - Nunca salvar pela metade; confirmar que o arquivo foi gravado.
+4. ✅ **Save SUPER confiável (FEITO e VALIDADO ao vivo 2026-05-28):** o Save não falha mais em **silêncio**. `server.py` responde `ERROR` com o motivo (campo/tipo) quando `validate()` barra; `main.py` mostra **VISÍVEL** (label verde "✓ Salvo HH:MM:SS" / popup vermelho + label no erro). Nunca grava pela metade (validação ANTES de salvar; erro de disco também avisa).
 
 **Notas de design (pra quando implementar):**
 - Guardar scripts como `.yml` nomeados (ex.: `~/GhostBot/scripts/<nome>.yml`), separados dos `<charname>.yml` por personagem.
