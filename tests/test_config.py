@@ -147,7 +147,6 @@ def test_config_loads_yaml_and_parses_types_properly():
         ), sell=SellConfig(
             sell_npc_name='Mr Guy Man',
             use_mount='false',
-            npc_sell_click_spot=(100, 200),
             npc_search_spot=['123', 456],
         ),
     )
@@ -158,7 +157,7 @@ def test_config_loads_yaml_and_parses_types_properly():
     assert not config.sell.use_mount
     assert isinstance(config.buff.interval, int)
     assert config.attack.spot == (123, 456)
-    assert config.sell.npc_sell_click_spot == (100, 200)
+    assert config.sell.npc_search_spot == (123, 456)
 
 def test_config_loads_yaml_and_errors_on_unfixable_return_spot():
     # noinspection PyTypeChecker

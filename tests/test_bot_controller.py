@@ -7,7 +7,7 @@ from pymem.ressources.structure import ProcessEntry32
 import GhostBot
 from GhostBot.controller.bot_controller import BotController
 from GhostBot.controller.threaded_bot_controller import ThreadedBotController
-from GhostBot.functions import Sell, Petfood, Regen, Buffs, Attack, Fairy
+from GhostBot.functions import Sell, Petfood, Attack, Fairy
 from mocks.mock_client import MockClient, client
 from GhostBot.config import *
 
@@ -44,8 +44,6 @@ def test_new_client_added_to_login_queue(monkeypatch, client):
 @pytest.mark.usefixtures('monkeypatch', 'client')
 def test_get_functions_for_client(monkeypatch, client):
 
-    import GhostBot.functions.petfood
-    monkeypatch.setattr(GhostBot.functions.petfood.Petfood, '_setup', lambda self: None)
     attack_bindings: AttackConfig.Bindings = {'battle_hp_pot': 'F1'}
     fairy_bindings: FairyConfig.Bindings = {'heal': 6}
     pet_bindings: PetConfig.Bindings = {'spawn': 'E', 'food': 9}
@@ -83,17 +81,16 @@ def test_get_functions_for_client(monkeypatch, client):
         ), sell=SellConfig(
             sell_npc_name='Mr Guy Man',
             use_mount=False,
-            npc_sell_click_spot=(100, 200),
             npc_search_spot=(123, 456),
         ),
     )
     client.set_config(config)
     bc = ThreadedBotController()
+    # Regen e Buffs nao sao mais funcoes separadas (aba Regen removida; Buff virou secao
+    # da aba Attack) -> nao aparecem aqui, mesmo presentes na config (compat de .yml).
     _func_types = [type(f) for f in bc._get_functions_for_client(client)]
     _func_types.remove(Sell)
     _func_types.remove(Petfood)
-    _func_types.remove(Regen)
-    _func_types.remove(Buffs)
     _func_types.remove(Attack)
     _func_types.remove(Fairy)
     assert not _func_types

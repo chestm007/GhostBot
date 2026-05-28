@@ -47,6 +47,7 @@ def MockClient(proc=None) -> BotClientWindow:
                         get_y = lambda _: 0
                         mount = lambda _: None
                         is_bag_open = lambda _: None
+                        is_sitting = lambda _: False
                     self.pointers = Pointers()
 
             if proc:
