@@ -84,6 +84,9 @@ class ThreadedBotController(BotController):
                     _conf = eligible_logins.pop(__char)
                     self.logger.info('[%s|%s] resuming login procedure with config %s', pid, _conf.char_name, _conf)
                 elif lc.current_stage == LoginController.LoginStage.enter_credentials:
+                    if not eligible_logins:
+                        self.logger.warning('[%s|%s] no eligible logins left for enter_credentials stage, skipping', pid, __char)
+                        continue
                     __char, _conf = eligible_logins.popitem()
                     self.logger.info('[%s|%s] starting login procedure with config %s', pid, _conf.char_name, _conf)
                 else:
