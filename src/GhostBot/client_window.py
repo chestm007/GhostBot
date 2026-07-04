@@ -179,9 +179,9 @@ class Win32ClientWindow(AbstractClientWindow):
         time.sleep(0.1)
 
     def window_to_client(self, pos):
-        """Converte coord da CAPTURA (capture_window pega a janela inteira via GetWindowDC,
-        com barra de titulo) para coord da AREA CLIENTE, que left_click/right_click esperam
-        no lParam. Calcula o Delta REAL da janela (robusto a DPI/tema), em vez de chutar 30px."""
+        """Convert coord from CAPTURE (capture_window captures the entire window via GetWindowDC,
+        with title bar) to CLIENT AREA coord, which left_click/right_click expect
+        in lParam. Calculates the REAL window delta (robust to DPI/theme), instead of guessing 30px."""
         wx, wy, _, _ = win32gui.GetWindowRect(self.window_handle)
         cx, cy = win32gui.ClientToScreen(self.window_handle, (0, 0))
         return int(pos[0] - (cx - wx)), int(pos[1] - (cy - wy))

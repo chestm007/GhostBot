@@ -3,7 +3,7 @@ from typing import Any
 
 
 def main(config_yaml: dict[str, Any]):
-    """refactors regen.spot and sell.return_spot to attack.spot"""
+    """Refactors regen.spot and sell.return_spot to attack.spot"""
 
     _attack_spot, _regen_spot, _sell_spot = None, None, None
 

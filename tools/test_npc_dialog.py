@@ -1,27 +1,24 @@
 """
-Abre a janela do NPC (assumindo char ja em cima dele) pra inspecionar
-o botao "Sell Item". Reset de camera + right-click no centro.
-NAO vende nada -- so abre e captura.
+Open the NPC window (assuming char is already on top of it) to inspect
+the "Sell Item" button. Camera reset + right-click center.
+DO NOT sell anything -- just open and capture.
 """
 import time
 import cv2
-from GhostBot.client_window import Win32ClientWindow
-from GhostBot.lib.win32.process import PymemProcess
 
-proc = next(iter(PymemProcess.list_clients()), None)
-if proc is None:
-    raise SystemExit("client.exe nao encontrado")
-client = Win32ClientWindow(proc)
+from GhostBot.lib.tooling import get_client
+
+client = get_client()
 print("Window:", client.get_window_size())
 
-print("Resetando camera...")
+print("Resetting camera...")
 client.reset_camera()
 time.sleep(1.5)
 
-print("Right-click no NPC (centro da tela)...")
+print("Right-click on NPC (center of screen)...")
 client.click_npc()
 time.sleep(1.5)
 
 out = r"C:\Bot\BotTO\tmp_npc_window.png"
 cv2.imwrite(out, client.capture_window(color=True))
-print("Screenshot salvo:", out)
+print("Screenshot saved:", out)

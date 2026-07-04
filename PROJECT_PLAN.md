@@ -1,446 +1,446 @@
-# 📋 PROJETO BotTO — PLANO + STATUS
+# 📋 BotTO PROJECT — PLAN + STATUS
 
-**Time:** 5 jogadores (2 Fairy + 1 Wizard + 1 Tamer + 1 Assassin)
-**Base:** Fork do `chestm007/GhostBot`, branch local `minha-versao-estavel`
-**Stack:** Python 3.11+ no Windows 11 + Tesseract OCR + Cheat Engine + Discord Webhook + Tailscale
-**Cronograma original:** 23/mai → 12/ago (12 semanas + Sprint 6 opcional)
-**Última atualização do doc:** 2026-05-27
-
----
-
-## 🔖 RETOMAR AQUI — 2026-05-28 (sessão 5 — Sprint 7: Save robusto FEITO+VALIDADO; lista de scripts é o próximo)
-
-**Onde paramos:** Começou a **Sprint 7 ("Bots prontos")**. **FASE 1 — Save robusto: ✅ FEITA e VALIDADA ao vivo (2026-05-28, "maravilhoso, salvou!!!").** O Save deixou de falhar em SILÊNCIO: o servidor agora responde sucesso OU um `ERROR` com o motivo, e a interface mostra **visível** (label verde "✓ Salvo HH:MM:SS" / popup vermelho + label no erro). **FASE 2 (a próxima):** lista de **scripts/presets** na lateral DIREITA (espelha a lista de personagens da esquerda) — botão "Salvar script", cada item = nome + `dd/mm/yy hh:mm`, clicar aplica o preset no char selecionado. **Decisão do dono:** só deixar trocar de script com o **bot PARADO** (Stop = emergência). Os 3 itens bloqueados (precisam dos amigos juntos) seguem como PRIORIDADE pra depois: Bug 1 do Defender, aggro do DPS no Cave Boss, distribuir o `.exe`.
-
-- 🔧 **SAVE ROBUSTO ✅ (Fase 1 da Sprint 7) — 2 arquivos:**
-  - `server.py` (`CONFIG_SET`): a validação (`Config.load_yaml` → `validate()`) podia jogar `TypeError` e o `try/except` do dispatcher engolia → nada gravava, nada avisava. Agora: char não encontrado / config inválida / erro de disco → cada um responde `Message(Command.ERROR, {char, reason})` com o motivo; sucesso → confirma de volta.
-  - `main.py`: label de status ao lado do Save (verde sucesso / vermelho falha) + callback `Command.ERROR` que abre `messagebox.showerror` com o motivo. Feedback agendado via `self.after(0,...)` (callback do IPC roda em OUTRA thread; tkinter não é thread-safe). Antes não havia callback de erro nenhum.
-  - ⚠️ Mexeu em servidor E interface → reiniciar os DOIS (fechar a janela não basta; matar o `ghost-bot-server`). Pelo ícone "Talisman Bot" sobe os dois com o código novo.
-  - ℹ️ Testes: 39 passam; 4 falhas são PRÉ-EXISTENTES (regen/config, sobra da remoção das abas Regen/Buff) — não introduzidas por esta mudança, fora do escopo.
+**Team:** 5 players (2 Fairy + 1 Wizard + 1 Tamer + 1 Assassin)
+**Base:** Fork of `chestm007/GhostBot`, local branch `minha-versao-estavel`
+**Stack:** Python 3.11+ on Windows 11 + Tesseract OCR + Cheat Engine + Discord Webhook + Tailscale
+**Original schedule:** May 23 → August 12 (12 weeks + optional Sprint 6)
+**Last doc update:** 2026-05-27
 
 ---
 
-## 🔖 RETOMAR (sessão 4 — 2026-05-27) — Cave Boss Bot: 3 papéis + cooldown de pots
+## 🔖 RESUME HERE — 2026-05-28 (session 5 — Sprint 7: Robust save DONE+VALIDATED; script list is next)
 
-**Onde paramos:** **Cave Boss Bot CONSTRUÍDO** — aba "Boss" dinâmica (dropdown de papel) com os **3 papéis (Tank/DPS/Fairy)**; regra "Boss é só Boss" (liga Boss → bloqueia o resto); cooldown de pots de 16s no bot todo. **Falta só o dono VALIDAR o Boss ao vivo** (avisou que testa e dá retorno). Antes: Fairy Helper validado, detecção de clients consertada. Frentes abertas: validar o Boss; Bug 1 do Defender (PRIORIDADE quando o dono pedir); distribuir o `.exe`.
+**Where we left off:** Started **Sprint 7 ("Bots ready"). PHASE 1 — Robust save: ✅ DONE and LIVE-VALIDATED (2026-05-28, "wonderful, saved it!!!").** Save no longer fails in SILENCE: the server now responds with success OR an `ERROR` with the reason, and the UI shows it **visibly** (green label "✓ Saved HH:MM:SS" / red popup + label on error). **PHASE 2 (next):** list of **scripts/presets** on the RIGHT side (mirrors the character list on the left) — "Save script" button, each item = name + `dd/mm/yy hh:mm`, click applies the preset to the selected char. **Owner's decision:** only allow switching scripts with the bot **STOPPED** (Stop = emergency). The 3 blocked items (need friends together) remain as PRIORITIES for later: Defender Bug 1, aggro from DPS in Cave Boss, distribute the `.exe`.
 
-- 🐉 **CAVE BOSS BOT — 3 PAPÉIS ✅ VALIDADOS AO VIVO (2026-05-27), só o aggro do DPS pendente.** Spec em `CAVE_BOSS_BOT.md`. Aba "Boss" = runner separado (`functions/boss.py` + `BossConfig`); dropdown de Papel. **TANK ✅** (trava+combo+buffs Xs, não pota). **FAIRY ✅** (spam de cura no alvo atual). **DPS:** combate+MP ✅; **🔴 só o controle de AGGRO está pendente** (gatilho = qualquer queda de HP → recua; precisa de ajuste fino, provável limiar > X% pra não recuar com AoE leve). Regra "Boss só Boss" na UI ✅.
-- 💊 **POTS: cooldown de 16s (geral)** — pot no TO é regen ao longo de ~16s; o bot re-potava (pot duplicado). Fix em attack/boss/regen (`Runner._pot_ready/_use_pot`). Vale pro farm normal também.
-- 🧹 **ABAS REGEN e BUFF REMOVIDAS (2026-05-27, decisão do dono):** Regen "inútil" (sempre se pota no Attack); Buff era casca vazia. O **buff virou seção na aba Attack** ("Buffs a cada X min", `AttackConfig.buffs`/`buff_interval_mins`; `Attack._maybe_buff`). Tabs/checkboxes/loop-yields removidos; `regen_frame.py`/`buff_frame.py` apagados. **MANTIDOS** `regen.py`/`buffs.py` + `RegenConfig`/`BuffConfig` (testes + compat de .yml antigo).
-- 🧹 **ORDEM dos campos PADRONIZADA (2026-05-27):** ordem canônica em todas as abas combatentes — **Seletor → Travar Boss+Nome → Combo → Pots HP/MP → Buffs → Extras → Spot/movimento**. O **Attack** foi reordenado (o "Travar no Boss" subiu pro topo, alinhando com o Boss, que já estava na ordem). Fairy/Pet/Sell não têm esses elementos comuns → mantidas. (Mudou só a POSIÇÃO visual; comportamento idêntico.)
-- ⚔️ **ABA ATTACK ganhou SELETOR DE CLASSE (DPS/Tamer/Fairy) (2026-05-27), a validar:** dropdown no topo (igual ao Boss) que adiciona os EXTRAS por classe — o combo segue genérico. **DPS** (padrão) = comportamento ATUAL intacto (`char_class=None`). **Tamer**: campo "Tecla ataque do pet" → o bot manda o pet atacar AO PEGAR cada novo alvo (`_command_pet`). **Fairy**: ao cair do "Pot HP em %", ela aperta a **tecla de cura** (em vez de pot de vida — ela se cura); MP segue por pot.
-- 🐾 **PET RECONSTRUÍDO + ✅ VALIDADO AO VIVO (2026-05-27) — DOIS tipos, cada um com flag (pedido do dono):** `functions/petfood.py` + aba Pet refeitas (eram cascas). **(1) Pet do TAMER (combate)** [flag `tamer_pet`]: invoca no Start, **re-invoca se morrer** (detecta `pet_active` a cada ciclo), alimenta a cada X min, re-invocação periódica OPCIONAL. **(2) Pet NORMAL (companheiro)** [flag `normal_pet`]: só alimenta a cada X min (comida própria `normal_food`). Os campos de cada bloco aparecem quando a flag é marcada. Combate do pet = aba Attack (combo). ⏳ A confirmar: o pet do Tamer ataca sozinho ou precisa de tecla no combo? expira no tempo (precisa do timer de re-invocar)?
-- ✅ **Fairy auto-cura CONFIRMADA 100% ao vivo (2026-05-27):** HP da própria Fairy < 50% → **F1 → cura → aguarda conjuração → re-seleciona 1º membro → P**. Funciona. Nota: `heal_self_threshold` NÃO tem campo na UI (`fairy_frame.py`) → cai sempre no default 50% (`fairy.py:100`). Mudar o limite hoje exige código (não foi pedido). **Frente da Fairy FECHADA.**
-- ✅ **BUG da detecção de clients RESOLVIDO** (`controller/bot_controller.py:_scan_for_clients`): se o bot abria ANTES dos clients, eles não apareciam na lista até reiniciar o bot. Causa: o atalho do scan pulava se o conjunto de PIDs não mudasse — mas um client aberto na tela de login (name=None) tem o mesmo PID depois de logar, então nunca era re-avaliado. Fix: só pula o scan se nada mudou **E** todo processo rodando já é um client na lista (`all_registered`). **Validado ao vivo** (abriu bot → abriu client depois → apareceu sozinho). Teste `test_async_bot_controller` passa.
-- ⏪ **(05-26) BUG RAIZ do "Fairy se auto-seleciona" RESOLVIDO** (saga de VÁRIAS sessões): `get_with_case` em `lib/vk_codes.py` somava `+0x20` em letras MAIÚSCULAS → a tecla 'seguir' `P`(0x50) virava **`0x70 = F1 = auto-selecionar a si mesmo`**. Fix: `return vk_codes[_key.lower()]` sempre. Validado ao vivo.
-- ⏪ **(05-26) Seleção de membros do grupo VALIDADA — tudo BACKSTAGE:** **F1** = self; **clique backstage** (`left_click` do bot = SendMessage) = membro. Coords `team_1..team_4` validadas (1024x768; ~81px). ⚠️ **NÃO usar mouse REAL** (`SetCursorPos`) — decisão do dono.
-- 🧪 **AMIGOS TESTARAM o pacote `.exe` (2026-05-27) → 2 bugs reportados (prints `Bug1.png`/`Bug2.png` em `OneDrive\Desktop\TO Bot\`):**
-  - 🔴 **BUG 1 (PRIORIDADE — RESOLVER ASSIM QUE O DONO PEDIR):** a **interface não abre** na máquina do amigo — só a janela preta do servidor (`run_server.exe`) abre; o `run_client.exe` não. Causa quase certa: **Windows Defender bloqueia o `run_client.exe` na execução** (falso-positivo do nuitka, JÁ conhecido — na máquina do dono foi resolvido com exclusão de pasta no Defender; os amigos não têm). O `Iniciar BotTO.bat` confere se o arquivo EXISTE (existe), mas não detecta que o Defender mata a execução. Amigo usa **Windows Defender padrão**. ⏳ Aguardando diagnóstico do amigo (dois cliques só no `run_client.exe` → o que aparece). **NÃO reempacotar ainda** — acumular mudanças antes.
-  - ✅ **BUG 2 (CONSERTADO):** `Criar atalho do Talisman Bot.bat` falhava com `DirectoryNotFoundException` ao salvar o atalho — chutava `%USERPROFILE%\Desktop`, que não existe quando o OneDrive redireciona a Área de Trabalho (padrão Win11). Fix: descobre o Desktop real via `[Environment]::GetFolderPath('Desktop')` (com fallback). Aplicado nas 2 cópias (repo + pasta do pacote). Não bloqueava (já tinha plano B), só assustava.
-- ▶️ **PRÓXIMOS PASSOS:** (1) dono **valida o Cave Boss ao vivo** (vai testar e dar retorno); (2) acumular mudanças no pacote (Bug 1 + Boss + pots) ANTES de gerar o novo `.exe`/zip; (3) quando o dono pedir: atacar o **Bug 1 (Defender)** e só então reempacotar + redistribuir pros amigos.
-- ⚠️ **Importante:** o ícone "Talisman Bot" (`start_botto.bat`) roda os console scripts (`ghost-bot-server.exe`/`ghost-bot-client.exe` da pasta Python) = **install editável = roda o FONTE ao vivo**. NÃO é o `run_server.exe` velho da raiz. Clicar no ícone JÁ roda o código novo.
+- 🔧 **ROBUST SAVE ✅ (Phase 1 of Sprint 7) — 2 files:**
+  - `server.py` (`CONFIG_SET`): validation (`Config.load_yaml` → `validate()`) could throw `TypeError` and the dispatcher's `try/except` swallowed it → nothing saved, nothing warned. Now: char not found / invalid config / disk error → each responds `Message(Command.ERROR, {char, reason})` with the reason; success → confirms back.
+  - `main.py`: status label next to Save (green success / red failure) + `Command.ERROR` callback that opens `messagebox.showerror` with the reason. Callback scheduled via `self.after(0,...)` (IPC callback runs on ANOTHER thread; tkinter is not thread-safe). Before there was no error callback at all.
+  - ⚠️ Changed server AND UI → restart BOTH (closing the window is not enough; kill `ghost-bot-server`). The "Talisman Bot" icon starts both with the new code.
+  - ℹ️ Tests: 39 pass; 4 failures are PRE-EXISTING (regen/config, leftover from Regen/Buff tab removal) — not introduced by this change, out of scope.
 
 ---
 
-## 📦 Sessão anterior (2026-05-26 manhã) — pacote `.exe` pros amigos
+## 🔖 RESUME (session 4 — 2026-05-27) — Cave Boss Bot: 3 roles + pot cooldown
 
-**Onde paramos:** montando o **pacote `.exe` pros amigos**. Server validado, client buildando.
+**Where we left off:** **Cave Boss Bot BUILT** — dynamic "Boss" tab (dropdown for role) with **3 roles (Tank/DPS/Fairy)**; "Boss only" rule (Boss on → rest blocked); 16s pot cooldown across the whole bot. **Still need owner to LIVE-VALIDATE the Boss** (said they'll test and give feedback). Before: Fairy Helper validated, client detection fixed. Open fronts: validate the Boss; Defender Bug 1 (PRIORITY when owner asks); distribute the `.exe`.
 
-- ✅ **`gh` CLI instalado** (`winget install GitHub.cli`, v2.92.0) **e logado** como `LpiresUrt` (escopos repo+workflow). Fica em `C:\Program Files\GitHub CLI\gh.exe` (não entra no PATH sozinho → `$env:Path += ';C:\Program Files\GitHub CLI'`). ⚠️ Repo tem 2 remotes → **sempre `-R LpiresUrt/BotTO`** no `gh` (senão mira no upstream `chestm007` = HTTP 403). Agora dá pra disparar/baixar build pela linha de comando.
-- ✅ **SERVER BUILD #2 = SUCCESS** (run `26450634537`, 15m16s, correção `43e4afb`). `run_server.exe` (55,7 MB) instalado em `C:\Bot\BotTO` (build #1 → `.build1.bak`). **Smoke test passou:** log = `Images path detected...` + `Server listening...`, **sem** o `ModuleNotFoundError: pytesseract` do build #1. Imagens embutidas + IPC OK.
-  - 📥 **Download do artifact:** `gh run download` FALHA (`archive: false` no workflow → artifact é o exe CRU, não zip). Baixar pela API: `Invoke-WebRequest .../actions/artifacts/<id>/zip -Headers @{Authorization="Bearer $(gh auth token)"}` (o arquivo vem com assinatura `MZ` = exe direto).
-- 🔴 **DESCOBERTA: o Tesseract NÃO embute no `.exe`.** O nuitka (`--include-data-dir`/`--include-data-files`) **ignora `.dll`/`.exe`** de propósito → só o `tessdata/` entrou no binário, o `tesseract.exe`+DLLs ficaram de fora. Passava despercebido na máquina de dev (cai no Tesseract do sistema), mas quebraria o OCR na máquina do amigo.
-  - ✅ **SOLUÇÃO (validada): Tesseract vai como PASTA `Tesseract-OCR/` AO LADO do `.exe`** no zip (não dentro). O `_find_tesseract` já procura `pasta_do_exe/Tesseract-OCR/tesseract.exe` antes do fallback. Pro amigo é idêntico (extrai, clica, zero instalação). **`run_server.exe` atual já serve** — não precisa rebuildar por isso. Pasta montada com `python tools/make_portable_tesseract.py` (72 MB, roda sozinha).
-  - 🧹 TODO (não bloqueia): tirar o passo de embutir Tesseract do `build-executable.yml` (não funciona, só infla o .exe).
-- ✅ **CLIENT BUILD OK** (run `26452436569`; 1ª tentativa o Upload Artifact falhou — transitório — `gh run rerun --failed` resolveu). Smoke test passou.
-- ⚠️ **Defender bloqueou o `run_client.exe`** (falso-positivo de nuitka; o server passou). Resolvido com exclusão escopada na pasta do pacote (`C:\Bot\Talisman Bot`) + rebaixar lá. ⚠️ exclusão ainda ativa: `Remove-MpPreference -ExclusionPath "C:\Bot\Talisman Bot"` quando não precisar.
-- ✅ **PACOTE MONTADO E VALIDADO: `C:\Bot\Talisman Bot.zip` (139 MB).** Extração testada (motor do Explorer) = estrutura correta.
-- ▶️ **PRÓXIMO PASSO:**
-  1. Dono sobe o `Talisman Bot.zip` num link (Drive/WeTransfer — 139 MB não cabe no Discord 25 MB) e manda pros 4 amigos.
-  2. **Validar OCR ao vivo** (pendente): rodar `run_server.exe` da pasta do pacote com o JOGO aberto + farmar → drop no painel/Discord = Tesseract da pasta-irmã OK.
-  3. (Opcional) limpar o passo de embutir Tesseract do `build-executable.yml`; remover a exclusão do Defender.
+- 🐉 **CAVE BOSS BOT — 3 ROLES ✅ LIVE-VALIDATED (2026-05-27), only DPS aggro pending.** Spec in `CAVE_BOSS_BOT.md`. Boss tab = separate runner (`functions/boss.py` + `BossConfig`); role dropdown. **TANK ✅** (lock+combo+X buffs, no pots). **FAIRY ✅** (heal spam on current target). **DPS:** combat+MP ✅; **🔴 only AGGRO CONTROL is pending** (trigger = any HP drop → retreat; needs fine-tuning, likely threshold > X% so it doesn't retreat from light AoE). "Boss only Boss" rule in UI ✅.
+- 💊 **POTS: 16s cooldown (global)** — pot in TO is regen over ~16s; the bot re-potted (duplicate pot). Fix in attack/boss/regen (`Runner._pot_ready/_use_pot`). Applies to normal farm too.
+- 🧹 **REGEN and BUFF TABS REMOVED (2026-05-27, owner's decision):** Regen "useless" (you always pot in Attack); Buff was an empty shell. The **buff became a section in the Attack tab** ("Buffs every X min", `AttackConfig.buffs`/`buff_interval_mins`; `Attack._maybe_buff`). Tabs/checkboxes/loop-yields removed; `regen_frame.py`/`buff_frame.py` deleted. **KEPT** `regen.py`/`buffs.py` + `RegenConfig`/`BuffConfig` (tests + old .yml compat).
+- 🧹 **FIELD ORDER STANDARDIZED (2026-05-27):** canonical order in all combat tabs — **Selector → Lock Boss+Name → Combo → HP/MP Pots → Buffs → Extras → Spot/movement**. The **Attack** was reordered (the "Lock onto Boss" moved to top, aligning with Boss which was already in order). Fairy/Pet/Sell have no common elements → kept as-is. (Only visual POSITION changed; behavior identical.)
+- ⚔️ **ATTACK TAB GOT CLASS SELECTOR (DPS/Tamer/Fairy) (2026-05-27), to validate:** dropdown at top (same as Boss) that adds CLASS EXTRAS — combo stays generic. **DPS** (default) = current behavior intact (`char_class=None`). **Tamer**: "Pet attack key" field → bot commands pet to attack WHEN GRABBING each new target (`_command_pet`). **Fairy**: when "Pot HP at %" triggers, she presses the **heal key** (instead of HP pot — she heals herself); MP still via pot.
+- 🐾 **PET REBUILT + ✅ LIVE-VALIDATED (2026-05-27) — TWO types, each with flag (owner's request):** `functions/petfood.py` + Pet tab redone (were empty shells). **(1) TAMER PET (combat)** [flag `tamer_pet`]: summons at Start, **re-summons if it dies** (detects `pet_active` each cycle), feeds every X min, optional periodic re-summon. **(2) NORMAL PET (companion)** [flag `normal_pet`]: only feeds every X min (own food `normal_food`). Fields for each block appear when the flag is checked. Pet combat = Attack tab (combo). ⏳ Pending confirmation: does the Tamer's pet attack on its own or needs a key in the combo? Does it expire on time (needs re-summon timer)?
+- ✅ **Fairy self-heal CONFIRMED 100% live (2026-05-27):** Fairy's own HP < 50% → **F1 → heal → wait for cast → re-select 1st member → P**. Works. Note: `heal_self_threshold` has no UI field (`fairy_frame.py`) → falls to default 50% (`fairy.py:100`). Changing the threshold today requires code (not requested). **Fairy front CLOSED.**
+- ✅ **CLIENT DETECTION BUG FIXED** (`controller/bot_controller.py:_scan_for_clients`): if the bot opened BEFORE the clients, they wouldn't appear in the list until restarting the bot. Cause: the scan shortcut skipped if the PID set didn't change — but a client opened on the login screen (name=None) has the same PID after logging in, so it was never re-evaluated. Fix: only skip scan if nothing changed **AND** every running process is already a client in the list (`all_registered`). **Live-validated** (opened bot → opened client later → appeared on its own). Test `test_async_bot_controller` passes.
+- ⏪ **(05-26) ROOT BUG of "Fairy auto-selects itself" FIXED** (saga across MULTIPLE sessions): `get_with_case` in `lib/vk_codes.py` added `+0x20` to UPPERCASE letters → the 'follow' key `P`(0x50) became **`0x70 = F1 = auto-select itself`**. Fix: `return vk_codes[_key.lower()]` always. Live-validated.
+- ⏪ **(05-26) Party member selection VALIDATED — all BACKSTAGE:** **F1** = self; **backstage click** (`left_click` from bot = SendMessage) = member. Coords `team_1..team_4` validated (1024x768; ~81px). ⚠️ **DO NOT use real mouse** (`SetCursorPos`) — owner's decision.
+- 🧪 **FRIENDS TESTED the `.exe` package (2026-05-27) → 2 bugs reported (screenshots `Bug1.png`/`Bug2.png` in `OneDrive\\Desktop\\TO Bot\\`):**
+  - 🔴 **BUG 1 (PRIORITY — RESOLVE WHEN OWNER ASKS):** the **UI doesn't open** on friend's machine — only the black server window (`run_server.exe`) opens; `run_client.exe` doesn't. Most likely cause: **Windows Defender blocks `run_client.exe` on execution** (Nuitka false-positive, ALREADY known — on owner's machine it was resolved with folder exclusion in Defender; friends don't have this). The `Iniciar BotTO.bat` checks if the file EXISTS (it does), but doesn't detect that Defender kills execution. Friend uses **standard Windows Defender**. ⏳ Waiting for friend's diagnosis (two clicks on `run_client.exe` → what appears). **DO NOT repackage yet** — accumulate changes first.
+  - ✅ **BUG 2 (FIXED):** `Criar atalho do Talisman Bot.bat` failed with `DirectoryNotFoundException` when saving the shortcut — guessed `%USERPROFILE%\\Desktop`, which doesn't exist when OneDrive redirects the Desktop (default Win11). Fix: discover real Desktop via `[Environment]::GetFolderPath('Desktop')` (with fallback). Applied in both copies (repo + package folder). Didn't block (already had plan B), just scary.
+- ▶️ **NEXT STEPS:** (1) owner **validates Cave Boss live** (will test and give feedback); (2) accumulate changes in package (Bug 1 + Boss + pots) BEFORE generating new `.exe`/zip; (3) when owner asks: tackle **Bug 1 (Defender)** and only then repackage + redistribute to friends.
+- ⚠️ **Important:** the "Talisman Bot" icon (`start_botto.bat`) runs the console scripts (`ghost-bot-server.exe`/`ghost-bot-client.exe` from the Python folder) = **editable install = runs SOURCE live**. NOT the old `run_server.exe` from root. Clicking the icon ALREADY runs the new code.
 
-**📦 PACOTE PARA OS AMIGOS (versão `.exe` — ZERO instalação):**
-O dono monta e **manda o zip COMPLETO** pros 4 amigos. Conteúdo:
+---
+
+## 📦 Previous session (2026-05-26 morning) — `.exe` package for friends
+
+**Where we left off:** building the **`.exe` package for friends**. Server validated, client building.
+
+- ✅ **`gh` CLI installed** (`winget install GitHub.cli`, v2.92.0) **and logged in** as `LpiresUrt` (repo+workflow scopes). Goes to `C:\\Program Files\\GitHub CLI\\gh.exe` (doesn't enter PATH automatically → `$env:Path += ';C:\\Program Files\\GitHub CLI'`). ⚠️ Repo has 2 remotes → **always `-R LpiresUrt/BotTO`** with `gh` (otherwise aims at upstream `chestm007` = HTTP 403). Now can trigger/download builds from the command line.
+- ✅ **SERVER BUILD #2 = SUCCESS** (run `26450634537`, 15m16s, fix `43e4afb`). `run_server.exe` (55.7 MB) installed at `C:\\Bot\\BotTO` (build #1 → `.build1.bak`). **Smoke test passed:** log = `Images path detected...` + `Server listening...`, **no** `ModuleNotFoundError: pytesseract` from build #1. Images embedded + IPC OK.
+  - 📥 **Artifact download:** `gh run download` FAILED (`archive: false` in workflow → artifact is the raw exe, not zip). Download via API: `Invoke-WebRequest .../actions/artifacts/<id>/zip -Headers @{Authorization="Bearer $(gh auth token)"}` (file comes with `MZ` signature = raw exe).
+- 🔴 **DISCOVERY: Tesseract does NOT embed in `.exe`.** The nuitka (`--include-data-dir`/`--include-data-files`) **ignores `.dll`/`.exe`** on purpose → only `tessdata/` went into the binary, `tesseract.exe`+DLLs stayed out. Passed unnoticed on dev machine (falls to system Tesseract), but would break OCR on friend's machine.
+  - ✅ **SOLUTION (validated):** Tesseract goes as FOLDER `Tesseract-OCR/` NEXT TO the `.exe` in the zip (not inside). The `_find_tesseract` already looks for `exe_folder/Tesseract-OCR/tesseract.exe` before fallback. For friend it's identical (extract, click, zero installation). **`run_server.exe` current already works** — no need to rebuild for this. Folder assembled with `python tools/make_portable_tesseract.py` (72 MB, runs standalone).
+  - 🧹 TODO (non-blocking): remove the Tesseract embedding step from `build-executable.yml` (doesn't work, just inflates the .exe).
+- ✅ **CLIENT BUILD OK** (run `26452436569`; 1st attempt Upload Artifact failed — transient — `gh run rerun --failed` fixed it). Smoke test passed.
+- ⚠️ **Defender blocked `run_client.exe`** (Nuitka false-positive; server passed). Resolved with scoped exclusion in package folder (`C:\\Bot\\Talisman Bot`) + downgrade there. ⚠️ exclusion still active: `Remove-MpPreference -ExclusionPath "C:\\Bot\\Talisman Bot"` when no longer needed.
+- ✅ **PACKAGE ASSEMBLED AND VALIDATED: `C:\\Bot\\Talisman Bot.zip` (139 MB).** Extraction tested (Explorer engine) = correct structure.
+- ▶️ **NEXT STEP:**
+  1. Owner uploads `Talisman Bot.zip` to a link (Drive/WeTransfer — 139 MB doesn't fit in Discord 25 MB) and sends to the 4 friends.
+  2. **Validate OCR live** (pending): run `run_server.exe` from the package folder with the GAME open + farm → drop on panel/Discord = sibling-folder Tesseract OK.
+  3. (Optional) remove the Tesseract embedding step from `build-executable.yml`; remove Defender exclusion.
+
+**📦 PACKAGE FOR FRIENDS (`.exe` version — ZERO installation):**
+Owner assembles and **sends the COMPLETE zip** to the 4 friends. Contents:
   - `run_server.exe` + `run_client.exe`
-  - **pasta `Tesseract-OCR/`** (ao lado dos exes — o OCR de drop depende dela; ~72 MB)
-  - `Images/`? NÃO — as imagens (.bmp) já estão embutidas nos exes.
-  - `Iniciar BotTO.bat` (abre servidor + interface com 1 clique, pede admin) — local, gitignorado
-  - `LEIAME.txt` (instruções) — local, gitignorado
-  - `alertas_drop.txt` (lista de alertas default)
-  - ✅ `discord_webhook.txt` **do dono, COMPARTILHADO** (decisão 2026-05-26) → feed central; se vazar, apagar+recriar.
-  - Amigos só precisam do **jogo instalado** (site oficial). NÃO abrem o servidor na mão (o `.bat` sobe os dois).
-- 🎨 **ÍCONES:** os `.exe` já saem com a logo (build embute `logo.ico`). O `.bat` não aceita ícone próprio → incluir um **`Criar atalho do Talisman Bot.bat`** que o amigo roda 1× e gera um atalho com a logo na Área de Trabalho dele (atalho `.lnk` feito aqui quebra lá por caminho absoluto).
-- 🏷️ **Renomear "GhostBot"?** Decidido NÃO mexer no nome interno (pacote/imports, ~398×): risco alto, zero ganho visível. O que o amigo vê já é "Talisman Bot" (título, logo, ícone, LEIAME). Único semi-visível = pasta de config `~/GhostBot`.
+  - **`Tesseract-OCR/` folder** (next to the exes — drop OCR depends on it; ~72 MB)
+  - `Images/`? NO — images (.bmp) are already embedded in the exes.
+  - `Iniciar BotTO.bat` (opens server + UI with 1 click, requests admin) — local, gitignored
+  - `LEIAME.txt` (instructions) — local, gitignored
+  - `alertas_drop.txt` (default alert list)
+  - ✅ **Owner's `discord_webhook.txt` SHARED** (decision 2026-05-26) → central feed; if leaked, delete+recreate.
+  - Friends only need the **game installed** (official site). Don't open the server manually (the `.bat` starts both).
+- 🎨 **ICONS:** the `.exe` already come with the logo (build embeds `logo.ico`). The `.bat` doesn't accept its own icon → include a **`Criar atalho do Talisman Bot.bat`** that friend runs once and generates a logo shortcut on their Desktop (shortcut `.lnk` made here breaks there due to absolute path).
+- 🏷️ **Rename "GhostBot"?** Decided NOT to touch the internal name (package/imports, ~398×): high risk, zero visible gain. What friend sees is already "Talisman Bot" (title, logo, icon, LEIAME). Only semi-visible = config folder `~/GhostBot`.
 
 ---
 
-## 📌 ONDE ESTAMOS AGORA — RESUMO RÁPIDO (2026-05-24)
+## 📌 WHERE WE ARE NOW — QUICK SUMMARY (2026-05-24)
 
-**Sprint 0 concluída + grande avanço no ciclo de venda/farm e dashboard.** O bot roda, a UI foi reconstruída (PT-BR gamer), e nesta sessão o **ciclo completo de venda foi feito e migrado pra produção**: navegar até o NPC → vender → voltar ao spot, tudo robusto a tamanho/posição de janela.
+**Sprint 0 completed + big advance on sell/farm cycle and dashboard.** Bot runs, UI rebuilt (PT-BR gamer), and in this session the **full sell cycle was done and migrated to production**: navigate to NPC → sell → return to spot, all robust to window size/position.
 
-### 🔥 Feito na sessão 2026-05-24
-- ✅ **Navegação por TEMPLATE + OFFSET** (âncora = título do painel): Surroundings, janela "Dialogue" do NPC, dialog de venda, mapa. Resolve coords fixas quebradas. Validado em 4 testes (resize + arrastar painel + reabrir jogo). Δ da barra de título (captura=window coords, clique=client coords) se cancela com offset calibrado por cursor.
-- ✅ **Ciclo de venda em PRODUÇÃO** (`sell.py`): Surroundings → "Dialogue" → "Sell Item" → vende 3 bags (slot inicial configurável, clica 30× com reflow) → confirma → volta ao spot pelo mapa (clique-isca pra furar bug do jogo de clique repetido) → espera chegar. Montaria via `mounted()`. Attack pausa/retoma sozinho (loop sequencial + run_at_interval).
-- ✅ **Dashboard funcionando 100%**: Target HP (corrigido o gate `is_target_selected` que oscilava), Mobs mortos, Tempo de farm, Energy, **XP ganho (pontos)**, **Gold ganho separado em Gold/Silver/Copper**. Corrigidos 2 bugs que travavam TUDO: lista de chars repovoando a cada poll (tupla≠lista) e **RLock entre threads** travando o refresh automático (só atualizava ao clicar).
-- ✅ **XP_POINTER achado** (char struct offset `0x3C8`, int; XP atual no nível, zera ao upar; máximo não é legível → % depende de tabela XP-por-nível, amigos montando). Gold via `get_gold()` (0x410).
-- ✅ **Delete REMOVIDO** do app (risco de apagar item sem querer): sem aba, sem checkbox, sem execução. `DeleteConfig` fica dormente só p/ compat de load.
-- ✅ **UI**: aba de venda reorganizada (2 sobreposições corrigidas), campo "Spot de farm (mapa)" + botão "Capturar spot" (client-side, sem IPC), aviso "deixe os diálogos à esquerda/visíveis", borda azul nos botões, **atalho "BotTO" no desktop** (pede admin) + `start_botto.bat`.
-- ✅ **Pacote pros amigos**: `BotTO_para_amigos.zip` (código + imagens/BMPs + install.bat + start_botto.bat + LEIAME). 0,5 MB, cabe no Discord.
+### 🔥 Done in session 2026-05-24
+- ✅ **TEMPLATE + OFFSET navigation** (anchor = panel title): Surroundings, NPC "Dialogue" window, sell dialog, map. Fixes broken fixed coords. Δ from title bar (capture=window coords, click=client coords) cancels with calibrated offset by cursor.
+- ✅ **SELL CYCLE IN PRODUCTION** (`sell.py`): Surroundings → "Dialogue" → "Sell Item" → sells 3 bags (configurable starting slot, clicks 30× with reflow) → confirm → return to spot via map (decoy click to bypass game's repeated-click bug) → wait for arrival. Assembly via `mounted()`. Attack pauses/resumes on its own (sequential loop + run_at_interval).
+- ✅ **Dashboard 100% working:** Target HP (fixed the oscillating `is_target_selected` gate), Mobs killed, Farm time, Energy, **XP gained (points)**, **Gold gained split into Gold/Silver/Copper**. Fixed 2 bugs that froze EVERYTHING: chars list repopulating every poll (tuple≠list) and **RLock between threads** freezing auto-refresh (only updated on click).
+- ✅ **XP_POINTER found** (char struct offset `0x3C8`, int; current XP at level, resets on level-up; max not readable → % depends on XP-per-level table, friends building). Gold via `get_gold()` (0x410).
+- ✅ **Delete REMOVED** from app (risk of accidentally deleting item): no tab, no checkbox, no execution. `DeleteConfig` stays dormant only for load compat.
+- ✅ **UI:** sell tab reorganized (2 overlaps fixed), "Farm spot (map)" field + "Capture spot" button (client-side, no IPC), warning "keep dialogs left/visible", blue border on buttons, **"BotTO" desktop shortcut** (requests admin) + `start_botto.bat`.
+- ✅ **Package for friends:** `BotTO_para_amigos.zip` (code + images/BMPs + install.bat + start_botto.bat + LEIAME). 0.5 MB, fits in Discord.
 
-### 🔥 Feito na sessão 2026-05-24 (parte 2 — tarde/noite) — commit `4dee204`
-- ✅ **3 bugs reportados pelo dono, corrigidos:**
-  1. **Regen "sentava e não voltava a atacar"** — saía do descanso só com HP **e** MP em 100% cravado; se o MP nunca enchia (ex: **Assassin não tem mana**), travava sentado pra sempre. Agora sai ao recuperar **acima do limite com folga** + **timeout de 60s** de segurança. Nova caixa **"Classe sem mana"** (`RegenConfig.ignore_mana`) na aba Regen ignora o MP no descanso. Raio de farm ("Distância máx do spot") agora **40–100** (default 60).
-  2. **Sell não achava "Sell Item" (PC do amigo)** — o offset fixo apontava pra **1ª linha do menu** = "Purchase Item" no Blacksmith (abria a janela errada → voltava ao spot). Agora acha "Sell Item" por **IMAGEM** (`sell_items_button.bmp`, threshold 0.85) + novo **`window_to_client()`** converte coord da captura (janela inteira) → área cliente antes de clicar (corrige o Δ da barra de título — a tese antiga estava certa, o palpite de "resolução" estava errado). **Venda REAL validada ao vivo** (gold subiu 435→448). ✅ tarefa "venda real" concluída.
-  3. **Stop = botão de EMERGÊNCIA** — checagens de `running` no loop de venda (30 cliques) e no pathing pelo mapa; `trigger_sell_now` roda em **thread registrada** que não ressuscita `running` após Stop; `stop_bot` **força** a parada e espera loop principal + venda manual.
-- ✅ **Multi-conta confirmada**: 2+ chars logados rodam em paralelo (threads independentes), cada um na lista à esquerda com seu dashboard. Corrigido o bug de **seleção desselecionando** (set da lista limpava a seleção → preserva por nome agora).
-- ✅ **Branding "Talisman Bot"** (pivot de "Automation SpAl"): logo do dono → `logo.png`/`logo.ico`, ícone na janela + barra de tarefas + build do `.exe` (nuitka). **Tema ESCURO** centralizado em `UX/theme.py` (verde/dourado do logo), aplicado em todas as abas. Banner do logo no topo da lista. Start verde / Stop vermelho. Atalho "Talisman Bot" no desktop.
-- ✅ **UX**: scroll da **aba inteira** (`ScrollableFrame`; combo achatado, sem scroll próprio); bug do scroll-pra-cima corrigido (só rola com overflow). **Fontes +2** no app todo. Campos **espalhados** (faixas HP/MP full-width, "Tecla Pot" na borda). **Autologin** reorganizado (grid + barra de botões no lugar de `place()` fixo). Tooltip com fonte **preta** (era branco no claro).
+### 🔥 Done in session 2026-05-24 (part 2 — afternoon/evening) — commit `4dee204`
+- ✅ **3 bugs reported by owner, fixed:**
+  1. **Regen "sat and didn't resume attacking"** — only left rest with HP **and** MP at exactly 100%; if MP never filled (e.g., **Assassin has no mana**), froze sitting forever. Now leaves when recovering **above the threshold with margin** + **60s safety timeout**. New box **"Class without mana"** (`RegenConfig.ignore_mana`) in Regen tab ignores MP in rest. Farm radius ("Max distance from spot") now **40–100** (default 60).
+  2. **Sell couldn't find "Sell Item" (friend's PC)** — fixed offset pointed to **1st row of menu** = "Purchase Item" at Blacksmith (opened wrong window → returned to spot). Now finds "Sell Item" by **IMAGE** (`sell_items_button.bmp`, threshold 0.85) + new **`window_to_client()`** converts capture coord (full window) → client area before clicking (fixes title bar Δ — the old thesis was right, the "resolution" guess was wrong). **Real sell validated live** (gold rose 435→448). ✅ task "real sell" complete.
+  3. **Stop = EMERGENCY button** — `running` checks in sell loop (30 clicks) and map pathing; `trigger_sell_now` runs on **registered thread** that doesn't resurrect `running` after Stop; `stop_bot` **forces** stop and waits for main loop + manual sell.
+- ✅ **Multi-account confirmed:** 2+ logged chars run in parallel (independent threads), each in the left list with its own dashboard. Fixed bug of **selection unchecking** (arrow from list cleared selection → now preserves by name).
+- ✅ **Branding "Talisman Bot"** (pivot from "Automation SpAl"): owner's logo → `logo.png`/`logo.ico`, icon in window + taskbar + `.exe` build (nuitka). **DARK THEME** centralized in `UX/theme.py` (green/gold from logo), applied to all tabs. Logo banner at top of list. Start green / Stop red. "Talisman Bot" desktop shortcut.
+- ✅ **UX:** **full tab scroll** (`ScrollableFrame`; flat combo, no own scroll); up-scroll bug fixed (only scrolls with overflow). **Fonts +2** across app. Fields **spread out** (HP/MP bands full-width, "Pot Key" at edge). **Autologin** reorganized (grid + button bar instead of fixed `place()`). Tooltip with **black font** (was white on light).
 
-### 🔥 Feito na sessão 2026-05-25 — Farm overnight OK + Detecção de drop por OCR
-- ✅ **GATE CUMPRIDO: o bot rodou a MADRUGADA INTEIRA (24→25/mai) sem travar** — ciclo farm+venda em produção validado na prática. Destravou o próximo milestone (Sprint 4).
-- ✅ **Detecção de DROP pelo chat System (Sprint 4, Etapa 1) — FEITA e validada ao vivo.**
-  - **Pivot ponteiro → OCR:** tentamos achar pointer do chat via CE (scan nível 6, base única `client.exe+0x00C7C6CC`), mas **morre no 2º restart** — cada linha do chat é heap realocado (mesmo problema dos itens da bag). OCR é mais robusto e **não quebra em update do TO**.
-  - **Como ficou:** acha o chat por **ÂNCORA** (template dos 3 ícones do chat, `Images/misc/chat_anchor.bmp`, match 0.98) + região calibrada por offset relativo à âncora; recorta; trata a imagem (cinza + ampliar 4x + Otsu, `--psm 6`); OCR; extrai nome de `You got the item: [Nome(lvl X)]` casando pelo `[colchete]` (tolerante a erro de OCR; ignora linhas "Congratulations").
-  - **Código:** `src/GhostBot/drop_watcher.py` (classe `DropWatcher.poll()` + helpers). Tools: `tools/test_ocr_chat.py` (testa tratamentos), `tools/calibrate_chat_region.py` (calibra a região ao vivo via mouse + âncora), `tools/test_drop_watch.py` (loop ao vivo).
-  - **Listas:** `alertas_drop.txt` (raiz) — `[QUERO ALERTA]` (Medium/Large Ruby+Emerald) / `[NAO QUERO]` / fora das duas = "item novo (decidir)". Cada jogador terá a própria cópia.
-  - **Teste 60s ao vivo:** detectou `Animal Fur` como NOVO, **dedup OK** (1 alerta em ~35 leituras), priming descarta o que já está na tela, não perdeu drop.
-  - **⚠️ capture_window() = ÁREA DO CLIENTE** (não a janela toda); converter cursor com `ScreenToClient`, não `GetWindowRect` (esse inclui borda invisível do DWM).
-  - **Raridade pela cor:** o **nome do item vem na COR da raridade** (Animal Fur = nome BRANCO = comum; o prefixo "You got the item:" é amarelo fixo). Filtro "branco não avisa" é viável → **DEFERIDO** (amostrar só o trecho do nome via `image_to_data`; calibrar com mais raridades; fundo de chat opaco ajuda).
-- ✅ **Etapa 2 (Discord webhook) FEITA:** `discord_notify.py` (urllib + header `User-Agent` p/ furar o HTTP 403 do Discord). URL em `discord_webhook.txt` (gitignored, nunca commitar). Validado ao vivo (drops postados no canal). Alerta want=🎯, novo=❓, pula "não quero".
-- ✅ **Etapa 3 (integração no bot) FEITA:** DropWatch + DeathAlert rodam em **THREAD PARALELA** (`ThreadedBotController._run_monitor`, ~2s, independente do loop, respeita Stop) — resolveu o "às vezes detecta, às vezes não". Dashboard ganhou: painel **"Drops da sessão"** (lista + **contagem x2**) + botões **✅ Quero / ❌ Não quero** (triagem 1 clique → escreve no `alertas_drop.txt`, vira tag) + **barra de AÇÃO ATUAL grifada** (mostra o que o bot faz) + **alerta de MORTE** 💀 (HP=0 → Discord).
-- ✅ **"Spot de farm (mapa)" na aba Attack, sincronizado com a Sell** (1 captura = X,Y + offset do mapa); offset movido pra `AttackConfig` (salva mesmo com a aba Sell desativada).
-- ✅ **Lote grande de fixes do bot (achados testando):** Regen — recupera até ~95% (não desperdiça pot), descanso máx **16s**, volta a atacar na hora se mob agressivo, recupera ANTES de voltar ao spot, nunca descansa/volta em combate. RETORNO ao spot **HÍBRIDO** (perto=minimapa passos curtos / longe=MAPA aberto com clique-isca), gatilho = slider "Distância máx do spot" (liberado **15-100**), + modo **"voltando"** que insiste até CENTRALIZAR (não para pra brigar no caminho; anti-trava após 6 ciclos). Matou o `_move_to_pos_via_map` (mapa-calculado antigo do upstream que ia pro lugar errado). Contagem de drop **x2** separada do anti-spam do Discord.
-- ⏭️ **PRÓXIMO:** **Boss target-lock** (frente 4): flag + caixa de nome na aba Attack → dá TAB até o nome bater e ataca só ele. Depois: mensagem **bonita** no Discord (embeds + cor de raridade + emojis), **filtro por cor de raridade** ("branco não avisa"), e **embutir o Tesseract no `.exe`** (ninguém instala nada). Tudo commitado LOCAL (sem push ainda).
+### 🔥 Done in session 2026-05-25 — Overnight farm OK + Drop detection via OCR
+- ✅ **GATE MET: bot ran the WHOLE NIGHT (24→25/May) without freezing** — farm+sell cycle in production validated in practice. Unlocked next milestone (Sprint 4).
+- ✅ **DROP DETECTION via System chat (Sprint 4, Phase 1) — DONE and live-validated.**
+  - **Pivot pointer → OCR:** tried finding chat pointer via CE (level 6 scan, single base `client.exe+0x00C7C6CC`), but **dies on 2nd restart** — each chat line is reallocated heap (same problem as bag items). OCR is more robust and **doesn't break on TO update**.
+  - **How it works:** finds chat by **ANCHOR** (3 chat icons template, `Images/misc/chat_anchor.bmp`, match 0.98) + calibrated region by relative offset to anchor; crops; preprocesses image (grayscale + 4x zoom + Otsu, `--psm 6`); OCR; extracts name from `You got the item: [Name(lvl X)]` by matching `[bracket]` (tolerant to OCR error; ignores "Congratulations" lines).
+  - **Code:** `src/GhostBot/drop_watcher.py` (`DropWatcher.poll()` + helpers). Tools: `tools/test_ocr_chat.py` (tests treatments), `tools/calibrate_chat_region.py` (calibrates region live via mouse + anchor), `tools/test_drop_watch.py` (live loop).
+  - **Lists:** `alertas_drop.txt` (root) — `[QUERO ALERTA]` (Medium/Large Ruby+Emerald) / `[NAO QUERO]` / outside both = "new item (decide)". Each player gets their own copy.
+  - **60s live test:** detected `Animal Fur` as NEW, **dedup OK** (1 alert in ~35 reads), priming discards what's already on screen, didn't miss a drop.
+  - **⚠️ `capture_window()` = CLIENT AREA** (not the full window); convert cursor with `ScreenToClient`, not `GetWindowRect` (the latter includes DWM's invisible border).
+  - **Rarity by color:** the **item name comes in RARITY COLOR** (Animal Fur = WHITE name = common; the "You got the item:" prefix is fixed yellow). "White doesn't alert" filter is viable → **DEFERRED** (show only the name snippet via `image_to_data`; calibrate with more rarities; opaque chat background helps).
+- ✅ **Phase 2 (Discord webhook) DONE:** `discord_notify.py` (urllib + `User-Agent` header to bypass Discord's HTTP 403). URL in `discord_webhook.txt` (gitignored, never commit). Live-validated (drops posted to channel). Want alert=🎯, new=❓, skip "don't want".
+- ✅ **Phase 3 (integration into bot) DONE:** DropWatch + DeathAlert run on **PARALLEL THREAD** (`ThreadedBotController._run_monitor`, ~2s, independent of loop, respects Stop) — fixed the "sometimes detects, sometimes doesn't". Dashboard got: **"Session Drops" panel** (list + **x2 count**) + **✅ Want / ❌ Don't want** buttons (1-click triage → writes to `alertas_drop.txt`, becomes tag) + **CURRENT ACTION bar highlighted** (shows what bot does) + **DEATH alert** 💀 (HP=0 → Discord).
+- ✅ **"Farm spot (map)" in Attack tab, synced with Sell** (1 capture = X,Y + map offset); offset moved to `AttackConfig` (saves even with Sell tab disabled).
+- ✅ **Big batch of bot fixes (found testing):** Regen — recovers to ~95% (doesn't waste pot), max rest **16s**, resumes attacking immediately if aggressive mob, recovers BEFORE returning to spot, never rests/returns in combat. **RETURN to spot HYBRID** (near=minimap short steps / far=MAP open with decoy click), trigger = slider "Max distance from spot" (released **15-100**), + **"returning" mode** that persists until CENTERING (doesn't stop to fight on the way; anti-freeze after 6 cycles). Killed `_move_to_pos_via_map` (old upstream map-calculated that went to the wrong place). Drop count **x2** separate from Discord anti-spam.
+- ⏭️ **NEXT:** **Boss target-lock** (front 4): flag + name box in Attack tab → TABs until name matches and attacks only it. Then: **pretty message** on Discord (embeds + rarity color + emojis), **rarity color filter** ("white doesn't alert"), and **embed Tesseract in the `.exe`** (no one installs anything). All committed LOCAL (no push yet).
 
-### Próxima sessão começa por:
-1. **Tabela de XP-por-nível** (amigos montando) → ligar a **% do XP** no dashboard
-2. ✅ ~~Teste do ciclo de venda REAL~~ FEITO. Falta: rodar o ciclo **3-bags automático** no farm real (1 bag validada).
-3. **Validar Fairy team buff** + `TEAM_NAME` quando o time conectar
-4. ✅ ~~**Detecção de drop + Discord**~~ **COMPLETA** (Etapas 1-3: OCR + webhook + thread paralela + dashboard com triagem + alerta de morte). Próximo grande: **Boss target-lock** (frente 4). Depois: msg bonita Discord (embeds/raridade), filtro por raridade, Tesseract no `.exe`.
-5. 🎯 **DECIDIDO: gerar o .exe** (pra os amigos não precisarem instalar Python). Via GitHub Actions → **Build Executable** (rodar 2x: `client` e `server`). Branch `minha-versao-estavel` já está pushado no fork. Falta: disparar o workflow, baixar os 2 .exe, testar (atenção ao path das imagens no binário — já houve bug antes, ver commits #30/#31). Como os .exe são grandes, distribuir por link (não cabe no Discord).
+### Next session starts with:
+1. **XP-per-level table** (friends building) → connect **XP %** to dashboard
+2. ✅ ~~Test real sell cycle~~ DONE. Remaining: run the **3-bag auto** cycle in real farm (1 bag validated).
+3. **Validate Fairy team buff** + `TEAM_NAME` when team connects
+4. ✅ ~~**Drop detection + Discord**~~ **COMPLETE** (Phases 1-3: OCR + webhook + parallel thread + dashboard with triage + death alert). Next big: **Boss target-lock** (front 4). Then: pretty Discord msg (embeds/rarity), rarity filter, Tesseract in `.exe`.
+5. 🎯 **DECIDED: generate the .exe** (so friends don't need to install Python). Via GitHub Actions → **Build Executable** (run 2x: `client` and `server`). `minha-versao-estavel` branch already pushed to fork. Remaining: trigger the workflow, download the 2 .exe, test (watch for image path in binary — had bug before, see commits #30/#31). Since .exe are large, distribute via link (doesn't fit in Discord).
 
-### Como rodar:
-- Atalho **BotTO** no desktop (pede admin sozinho) ou `start_botto.bat`.
-- Config em `C:\Users\<user>\GhostBot\<charname>.yml` ($HOME, não LOCALAPPDATA — quirk).
+### How to run:
+- **BotTO** desktop shortcut (auto-requests admin) or `start_botto.bat`.
+- Config in `C:\\Users\\<user>\\GhostBot\\<charname>.yml` ($HOME, not LOCALAPPDATA — quirk).
 
 ---
 
-## ✅ SPRINT 0 — Fundação (23/mai → 03/jun) — **100% concluída** ("Inventory Full" via OCR FEITO)
+## ✅ SPRINT 0 — Foundation (May 23 → Jun 03) — **100% complete** ("Inventory Full" via OCR DONE)
 
-### Concluído
-- ✅ Python 3.11+ instalado + `pip install .` do fork
-- ✅ Patches `game.exe → client.exe` (3 lugares: `client_launcher.py`, `threaded_bot_controller.py`, `lib/win32/process.py`)
-- ✅ Permissão Admin pra `pymem` (Claude Code + bot rodam como admin)
-- ✅ Tesseract OCR instalado (binding `pytesseract` ainda não testado em runtime)
-- ✅ Primeira execução `ghost-bot-server` + `ghost-bot-client`
-- ✅ **Pointers validados em runtime:**
+### Completed
+- ✅ Python 3.11+ installed + `pip install .` of the fork
+- ✅ Patches `game.exe → client.exe` (3 places: `client_launcher.py`, `threaded_bot_controller.py`, `lib/win32/process.py`)
+- ✅ Admin permission for `pymem` (Claude Code + bot run as admin)
+- ✅ Tesseract OCR installed (`pytesseract` binding not yet tested at runtime)
+- ✅ First run `ghost-bot-server` + `ghost-bot-client`
+- ✅ **Pointers validated at runtime:**
   - CHAR: name, level, HP, MAX_HP, MP, MAX_MANA, X, Y, location, gold, bag_1, bag_2
-  - TARGET: select, ID, **HP (chain original funciona!)**, **name (POINTER_3)**
-  - State: dialog, system_menu, notification, in_battle (lê mas retorna 0 sempre — broken)
-- ✅ **Sessão CE pro TARGET_HP** — descobriu que o chain `0x012CE2E0 + [0x18, 0x59C, 0x0, 0xC, 0x1F4, 0x15C, 0x480]` **já funcionava**. O `597` que parecia lixo era **HP máximo em escala interna**; o cálculo em `client_window.py` (`(value - 461) / (597 - 461) * 100`) normaliza pra 0-100.
-- ✅ **Bot rodou e atacou de fato** com `teste1231245` (Lv 2 em Green Scarp)
-- ✅ Char de teste subiu de Lv 1 → Lv 2 durante a validação
+  - TARGET: select, ID, **HP (original chain works!)**, **name (POINTER_3)**
+  - State: dialog, system_menu, notification, in_battle (reads but always returns 0 — broken)
+- ✅ **CE session for TARGET_HP** — discovered that the chain `0x012CE2E0 + [0x18, 0x59C, 0x0, 0xC, 0x1F4, 0x15C, 0x480]` **already worked**. The `597` that looked like junk was **max HP on internal scale**; the calculation in `client_window.py` (`(value - 461) / (597 - 461) * 100`) normalizes to 0-100.
+- ✅ **Bot ran and actually attacked** with `teste1231245` (Lv 2 in Green Scarp)
+- ✅ Test char leveled from Lv 1 → Lv 2 during validation
 
-### Pendente Sprint 0
-- 🔄 OCR: **`pytesseract` validado em runtime + tratamento tunado pro chat** (drop detection, 2026-05-25). ✅ Nome de mob/alvo **resolvido por POINTER** (`get_target_name`, usado no Boss-lock + botão "Pegar alvo"). **Falta só "Inventory Full".**
-- ✅ ~~Tutoriais RaaskiBot v3.0 no YouTube~~ — concluído (referência pras features absorvida).
-- ✅ ~~Primeiro farm de teste do **Assassin real** do dono~~ — concluído (farm real validado, não mais só char de teste).
+### Sprint 0 Pending
+- 🔄 OCR: **`pytesseract` validated at runtime + treatment tuned for chat** (drop detection, 2026-05-25). ✅ Mob/target name **resolved via POINTER** (`get_target_name`, used in Boss-lock + "Grab target" button). **Only "Inventory Full" remains.**
+- ✅ ~~RaaskiBot v3.0 YouTube tutorials~~ — completed (feature references absorbed).
+- ✅ ~~First real **Assassin** farm test from owner~~ — completed (real farm validated, not just test char).
 
 ---
 
-## 🎨 UX REVOLUTION (extra, não estava no plano original)
+## 🎨 UX REVOLUTION (extra, not in original plan)
 
-Aplicada nesta sessão sobre tudo que o bot já tinha:
+Applied in this session on top of everything the bot already had:
 
-### Helpers reutilizáveis em `src/GhostBot/UX/utils.py`
-- **`Tooltip`** — popup amarelo seguindo o cursor, fonte 11
-- **`create_int_slider`** — slider min-max + entry editável + sufixo. Suporta `hint=` (tooltip) e `bg=` (cor da linha)
-- **`create_entry`** — entry de texto/booleano com label, suporta `entry_width=`, `hint=`, `bg=`
-- **`ComboWidget`** — combo dinâmico (linhas de tecla+intervalo+remover) com scroll interno (~6 visíveis), botão `+ Adicionar tecla`. Flag `show_tab_button=False` esconde TAB (usado no Buff).
-- **`NamedListWidget`** — listbox + entry add + botão `+`/`×`. Usado nas categorias de item.
-- **`setup_drag_from_listbox`** + **`widget_in_container`** — drag-and-drop de uma listbox pra outro widget
+### Reusable helpers in `src/GhostBot/UX/utils.py`
+- **`Tooltip`** — yellow popup following cursor, font 11
+- **`create_int_slider`** — min-max slider + editable entry + suffix. Supports `hint=` (tooltip) and `bg=` (line color)
+- **`create_entry`** — text/boolean entry with label, supports `entry_width=`, `hint=`, `bg=`
+- **`ComboWidget`** — dynamic combo (key+interval+remove lines) with internal scroll (~6 visible), `+ Add key` button. Flag `show_tab_button=False` hides TAB (used in Buff).
+- **`NamedListWidget`** — listbox + add entry + `+`/`×` button. Used in item categories.
+- **`setup_drag_from_listbox`** + **`widget_in_container`** — drag-and-drop from one listbox to another widget
 
-### Tabs renovadas (todas com PT-BR gamer + tooltips + alinhamento esquerda)
-- ✅ **Dashboard** (era Functions) — char info + barra HP do alvo + indicador "EM COMBATE" + stats da sessão (Mobs mortos, Tempo de farm). XP ainda placeholder.
-- ✅ **Attack** — faixa vermelha HP / azul MP, sliders %, "Sem dano por (s)" slider, "Distância máx do spot" com tooltip de marcos, Combo dinâmico (com botão "+ TAB" pra trocar alvo), "Spot (X,Y)" com botão "Posição atual"
-- ✅ **Regen** — mesmas faixas vermelha/azul (mas com threshold pra sentar fora de combate). "Tecla Sentar" abaixo.
-- ✅ **Buff** — slider "Re-buffar a cada", Combo dinâmico **sem TAB** (buff não troca alvo)
-- ✅ **Fairy** — heal team + heal self (faixas vermelhas), teclas heal/cure/revive, spot. **NOVO: seção Team Buff** (combo + intervalo + checkbox "Buffar a si"). Lógica em `fairy.py` (`_buff_team`, `_should_buff_team`) — validar quando time conectar.
-- ✅ **Pet** — sliders pra resummonar e alimentar (em minutos)
-- ✅ **Sell** — config existente + **NOVO: lista de itens da bag (full-width) + 3 categorias (🗑️ Lixo / 📦 Bons / ✨ Super raros) + drag-and-drop** entre bag → categoria
-- ✅ **Delete** — só checkbox + slider intervalo
+### Redesigned tabs (all with PT-BR gamer + tooltips + left alignment)
+- ✅ **Dashboard** (was Functions) — char info + target HP bar + "IN BATTLE" indicator + session stats (Mobs killed, Farm time). XP still placeholder.
+- ✅ **Attack** — red HP band / blue MP band, % sliders, "No damage for (s)" slider, "Max distance from spot" with milestone tooltip, Combo dynamic (with "+ TAB" button to switch target), "Spot (X,Y)" with "Current Position" button
+- ✅ **Regen** — same red/blue bands (but with threshold to sit out of combat). "Sit key" below.
+- ✅ **Buff** — "Re-buff every" slider, dynamic Combo **without TAB** (buff doesn't switch target)
+- ✅ **Fairy** — heal team + heal self (red bands), heal/cure/revive keys, spot. **NEW: Team Buff section** (combo + interval + "Buff self" checkbox). Logic in `fairy.py` (`_buff_team`, `_should_buff_team`) — validate when team connects.
+- ✅ **Pet** — sliders for re-summon and feed (in minutes)
+- ✅ **Sell** — existing config + **NEW: full-width bag item list + 3 categories (🗑️ Trash / 📦 Good / ✨ Super rare) + drag-and-drop** between bag → category
+- ✅ **Delete** — only checkbox + interval slider
 
-### Janela principal (`main.py`)
-- 🎨 **TEMA ESCURO** (2026-05-24, cores do logo) centralizado em `UX/theme.py`: bg `#14201C`, paineis `#1B2B24`, verde `#7CB518`/`#B4FB00`, dourado `#FCB400`. (Era claro azul `#4a90e2` antes.)
-- 📐 Layout responsivo (grid + weights) — **redimensionável**
-- 🪟 Tabs e log em `tk.PanedWindow` — **divisor arrastável**
-- 🔘 Botão Start em estilo "Accent" (azul)
-- 📏 Janela 980×680 (min 820×560)
+### Main window (`main.py`)
+- 🎨 **DARK THEME** (2026-05-24, logo colors) centralized in `UX/theme.py`: bg `#14201C`, panels `#1B2B24`, green `#7CB518`/`#B4FB00`, gold `#FCB400`. (Was light blue `#4a90e2` before.)
+- 📐 Responsive layout (grid + weights) — **resizable**
+- 🪟 Tabs and log in `tk.PanedWindow` — **draggable divider**
+- 🔘 Start button in "Accent" style (blue)
+- 📏 Window 980×680 (min 820×560)
 
 ### Bug fixes
-- 🐛 `bot_config.rege.hp_key` → `bot_config.regen.hp_key` (typo que fazia Save crashar silencioso)
-- 🐛 `_battle_pots` tinha condições HP/MP swapped (checava `battle_hp_pot` mas comparava `battle_mana_threshold`)
-- 🐛 Threshold sliders ficavam triggering sempre (ui mandava `60` mas código esperava `0.6`) — agora `_as_decimal` converte automaticamente se valor > 1
-- 🐛 Dead code removido: `target_hp_full()` e `is_target_dead()` em `pointers.py`
+- 🐛 `bot_config.rege.hp_key` → `bot_config.regen.hp_key` (typo that made Save crash silently)
+- 🐛 `_battle_pots` had HP/MP conditions swapped (checked `battle_hp_pot` but compared `battle_mana_threshold`)
+- 🐛 Threshold sliders kept triggering (ui sent `60` but code expected `0.6`) — now `_as_decimal` auto-converts if value > 1
+- 🐛 Dead code removed: `target_hp_full()` and `is_target_dead()` in `pointers.py`
 
-### Bug fixes (sessão 2026-05-25 — retorno ao spot / regen / venda / drop)
-- 🐛 **Regen "sentava e não voltava a atacar"** — `_goto_start_location` exigia dist ≤ 2, mas o clique no minimapa só EMPURRA o char (sem precisão fina) → ficava em nudge infinito, nunca terminava o descanso, nunca atacava. Fix: chega com dist ≤ 8 + desiste se não aproxima + teto de tentativas (commit `21c5090`).
-- 🐛 **Retorno ia pro LUGAR ERRADO** ("local que não escolhi") — `move_to_pos` pra dist > 50 caía no `_move_to_pos_via_map` (mapa-calculado do upstream, que erra de lugar). Fix: novo `move_to_pos_minimap()` (só minimapa, relativo ao char); mapa-calculado banido pra movimento in-zone (commit `5463278`).
-- 🐛 **Runaway (char andava sem parar "pra esquerda")** — clicar na BORDA do minimapa = auto-walk contínuo no TO + sem timeout. Fix: clique recuado pra DENTRO do minimapa (70% do alcance, char vai e PARA) + timeout 5s (commit `c8e9dbc`).
-- 🐛 **Parava pra farmar no meio do caminho de volta** — mob no caminho cancelava a viagem (anti-trava desistia dentro do raio → farmava ali). Fix: modo "voltando" persiste até CENTRALIZAR no spot (não ataca enquanto volta; anti-trava após 6 ciclos) (commit `7b7397c`).
-- 🐛 **Congelamento pós-venda (até ~60s parado no spot sem atacar)** — a volta da venda exigia dist ≤ 3, impossível pelo clique no mapa. Fix: reconhece a chegada quando o char PARA de andar (`block_while_moving`) (commit `0f186e2`).
-- 🐛 **"Spot de farm (mapa)" sumia com a aba Sell desativada** — o campo salvava na config da Sell; com Sell off o Save descartava (virava None). Fix: campo movido pra `AttackConfig.return_spot_map_offset` (commit `5c77cac`).
-- 🐛 **Drop "às vezes detecta, às vezes não"** — o DropWatch lia o chat só ENTRE as ações do loop; em combate pesado lia raramente e o drop sumia. Fix: DropWatch + DeathAlert rodam em THREAD paralela própria (~2s fixos) (commit `7ceb920`).
-- 🐛 **Drop contado errado (2 iguais = 1)** — dedup pro Discord também suprimia a contagem do Dashboard. Fix: `poll()` retorna `(alerts, deltas)` — alerts com dedup (Discord não spamma), deltas conta cada ocorrência nova (commit `0bdc26a`).
-- 🐛 **Regen desperdiçava pot / sentava demais** — saía do descanso cedo demais e re-sentava. Fix: recupera até ~95% antes de voltar (commit `f4a1340`) + descanso máx 16s e volta a atacar na hora se mob agressivo (commit `045ccbb`).
-- 🐛 **Discord HTTP 403** — User-Agent padrão do urllib bloqueado pelo Discord. Fix: header `User-Agent: TalismanBot/1.0` em `discord_notify.py`.
+### Bug fixes (2026-05-25 session — return to spot / regen / sell / drop)
+- 🐛 **Regen "sat and didn't resume attacking"** — `_goto_start_location` required dist ≤ 2, but minimap click only PUSHES the char (no fine precision) → stayed in infinite nudge, never finished rest, never attacked. Fix: arrives with dist ≤ 8 + gives up if doesn't approach + attempt ceiling (commit `21c5090`).
+- 🐛 **Return went to WRONG PLACE** (`move_to_pos` for dist > 50 fell to `_move_to_pos_via_map` — upstream map-calculated, which went to the wrong place). Fix: new `move_to_pos_minimap()` (minimap only, relative to char); map-calculated banned for in-zone movement (commit `5463278`).
+- 🐛 **Runaway (char walked non-stop "to the left")** — clicking minimap EDGE = auto-walk continuous in TO + no timeout. Fix: clicked retreat INSIDE minimap (70% of reach, char goes and STOPS) + 5s timeout (commit `c8e9dbc`).
+- 🐛 **Stopped to farm mid-return path** — mob on path cancelled the trip (anti-freeze gave up inside radius → farmed there). Fix: "returning" mode persists until CENTERING (doesn't attack while returning; anti-freeze after 6 cycles) (commit `7b7397c`).
+- 🐛 **Post-sell freeze (up to ~60s stopped at spot without attacking)** — sell return required dist ≤ 3, impossible via map click. Fix: recognizes arrival when char STOPS walking (`block_while_moving`) (commit `0f186e2`).
+- 🐛 **"Farm spot (map)" disappeared with Sell tab disabled** — field saved in Sell config; with Sell off Save discarded it (became None). Fix: field moved to `AttackConfig.return_spot_map_offset` (commit `5c77cac`).
+- 🐛 **Drop "sometimes detects, sometimes doesn't"** — DropWatch read chat only BETWEEN loop actions; in heavy combat read rarely and drop disappeared. Fix: DropWatch + DeathAlert run on their own PARALLEL THREAD (~2s fixed) (commit `7ceb920`).
+- 🐛 **Drop counted wrong (2 identical = 1)** — dedup for Discord also suppressed Dashboard count. Fix: `poll()` returns `(alerts, deltas)` — alerts with dedup (Discord doesn't spam), deltas count every new occurrence (commit `0bdc26a`).
+- 🐛 **Regen wasted pot / sat too much** — left rest too early and re-sat. Fix: recovers to ~95% before returning (commit `f4a1340`) + max rest 16s and resumes attacking immediately if aggressive mob (commit `045ccbb`).
+- 🐛 **Discord HTTP 403** — default urllib User-Agent blocked by Discord. Fix: `User-Agent: TalismanBot/1.0` header in `discord_notify.py`.
 
-### Bug fixes (sessão 2026-05-26 — empacotamento `.exe` pros amigos)
-- 🐛 **Dashboard travado em "loading." no `.exe`** (combate funcionava, mas sem dados na tela) — um **submódulo externo** (`GhostBot/lib/talisman_online_python` → repo do `chestm007`) empacotava uma versão ANTIGA do `pointers.py` SEM `get_xp` → `to_json` estourava `AttributeError` a cada poll → a interface nunca recebia os dados. Fix: submódulo **REMOVIDO** (fork autossuficiente) + `submodules: recursive` tirado dos 3 workflows (commit `d625eed`).
-- 🐛 **Discord não postava + watchlist vazia no `.exe`** — `discord_webhook.txt` e `alertas_drop.txt` não eram achados (o código não olhava na pasta do `.exe`, só em `~/GhostBot`, raiz-do-repo e temp). Fix: candidatos passam a incluir a pasta do exe (`sys.argv[0]`), igual o `_find_tesseract` (commit `8ba1d4a`).
-- 🐛 **Tesseract não embutia no `.exe`** — nuitka ignora `.dll`/`.exe` no `include-data-dir`. Fix: Tesseract vai como **pasta ao lado** do exe no pacote (`_find_tesseract` já procura lá); validado.
-- 🐛 **Build #1 do server crashava** — `pytesseract` faltava nas deps do `pyproject.toml` + `Images/` não-embutida. Fix: commit `43e4afb`.
-- ✨ **Interface auto-recupera a lista de personagens** — fechar e reabrir a interface não some mais com o char (pede a lista a cada ~3s) (commit `cfd34e9`).
+### Bug fixes (2026-05-26 session — `.exe` packaging for friends)
+- 🐛 **Dashboard stuck on "loading." in the `.exe`** (combat worked, but no data on screen) — an **external submodule** (`GhostBot/lib/talisman_online_python` → `chestm007` repo) packaged an OLD version of `pointers.py` WITHOUT `get_xp` → `to_json` threw `AttributeError` every poll → UI never received data. Fix: submodule **REMOVED** (self-sufficient fork) + `submodules: recursive` removed from 3 workflows (commit `d625eed`).
+- 🐛 **Discord didn't post + empty watchlist in `.exe`** — `discord_webhook.txt` and `alertas_drop.txt` weren't found (code didn't look in `.exe` folder, only in `~/GhostBot`, repo root and temp). Fix: candidates now include exe folder (`sys.argv[0]`), same as `_find_tesseract` (commit `8ba1d4a`).
+- 🐛 **Tesseract didn't embed in `.exe`** — nuitka ignores `.dll`/`.exe` in `include-data-dir`. Fix: Tesseract goes as **folder next to** exe in package (`_find_tesseract` already looks there); validated.
+- 🐛 **Server build #1 crashed** — `pytesseract` missing from `pyproject.toml` deps + `Images/` not embedded. Fix: commit `43e4afb`.
+- ✨ **UI auto-recovers character list** — closing and reopening the UI no longer makes char disappear (asks for list every ~3s) (commit `cfd34e9`).
 
-### Bug fixes (sessão 2026-05-26 — parte 2: Fairy "auto-select" + auto-cura)
-- 🐛 **Fairy se auto-selecionava / curava a SI MESMA** (bug histórico, várias sessões de debug) — `get_with_case` (`lib/vk_codes.py`) somava `+0x20` em letras MAIÚSCULAS → a tecla 'seguir' `P`(0x50) virava **`0x70 = F1 = auto-selecionar a si mesmo`**. Cada P (seguir) → se selecionava → o `2` (cura) seguinte curava ela. Fix: `return vk_codes[_key.lower()]` sempre (VK não tem caixa; consertou TODA letra maiúscula, ex.: 'A' virava numpad). Validado ao vivo. **NÃO era** clique fantasma / código velho / `.exe` stale / TAB / auto-login (todos descartados no caminho).
-- 🧹 Removida a instrumentação de debug do `left_click` (`client_window.py`) que sobrou do diagnóstico.
-- ✨ **Fairy Helper: AUTO-CURA** (`fairy.py`, pendente teste ao vivo) — se a HP DELA < `heal_self_threshold` (default 50%): **F1 → cura → aguarda conjuração → clica 1º membro → P**. + o Helper agora SELECIONA o aliado (clique backstage no 1º membro, `_select_ally`) a cada ciclo — não depende mais de pré-seleção manual.
+### Bug fixes (2026-05-26 session — part 2: Fairy "auto-select" + self-heal)
+- 🐛 **Fairy auto-selected itself / healed ITSELF** (historic bug, multiple debugging sessions) — `get_with_case` (`lib/vk_codes.py`) added `+0x20` to UPPERCASE letters → the 'follow' key `P`(0x50) became **`0x70 = F1 = auto-select itself`**. Each P (follow) → self-selects → next `2` (heal) healed her. Fix: `return vk_codes[_key.lower()]` always (VK has no case; fixed ALL uppercase letters, e.g. 'A' became numpad). Live-validated. **NOT** phantom click / old code / stale `.exe` / TAB / autologin (all discarded along the way).
+- 🧹 Removed debug instrumentation from `left_click` (`client_window.py`) that was leftover from diagnosis.
+- ✨ **Fairy Helper: SELF-HEAL** (`fairy.py`, pending live test) — if HER HP < `heal_self_threshold` (default 50%): **F1 → heal → wait for cast → click 1st member → P**. + Helper now SELECTS the ally (backstage click on 1st member, `_select_ally`) each cycle — no longer depends on manual pre-selection.
 
-### Bug fixes (sessão 2026-05-27 — Fairy auto-cura confirmada + detecção de clients + bugs dos amigos)
-- ✅ **Fairy auto-cura validada 100% ao vivo** — o fluxo F1→cura→re-seleciona 1º membro→P funciona. Frente da Fairy fechada.
-- 🐛 **Clients não apareciam na lista se o bot abria ANTES deles** (`controller/bot_controller.py:_scan_for_clients`) — o atalho que pula o scan comparava só o conjunto de PIDs; um client aberto na tela de login (name=None) mantém o mesmo PID depois de logar → nunca era re-avaliado → só aparecia reiniciando o bot. Fix: só pula o scan se nada mudou **E** todo processo rodando já virou client na lista (`all_registered`). Validado ao vivo; teste `test_async_bot_controller` passa.
-- ✅ **(amigo) Atalho não criava — `DirectoryNotFoundException`** (`Criar atalho do Talisman Bot.bat`) — chutava `%USERPROFILE%\Desktop`, inexistente quando o OneDrive redireciona a Área de Trabalho. Fix: Desktop real via `[Environment]::GetFolderPath('Desktop')` + fallback. Nas 2 cópias (repo + pacote).
-- 🔴 **(amigo) PENDENTE/PRIORIDADE — interface não abre (`run_client.exe`)** — só o servidor abre; Defender bloqueia o client (falso-positivo nuitka). Resolver quando o dono pedir; aguardando diagnóstico do amigo. Ver bloco "RETOMAR AQUI".
-- 💊 **POTS: cooldown de 16s (geral — attack/boss/regen)** — pots no TO são regen ao longo de ~16s, não instantâneos. O bot via a % ainda baixa logo após potar e **potava de novo** (pot duplicado, "acontecia muito"). Fix: cooldown de 16s por tecla de pot (`Runner._pot_ready`/`_use_pot`, `POT_DURATION_SECS=16`); a espera de recuperação (`_wait_resource_refill`) passou a usar 16s. Vale pro farm normal também, não só pro boss.
+### Bug fixes (2026-05-27 session — Fairy self-heal confirmed + client detection + friend bugs)
+- ✅ **Fairy self-heal validated 100% live** — F1→heal→re-select 1st member→P flow works. Fairy front closed.
+- 🐛 **Clients didn't appear in list if bot opened BEFORE them** (`controller/bot_controller.py:_scan_for_clients`) — the shortcut that skips scan compared only the PID set; a client opened on login screen (name=None) keeps the same PID after logging in → never re-evaluated → only appeared by restarting bot. Fix: only skip scan if nothing changed **AND** every running process already became a client in the list (`all_registered`). Live-validated; test `test_async_bot_controller` passes.
+- ✅ **(friend) Shortcut didn't create — `DirectoryNotFoundException`** (`Criar atalho do Talisman Bot.bat`) — guessed `%USERPROFILE%\\Desktop`, nonexistent when OneDrive redirects Desktop. Fix: real Desktop via `[Environment]::GetFolderPath('Desktop')` + fallback. In both copies (repo + package).
+- 🔴 **(friend) PENDING/PRIORITY — UI doesn't open (`run_client.exe`)** — only server opens; Defender blocks client (Nuitka false-positive). Resolve when owner asks; waiting for friend's diagnosis. See "RESUME HERE" block.
+- 💊 **POTS: 16s cooldown (global — attack/boss/regen)** — pots in TO are regen over ~16s, not instant. Bot saw % still low right after potting and **potted again** (duplicate pot, "happened a lot"). Fix: 16s cooldown per pot key (`Runner._pot_ready`/`_use_pot`, `POT_DURATION_SECS=16`); recovery wait (`_wait_resource_refill`) now uses 16s. Applies to normal farm too, not just boss.
 
-### Nova lógica em `attack.py`
-- ✨ **`_wait_resource_refill`** — depois de usar pot HP/MP, bot **para de atacar** e espera o recurso encher (≥95%). Por detecção, não tempo. Sai se HP cai de novo (sob ataque) ou após 30s. Resolve o problema de "atacar interrompe regen do pot".
+### New logic in `attack.py`
+- ✨ **`_wait_resource_refill`** — after using HP/MP pot, bot **stops attacking** and waits for resource to fill (≥95%). By detection, not time. Leaves if HP drops again (under attack) or after 30s. Solves "attacking interrupts pot regen" problem.
 
 ---
 
-## 🎯 TASKS PENDENTES — Sessão Cheat Engine (consolidado)
+## 🎯 PENDING TASKS — Cheat Engine session (consolidated)
 
-| # | Task | Prioridade | O que precisa |
+| # | Task | Priority | What's needed |
 |---|---|---|---|
-| #3 | `TEAM_NAME_1` pointer | Baixa | Atual lê `'p2'` quando sozinho. Validar quando time conectar antes de re-achar. |
-| #4 | `BATTLE_STATUS` pointer | Baixa | Lê sempre 0. Não crítico (combate detectado indiretamente por HP do alvo caindo). Achar pra UI indicar "EM COMBATE". |
-| #5 | ~~`XP_POINTER`~~ ✅ **FEITO** | — | Achado 2026-05-24 no offset `0x3C8` da char struct (sonda dos vizinhos do ENERGY, sem CE). XP atual no nível (zera ao upar). Dashboard mostra XP ganho em PONTOS. Falta só a % (depende da tabela XP-por-nível, amigos montando). |
-| #6 | ~~Pointer de **nome de item** na bag~~ ❌ **ABANDONADO** | — | Pivot pra template matching (BMPs em `Images/SELL`). Pointer scan level 4 não sobrevive a restart neste jogo. NÃO re-tentar via CE. |
+| #3 | `TEAM_NAME_1` pointer | Low | Currently reads `'p2'` when alone. Validate when team connects before re-finding. |
+| #4 | `BATTLE_STATUS` pointer | Low | Always reads 0. Not critical (combat detected indirectly by target HP dropping). Find for UI to show "IN BATTLE". |
+| #5 | ~~`XP_POINTER`~~ ✅ **DONE** | — | Found 2026-05-24 at offset `0x3C8` of char struct (probes of ENERGY neighbors, no CE). Current XP at level (resets on level-up). Dashboard shows XP gained in POINTS. Only % remains (depends on XP-per-level table, friends building). |
+| #6 | ~~Item name pointer in bag~~ ❌ **ABANDONED** | — | Pivot to template matching (BMPs in `Images/SELL`). Pointer scan level 4 doesn't survive restart in this game. DO NOT retry via CE. |
 
-**Estratégia recomendada:** uma sessão CE única faz todos os 4. Lições aprendidas da sessão do TARGET_HP:
-- Scan progressivo (Unknown initial value → Decreased value → Unchanged value) funciona, mas demora
-- Para valores que mudam por "evento" (battle status, XP), usar transição 0→1 / N→N+X como filtro
-- O endereço calculado pelo chain pode estar certo MAS o offset final estar errado — sempre ler bytes ao redor antes de descartar
+**Recommended strategy:** one CE session does all 4. Lessons learned from TARGET_HP session:
+- Progressive scan (Unknown initial value → Decreased value → Unchanged value) works, but slow
+- For values that change by "event" (battle status, XP), use 0→1 / N→N+X transition as filter
+- The calculated address from the chain can be right BUT the final offset wrong — always read bytes around before discarding
 
 ---
 
-## 🚧 ITENS NOVOS DISCUTIDOS (não estavam no plano original)
+## 🚧 NEW ITEMS DISCUSSED (not in original plan)
 
-| Feature | Status | Notas |
+| Feature | Status | Notes |
 |---|---|---|
-| **Fairy Helper (cura + segue + AUTO-CURA, 1 membro)** | ✅ FEITO e validado 100% ao vivo (2026-05-27) | Seleciona o 1º membro (clique backstage) → cura → P; auto-cura (HP dela <50%): F1→cura→volta pro 1º membro. Bug do "auto-select" (P→F1) RESOLVIDO. SEM UI nova (decisão do dono). |
-| **Seleção de membros do grupo (backstage)** | ✅ validado ao vivo | F1 = self; clique backstage (`left_click`) = membro. Coords `team_1..4` validadas (1024x768, ~81px). ⚠️ NÃO usar mouse real. |
-| **🐉 Cave Boss Bot (aba "Boss", 3 papéis)** | ✅ VALIDADO ao vivo (2026-05-27) — só o aggro do DPS pendente | Aba dinâmica (dropdown Tank/DPS/Fairy → campos mudam). TANK: boss-lock + combo + buffs/Xs (não pota). DPS: boss-lock + recuo por aggro (perdeu HP→F1→espera→TAB) + recuperar MP. FAIRY: spam de cura no alvo atual. Regra "Boss só Boss". Spec em `CAVE_BOSS_BOT.md`. |
-| **POTS com cooldown de 16s** | ✅ FEITO | Pot = regen de ~16s; cooldown por tecla evita pot duplicado. Em attack/boss/regen. |
-| **⚔️ Attack: seletor de Classe (DPS/Tamer/Fairy)** | ✅ FEITO (2026-05-27), a validar | Dropdown no topo da aba Attack. DPS=atual. Tamer: tecla de ataque do pet (ao pegar alvo novo). Fairy: cura-se com skill em vez de pot HP. Combo segue genérico. |
-| **🐾 Pet: Tamer + Normal (2 tipos, flags)** | ✅ VALIDADO ao vivo (2026-05-27) | `petfood.py` + aba Pet. **Tamer** (flag): invoca/re-invoca-se-morrer/alimenta. **Normal** (flag): só alimenta (comida própria). Campos aparecem por flag. Combate = aba Attack (combo). |
-| **Fairy buff em GRUPO (TODOS os membros)** | reservado p/ uma rotina futura | Buffar todo o grupo (F1 self + clique em cada membro). NÃO entrou no Cave Boss (o tank/dps se buffam sozinhos; a Fairy do boss cura, não buffa em grupo). Separado do Helper. |
-| **Dashboard com Kills + Tempo** | Funcionando | Detecta kill via transição HP alvo positivo→morto |
-| **Categorização de itens (Lixo/Bons/Raros)** | UI completa + drag-and-drop | Lógica de auto-vender/alertar vem em Sprint 4. Precisa task #6 (nomes de itens). |
-| **Pausa após pot pra HP encher** | Implementado em `attack.py` | Por detecção, não tempo |
-| **Set de team** (configurar nomes dos 4 amigos pra Fairy buffar) | Não iniciado | Aguarda time conectar pra validar TEAM_NAME |
-| **Pacote `.exe` autocontido pros amigos** | ✅ FEITO e validado ao vivo | run_server + run_client + Tesseract (pasta ao lado) + launcher 1-clique + ícone; zip 139 MB no Drive. Fork autossuficiente (sem submódulo externo). |
-| **Interface auto-recupera a lista de chars** | ✅ FEITO | fecha/reabre sem o char sumir (pede a lista a cada ~3s) — commit `cfd34e9` |
-| **`gh` CLI (disparar/baixar builds)** | ✅ FEITO | logado como LpiresUrt; builds e download do `.exe` pela linha de comando |
+| **Fairy Helper (heal + follow + SELF-HEAL, 1 member)** | ✅ DONE and 100% live-validated (2026-05-27) | Selects 1st member (backstage click) → heal → follow with P; self-heal (HP < 50%): F1→heal→back to 1st member. "Auto-select" bug (P→F1) RESOLVED. NO new UI (owner's decision). |
+| **Party member selection (backstage)** | ✅ validated live | F1 = self; backstage click (`left_click`) = member. Coords `team_1..4` validated (1024x768, ~81px). ⚠️ DO NOT use real mouse. |
+| **🐉 Cave Boss Bot (Boss tab, 3 roles)** | ✅ LIVE-VALIDATED (2026-05-27) — only DPS aggio pending | Dynamic tab (Tank/DPS/Fairy dropdown → fields change). TANK: boss-lock + combo + X buffs (no pots). DPS: boss-lock + retreat on aggro (lost HP→F1→wait→TAB) + recover MP. FAIRY: heal spam on current target. "Boss only Boss" rule. Spec in `CAVE_BOSS_BOT.md`. |
+| **POTS with 16s cooldown** | ✅ DONE | Pot = ~16s regen; per-key cooldown prevents duplicate pot. In attack/boss/regen. |
+| **⚔️ Attack: Class selector (DPS/Tamer/Fairy)** | ✅ DONE (2026-05-27), to validate | Dropdown at top of Attack tab. DPS=current. Tamer: pet attack key (when grabbing new target). Fairy: self-heal with skill instead of HP pot. Combo stays generic. |
+| **🐾 Pet: Tamer + Normal (2 types, flags)** | ✅ LIVE-VALIDATED (2026-05-27) | `petfood.py` + Pet tab. **Tamer** (flag): summon/re-summon-on-death/feed. **Normal** (flag): only feed (own food). Fields appear by flag. Combat = Attack tab (combo). |
+| **Fairy buff to GROUP (all members)** | reserved for a future routine | Buff entire group (F1 self + click each member). DIDN'T go into Cave Boss (tank/dps buff themselves; Cave Boss Fairy heals, doesn't group-buff). Separate from Helper. |
+| **Dashboard with Kills + Time** | Working | Detects kill via target HP positive→dead transition |
+| **Item categorization (Trash/Good/Rare)** | UI complete + drag-and-drop | Auto-sell/alert logic comes in Sprint 4. Needs task #6 (item names). |
+| **Pause after pot for HP to fill** | Implemented in `attack.py` | By detection, not time |
+| **Team set** (configure 4 friends' names for Fairy to buff) | Not started | Awaits team connecting to validate TEAM_NAME |
+| **Standalone `.exe` package for friends** | ✅ DONE and live-validated | run_server + run_client + Tesseract (sibling folder) + 1-click launcher + icon; 139 MB zip on Drive. Self-sufficient fork (no external submodule). |
+| **UI auto-recovers char list** | ✅ DONE | close/reopen without char disappearing (asks list every ~3s) — commit `cfd34e9` |
+| **`gh` CLI (trigger/download builds)** | ✅ DONE | logged in as LpiresUrt; builds and .exe download from command line |
 
 ---
 
-## 🎯 ORDEM DE PRIORIDADE (atualizada 2026-05-26)
+## 🎯 PRIORITY ORDER (updated 2026-05-26)
 
-Reordenado pelo dono. O que atacar, em ordem:
-1. **Sprint 1 — FINALIZAR** (em andamento): amigos testando o `.exe` → 5 farmando juntos + classes + montaria + blacklist + Star Paths + Helper.
-2. **Sprint 2 — Cave Bot Genérico.**
-3. **Sprint 7 — "Bots prontos" (Scripts/Presets) + Save robusto** ⬆️ (SUBIU — no lugar da Segurança).
-4. **Sprint 4 (resto)** — Auto-relog + ajustes da Auto-Venda + filtro por cor de raridade + resiliência.
-5. **Sprint 5 — Buffer + Login + Discord Bot interativo + tag v1.0.**
-6. **Sprint 3 — Segurança** ⬇️ (foi pro FIM — "não tão importantes").
+Reordered by owner. What to tackle, in order:
+1. **Sprint 1 — FINALIZE** (in progress): friends testing `.exe` → 5 farming together + classes + mount + blacklist + Star Paths + Helper.
+2. **Sprint 2 — Generic Cave Bot.**
+3. **Sprint 7 — "Bots ready" (Scripts/Presets) + Robust save** ⬆️ (MOVED UP — in place of Security).
+4. **Sprint 4 (rest)** — Auto-relog + Auto-Sell adjustments + rarity color filter + resilience.
+5. **Sprint 5 — Buffer + Login + Interactive Discord Bot + v1.0 tag.**
+6. **Sprint 3 — Security** ⬇️ (MOVED TO END — "not that important").
 
-💡 **IDEIAS (sem previsão, não faremos agora):** acesso mobile via Tailscale (cada um usa o próprio PC), dashboard HTML local, e a Sprint 6 (BC dedicada, Hollow Residuals, anti-detecção avançado).
-
----
-
-## 📅 SPRINT 1 — Multi-classe + Loot + Logística (04/jun → 17/jun)
-
-**Status:** não iniciado. Algumas tarefas relacionadas já adiantadas via UX revolution.
-
-- ⏳ Configuração das 5 classes — **SIMPLIFICADO (insight do dono 2026-05-26):** o bot é por TECLA → o combo é genérico; cada jogador configura as próprias teclas e salva o próprio **SCRIPT** (Sprint 7). NÃO precisa de código por classe (Wizard/Monk/Assassin/Tamer). **Exceção: a Fairy** precisa de lógica especial — modo **Helper** ✅ **FEITO** (seleciona o 1º membro por clique backstage → cura → segue com P → rebufa; + **auto-cura** via F1 quando a HP dela cai <50%). Por tecla/clique, sem ler HP do aliado → serve cross-PC. A lógica antiga `_heal_team_member` (lia HP de outro bot na MESMA máquina) foi substituída.
-- 🔄 Instalação nos PCs dos 4 amigos — **EM ANDAMENTO:** pacote `.exe` autocontido FEITO E VALIDADO ao vivo (`C:\Bot\Talisman Bot.zip`, 139 MB, zero instalação). Falta só o dono subir num link e os amigos rodarem.
-- ⏳ Teste: os 5 farmando simultaneamente
-- ⏳ Item Blacklist (Discovery Mode) — **UI parcialmente pronta** via Sell tab (Lixo/Bons/Raros). Falta: lógica de "pegar tudo + log de drops + UI checkbox".
-- ⏳ Sistema de Montaria (montar/desmontar + auto-mount em viagem)
-- ✅ Detecção de Mochila Cheia via OCR — **FEITA** (lê "Your item box is full." no mesmo OCR do chat → 📦 Discord + venda automática; timer = rede de segurança)
-- ⏳ Star Paths (Farm Spot ↔ Cidade ↔ NPC) — estrutura existe no código
-- ⏳ Petfood como módulo independente — **já existe no código**, UI feita
-- ✅ **Helper Mode v1 FEITO** (cura + segue + auto-cura o 1º membro do grupo; tudo por tecla/clique backstage). O bug `P→F1` que travava tudo (Fairy se curava sozinha) foi RESOLVIDO; Helper validado ao vivo. Auto-cura pendente só de teste ao vivo.
-- ⏳ Cheat Engine: pointers de boss + nome do item no chão
+💡 **IDEAS (no timeline, won't do now):** mobile access via Tailscale (each uses their own PC), local HTML dashboard, and Sprint 6 (dedicated BC, Hollow Residuals, advanced anti-detection).
 
 ---
 
-## 📅 SPRINT 2 — Cave Bot Genérico (18/jun → 01/jul) — **GRANDE PARTE FEITA via Cave Boss Bot**
+## 📅 SPRINT 1 — Multi-class + Loot + Logistics (Jun 04 → Jun 17)
 
-O **Cave Boss Bot** (aba "Boss") foi construído em 2026-05-27 e cobre o coração do Sprint 2.
-Spec viva em `CAVE_BOSS_BOT.md`.
+**Status:** not started. Some related tasks already advanced via UX revolution.
 
-- ✅ **Toggle "Cave Mode" separado do Farm** — virou a **aba "Boss"** + checkbox "Boss" na Dashboard, com a regra **"Boss é só Boss"** (liga Boss → desmarca/bloqueia Attack/Sell/etc.).
-- ✅ **Dropdown "Papel: Tank / DPS / Fairy" por char** — FEITO (aba dinâmica; os campos mudam pelo papel).
-- ✅ **Boss Target Lock por nome configurável** — FEITO (commit `0f186e2`): "Travar no Boss" + "Nome do Boss" na aba Attack (e reusado no Boss); + botão **"🎯 Pegar alvo"** (`0d95dc7`). Testado ao vivo.
-- ✅ **Lógica TANK / DPS / FAIRY específica** — ✅ VALIDADA ao vivo (2026-05-27), só o aggro do DPS pendente:
-  - TANK ✅: boss-lock + combo + buffs a cada Xs (auto-cast, sem pot — Fairies curam).
-  - DPS: boss-lock + recuperar MP ✅; **🔴 controle de AGGRO PENDENTE** (ajuste fino — limiar de HP pra não recuar com AoE leve).
-  - FAIRY ✅: spam de cura no ALVO ATUAL (jogador troca o alvo; não lê HP de outros).
-- ⏳ **3 rotações por char (Farm / Boss-DPS / Boss-Tank)** — parcial: Farm (aba Attack) + Boss (aba Boss) prontos; "rotações salvas/preset" casa com o Sprint 7.
-- ⏳ **Painel Debug em tempo real / Auto-stop / Cave Stats** — não iniciados.
-- ⏭️ **Buff em GRUPO da Fairy (todos os membros)** — base pronta (`team_1..4`, `get_team_size`/`team_name_N`); NÃO entrou no Cave Boss (lá a Fairy cura, não buffa em grupo). Fica pra uma rotina futura se o dono quiser.
-
----
-
-## 📅 SPRINT 3 — Segurança — ⬇️ PRIORIDADE BAIXA, movida pro FIM (decisão do dono 2026-05-26: "não são tão importantes")
-
-Plano original mantido. Não iniciado.
-
-- Auto-logoff a 20% HP
-- Panic Stop (F12 global)
-- Delays variados entre skills
-- Detecção de PvP (logoff se atacado)
+- ⏳ 5-class configuration — **SIMPLIFIED (owner's insight 2026-05-26):** bot is key-based → combo is generic; each player configures their own keys and saves their own **SCRIPT** (Sprint 7). NO per-class code needed (Wizard/Monk/Assassin/Tamer). **Exception: Fairy** needs special logic — **Helper mode** ✅ **DONE** (selects 1st member via backstage click → heal → follow with P → re-buff; + **self-heal** via F1 when her HP drops < 50%). By key/click, no reading ally HP → works cross-PC. Old `_heal_team_member` logic (read HP from another bot on SAME machine) was replaced.
+- 🔄 Installation on 4 friends' PCs — **IN PROGRESS:** standalone `.exe` package DONE AND LIVE-VALIDATED (`C:\\Bot\\Talisman Bot.zip`, 139 MB, zero installation). Only remaining: owner uploads to a link and friends run it.
+- ⏳ Test: 5 farming simultaneously
+- ⏳ Item Blacklist (Discovery Mode) — **UI partially ready** via Sell tab (Trash/Good/Rare). Remaining: "grab everything + drop log + UI checkbox" logic.
+- ⏳ Mount system (mount/dismount + auto-mount on travel)
+- ✅ Inventory Full detection via OCR — **DONE** (reads "Your item box is full." in same OCR as chat → 📦 Discord + auto-sell; timer = safety net)
+- ⏳ Star Paths (Farm Spot ↔ City ↔ NPC) — structure exists in code
+- ⏳ Petfood as independent module — **already exists in code**, UI done
+- ✅ **Helper Mode v1 DONE** (heal + follow + self-heal 1st party member; all by key/backstage click). `P→F1` bug that froze everything (Fairy healed herself) was RESOLVED; Helper live-validated. Self-heal pending only live test.
+- ⏳ Cheat Engine: boss pointers + item name on ground
 
 ---
 
-## 📅 SPRINT 4 — Telemetria + Discord + Auto-Venda (16/jul → 29/jul)
+## 📅 SPRINT 2 — Generic Cave Bot (Jun 18 → Jul 01) — **LARGE PART DONE via Cave Boss Bot**
 
-**Status:** UI parcial já feita.
+The **Cave Boss Bot** (Boss tab) was built in 2026-05-27 and covers the heart of Sprint 2.
+Live spec in `CAVE_BOSS_BOT.md`.
 
-- ⏳ Telemetria sessão + histórico + por papel — **Dashboard já tem kills + tempo**
-- ⏳ Tier de Itens (5 níveis) — **3 categorias já existem na UI (Lixo/Bons/Raros), expandir pra 5 níveis**
-- ✅ Discord Webhook — **COMPLETO (sessão 2026-05-25):** detecção de drop por OCR + webhook (`discord_notify.py`) + thread paralela + dashboard (painel de drops + triagem ✅/❌ + barra de ação + alerta de morte 💀) + **alerta de MOCHILA CHEIA 📦 (vende automático)** + **alertas em EMBEDS** (cards com cor/char/horário; cor por tipo, pronta pra raridade). Falta: **filtro por cor de raridade** (depende da detecção de raridade) e **fechar o Tesseract no `.exe`** — caminho ZIP pronto (`tools/make_portable_tesseract.py` monta `src/GhostBot/Tesseract-OCR/` portátil, gitignorada; código já a acha). CI (`build-executable.yml`) já embute Tesseract+Images via `include-data-dir`; **`.exe` autocontido FEITO E VALIDADO ao vivo (2026-05-26):** Tesseract vai como PASTA ao lado do exe (nuitka não embute `.dll`/`.exe`), webhook/lista achados na pasta do exe, fork autossuficiente (submódulo removido). Pacote `C:\Bot\Talisman Bot.zip` testado (dashboard + drop no Discord + morte). **Falta só:** filtro por cor de raridade.
-- 💡 **[IDEIA — não faremos por enquanto]** Acesso Mobile via Tailscale — cada um usa o próprio PC (decisão do dono 2026-05-26).
-- 💡 **[IDEIA — não faremos por enquanto]** Dashboard HTML local (5 chars em tempo real).
-- ✅ **Auto-Venda — FEITA e rodando ótimo** (ciclo de venda em produção + venda automática na mochila cheia). Resta só **AJUSTES** finos se aparecerem.
-- ⏳ Resiliência (retry + modo "só voltar")
-- 🔜 **Auto-relog básico — FAREMOS** (na fila; decisão do dono 2026-05-26).
+- ✅ **"Cave Mode" toggle separate from Farm** — became the **Boss tab** + "Boss" checkbox in Dashboard, with **"Boss only Boss"** rule (Boss on → unchecks/disables Attack/Sell/etc.).
+- ✅ **"Role: Tank / DPS / Fairy" dropdown per char** — DONE (dynamic tab; fields change by role).
+- ✅ **Boss Target Lock by configurable name** — DONE (commit `0f186e2`): "Lock onto Boss" + "Boss Name" in Attack tab (and reused in Boss); + **"🎯 Grab target" button** (`0d95dc7`). Tested live.
+- ✅ **TANK / DPS / FAIRY specific logic** — ✅ LIVE-VALIDATED (2026-05-27), only DPS aggro pending:
+  - TANK ✅: boss-lock + combo + buffs every Xs (auto-cast, no pot — Fairies heal).
+  - DPS: boss-lock + recover MP ✅; **🔴 AGGRO CONTROL PENDING** (fine-tuning — HP threshold so it doesn't retreat from light AoE).
+  - FAIRY ✅: heal spam on CURRENT TARGET (player switches target; doesn't read other HPs).
+- ⏳ **3 rotations per char (Farm / Boss-DPS / Boss-Tank)** — partial: Farm (Attack tab) + Boss (Boss tab) ready; "saved rotations/preset" ties into Sprint 7.
+- ⏳ **Real-time Debug panel / Auto-stop / Cave Stats** — not started.
+- ⏭️ **Fairy GROUP buff (all members)** — base ready (`team_1..4`, `get_team_size`/`team_name_N`); DIDN'T go into Cave Boss (there Fairy heals, doesn't group-buff). Stays for a future routine if owner wants it.
 
 ---
 
-## 📅 SPRINT 5 — Buffer + Login + Discord Bot (30/jul → 12/ago)
+## 📅 SPRINT 3 — Security — ⬇️ LOW PRIORITY, moved to END (owner's decision 2026-05-26: "not that important")
 
-Plano original mantido. Não iniciado.
+Original plan maintained. Not started.
+
+- Auto-logoff at 20% HP
+- Panic Stop (global F12)
+- Varied delays between skills
+- PvP detection (logoff if attacked)
+
+---
+
+## 📅 SPRINT 4 — Telemetry + Discord + Auto-Sell (Jul 16 → Jul 29)
+
+**Status:** UI partially already done.
+
+- ⏳ Session telemetry + history + per-role — **Dashboard already has kills + time**
+- ⏳ Item Tier (5 levels) — **3 categories already exist in UI (Trash/Good/Rare), expand to 5 levels**
+- ✅ Discord Webhook — **COMPLETE (2026-05-25 session):** drop detection via OCR + webhook (`discord_notify.py`) + parallel thread + dashboard (drops panel + triage ✅/❌ + action bar + death alert 💀) + **INVENTORY FULL alert 📦 (auto-sell)** + **EMBED alerts** (cards with color/char/time; color by type, ready for rarity). Remaining: **rarity color filter** (depends on rarity detection) and **close Tesseract in the `.exe`** — ZIP path ready (`tools/make_portable_tesseract.py` assembles portable `src/GhostBot/Tesseract-OCR/`, gitignored; code already finds it). CI (`build-executable.yml`) already embeds Tesseract+Images via `include-data-dir`; **standalone `.exe` DONE AND LIVE-VALIDATED (2026-05-26):** Tesseract goes as FOLDER next to exe (nuitka doesn't embed `.dll`/`.exe`), webhook/list found in exe folder, self-sufficient fork (submodule removed). Package `C:\\Bot\\Talisman Bot.zip` tested (dashboard + drop on Discord + death). **Only remaining:** rarity color filter.
+- 💡 **[IDEA — won't do now]** Mobile access via Tailscale — each uses their own PC (owner's decision 2026-05-26).
+- 💡 **[IDEA — won't do now]** Local HTML dashboard (5 chars in real-time).
+- ✅ **Auto-Sell — DONE and running great** (sell cycle in production + auto-sell on inventory full). Only **FINE ADJUSTMENTS** remain if issues appear.
+- ⏳ Resilience (retry + "just return" mode)
+- 🔜 **Basic auto-relog — WE'LL DO** (in queue; owner's decision 2026-05-26).
+
+---
+
+## 📅 SPRINT 5 — Buffer + Login + Discord Bot (Jul 30 → Aug 12)
+
+Original plan maintained. Not started.
 
 - Bug fixes
-- Lista de contas (senhas encriptadas localmente)
-- Discord Bot interativo: `/status`, `/drops`, `/parar`, `/stats`
-- Documentação interna pros amigos
-- Tag v1.0 no fork
+- Account list (locally encrypted passwords)
+- Interactive Discord Bot: `/status`, `/drops`, `/parar`, `/stats`
+- Internal docs for friends
+- v1.0 tag on fork
 
 ---
 
-## 📅 SPRINT 6 — Pós-Lançamento (opcional)
+## 📅 SPRINT 6 — Post-Launch (optional)
 
-- BC dedicada (Farmer + Reseter + Shortcuts + Stats)
-- Hollow Residuals (quest diária)
-- Sistemas anti-detecção avançados
-
----
-
-## 📅 SPRINT 7 — "Bots prontos" (Scripts/Presets de config) + Save robusto — ⬆️ PRIORIDADE ALTA (subiu no lugar da Segurança; decisão do dono 2026-05-26)
-
-**Pedido do dono (2026-05-26):** poder salvar uma configuração de bot como um "script" reutilizável ("bots simples prontos") e trocar entre eles com 1 clique.
-
-**Requisitos:**
-1. **Botão "Salvar script":** salva a configuração ATUAL (todas as abas — Attack, Fairy, Boss, Pet, Sell) como um preset com NOME.
-2. **Lista de scripts na LATERAL DIREITA:** espelha a lista de personagens logados da esquerda. Cada item mostra o **NOME do script** + a **última atualização** em formato abreviado **`dd/mm/yy hh:mm`**.
-3. **Aplicar por clique:** clicar num script da lista **SUBSTITUI** a configuração atual (carrega o preset nas abas do personagem selecionado).
-4. ✅ **Save SUPER confiável (FEITO e VALIDADO ao vivo 2026-05-28):** o Save não falha mais em **silêncio**. `server.py` responde `ERROR` com o motivo (campo/tipo) quando `validate()` barra; `main.py` mostra **VISÍVEL** (label verde "✓ Salvo HH:MM:SS" / popup vermelho + label no erro). Nunca grava pela metade (validação ANTES de salvar; erro de disco também avisa).
-
-**Notas de design (pra quando implementar):**
-- Guardar scripts como `.yml` nomeados (ex.: `~/GhostBot/scripts/<nome>.yml`), separados dos `<charname>.yml` por personagem.
-- Timestamp = `mtime` do arquivo (ou campo salvo no `.yml`), formatado `dd/mm/yy hh:mm`.
-- "Substituir o atual" = carregar o preset na config do char selecionado + atualizar as abas da UI + salvar. Reusa o load/save do `config.py`.
-- Respeitar **Stop = emergência**: provavelmente exigir o bot **parado** pra trocar de script (não trocar config no meio do farm).
-- Bug do Save: ver as notas do save silencioso (memória `reference-save-must-succeed`).
+- Dedicated BC (Farmer + Reseter + Shortcuts + Stats)
+- Hollow Residuals (daily quest)
+- Advanced anti-detection systems
 
 ---
 
-## 🔒 SEGURANÇA — Diretrizes Permanentes
+## 📅 SPRINT 7 — "Bots ready" (Config Scripts/Presets) + Robust save — ⬆️ HIGH PRIORITY (moved up in place of Security; owner's decision 2026-05-26)
 
-- Senha do Talisman diferente de email/outros sites
-- Cliente do jogo só do site oficial
-- Não compartilhar login entre amigos
-- Pausas longas diárias (4-8h desligado)
-- Não fazer top 1 de ranking
-- Bot **nunca** lê/escreve senha
-- Discord do grupo privado, fechado
-- Re-auditar diffs antes de puxar update do upstream
+**Owner's request (2026-05-26):** be able to save a bot config as a reusable "script" ("simple bots ready") and switch between them with 1 click.
+
+**Requirements:**
+1. **"Save script" button:** saves CURRENT config (all tabs — Attack, Fairy, Boss, Pet, Sell) as a preset with NAME.
+2. **Script list on the RIGHT SIDE:** mirrors the logged-in character list on the left. Each item shows **SCRIPT NAME** + **last update** in abbreviated format **`dd/mm/yy hh:mm`**.
+3. **Apply by click:** clicking a script from the list **REPLACES** current config (loads preset into selected char's tabs).
+4. ✅ **SUPER reliable save (DONE and LIVE-VALIDATED 2026-05-28):** Save no longer fails in **SILENCE**. `server.py` responds with `ERROR` and reason when `validate()` blocks; `main.py` shows it **VISIBLY** (green label "✓ Saved HH:MM:SS" / red popup + label on error). Never saves halfway (validation BEFORE saving; disk error also warns).
+
+**Design notes (for when implementing):**
+- Save scripts as named `.yml` files (e.g., `~/GhostBot/scripts/<name>.yml`), separate from per-character `<charname>.yml`.
+- Timestamp = file `mtime` (or field saved in `.yml`), formatted `dd/mm/yy hh:mm`.
+- "Replace current" = load preset into selected char's config + update UI tabs + save. Reuses load/save from `config.py`.
+- Respect **Stop = emergency**: probably require bot **stopped** to switch scripts (don't switch config mid-farm).
+- Save bug: see notes on silent save (memory `reference-save-must-succeed`).
 
 ---
 
-## 🗂️ ARQUITETURA — Mapa Rápido
+## 🔒 SECURITY — Permanent Guidelines
+
+- Talisman password different from email/other sites
+- Game client only from official site
+- Don't share login between friends
+- Long daily breaks (4-8h off)
+- Don't do top 1 ranking
+- Bot **never** reads/writes password
+- Private, closed group Discord
+- Re-audit diffs before pulling upstream updates
+
+---
+
+## 🗂️ ARCHITECTURE — Quick Map
 
 ```
 src/GhostBot/
 ├── run_server.py             # entry: ghost-bot-server (backend)
-├── run_client.py             # entry: ghost-bot-client (UI tkinter)
+├── run_client.py             # entry: ghost-bot-client (tkinter UI)
 ├── controller/
 │   └── bot_controller.py     # BotClientWindow: properties hp/mana/target_hp/etc.
-│                             # to_json() envia tudo pro UI via IPC
+│                             # to_json() sends everything to UI via IPC
 ├── functions/
-│   ├── attack.py             # loop principal de combate + _battle_pots + _wait_resource_refill
-│   ├── regen.py              # sentar fora de combate
-│   ├── fairy.py              # heal team + buff team (NOVO)
-│   ├── buffs.py              # buff próprio
+│   ├── attack.py             # main combat loop + _battle_pots + _wait_resource_refill
+│   ├── regen.py              # sit out of combat
+│   ├── fairy.py              # heal team + buff team (NEW)
+│   ├── buffs.py              # self-buff
 │   ├── petfood.py            # Tamer pet
-│   ├── sell.py               # path NPC + vender
-│   └── delete.py             # deletar lixo
+│   ├── sell.py               # path NPC + sell
+│   └── delete.py             # delete junk
 ├── lib/talisman_online_python/
-│   └── pointers.py           # ★ todos os memory pointers
+│   └── pointers.py           # ★ all memory pointers
 ├── UX/
-│   ├── main.py               # janela principal + IPC client UI
-│   ├── utils.py              # ★ helpers reutilizáveis (Tooltip, sliders, ComboWidget, NamedList, drag-and-drop)
+│   ├── main.py               # main window + IPC UI client
+│   ├── utils.py              # ★ reusable helpers (Tooltip, sliders, ComboWidget, NamedList, drag-and-drop)
 │   └── tabbed_widget/
-│       ├── functions.py      # Dashboard (renomeado)
+│       ├── functions.py      # Dashboard (renamed)
 │       ├── attack_frame.py
 │       ├── regen_frame.py
 │       ├── buff_frame.py
 │       ├── fairy_frame.py
 │       ├── pet_frame.py
-│       ├── sell_frame.py     # bag + 3 categorias + drag-and-drop
+│       ├── sell_frame.py     # bag + 3 categories + drag-and-drop
 │       └── delete_frame.py
 └── config.py                 # dataclasses Config, AttackConfig, FairyConfig, SellConfig…
 ```
 
-**Config persistido em:** `C:\Users\Owner\GhostBot\{charname}.yml` (HOME, não LOCALAPPDATA)
-**Reload de código:** server e client são processos separados. Mudança em `functions/*.py` → reinicia server. Mudança em `UX/*.py` → reinicia client.
+**Config persisted at:** `C:\\Users\\Owner\\GhostBot\\{charname}.yml` (HOME, not LOCALAPPDATA)
+**Code reload:** server and client are separate processes. Change in `functions/*.py` → restart server. Change in `UX/*.py` → restart client.
 
 ---
 
-## 🎬 PRÓXIMA SESSÃO — CHECKLIST DE RETOMADA
+## 🎬 NEXT SESSION — RESUME CHECKLIST
 
-1. Ler este `PROJECT_PLAN.md`
-2. Confirmar com o dono: time conectado? Assassin pronto pra teste real?
-3. Se SIM team conectado → validar `team_name_X` e Fairy team buff
-4. Se SIM Assassin pronto → primeiro farm real (não mais char teste)
-5. Sessão CE focada nos 4 pointers pendentes (tasks #3, #4, #5, #6)
-6. Se tudo OK → começar Sprint 1 (Loot Discovery + auto-mount)
+1. Read this `PROJECT_PLAN.md`
+2. Confirm with owner: team connected? Assassin ready for real test?
+3. If YES team connected → validate `team_name_X` and Fairy team buff
+4. If YES Assassin ready → first real farm (not just test char)
+5. CE session focused on 4 pending pointers (tasks #3, #4, #5, #6)
+6. If all OK → start Sprint 1 (Loot Discovery + auto-mount)
 
 ---
 
-## 📚 REFERÊNCIAS
+## 📚 REFERENCES
 
 - **Upstream:** https://github.com/chestm007/GhostBot
 - **Memory pointers:** `src/GhostBot/lib/talisman_online_python/pointers.py`
-- **Glossário rápido:**
-  - **Spot:** ponto fixo X,Y onde o bot fica
-  - **Combo:** sequência de teclas que o bot dispara em loop
-  - **Tier de item:** classificação Lendário > Raríssimo > Raro > Incomum > Comum
-  - **Cave Bot:** modo boss runs (cave = caverna)
-  - **Helper Mode:** 1 char humano + 1 char bot ajudando
+- **Quick glossary:**
+  - **Spot:** fixed X,Y point where bot stays
+  - **Combo:** sequence of keys bot fires in loop
+  - **Item tier:** classification Legendary > Super Rare > Rare > Uncommon > Common
+  - **Cave Bot:** boss run mode (cave = cavern)
+  - **Helper Mode:** 1 human char + 1 bot char helping

@@ -7,42 +7,42 @@ from GhostBot.lib.var_or_none import var_or_none
 
 
 class FairyFrame(TabFrame):
-    """Aba Fairy -- Modo Helper (segue + cura um aliado por tecla, cross-PC)."""
+    """Fairy tab -- Helper Mode (follows + heals an ally per key, cross-PC)."""
 
     def _init(self, *args, **kwargs) -> None:
         self._vars = dict(
             helper_mode=create_entry(
-                self, "Modo Helper:", 0, 0, ("bot_config.fairy.helper_mode", bool),
-                hint="Liga o modo Helper: a Fairy segue (tecla P) e cura sempre um aliado, "
-                     "so por tecla. Selecione o aliado no jogo, a Fairy na lista, e de Start.",
+                self, "Helper Mode:", 0, 0, ("bot_config.fairy.helper_mode", bool),
+                hint="Turns on Helper mode: the Fairy follows (key P) and always heals one ally, "
+                     "just by key. Select the ally in the game, the Fairy in the list, and press Start.",
             ),
             heal=create_entry(
-                self, "Tecla Heal:", 1, 0, ("bot_config.fairy.heal", str), entry_width=3,
-                hint="Tecla da skill de cura.",
+                self, "Heal Key:", 1, 0, ("bot_config.fairy.heal", str), entry_width=3,
+                hint="Heal skill key.",
             ),
             follow=create_entry(
-                self, "Tecla Seguir:", 1, 4, ("bot_config.fairy.follow", str), entry_width=3,
-                hint="Tecla que segue o alvo selecionado (padrao P).",
+                self, "Follow Key:", 1, 4, ("bot_config.fairy.follow", str), entry_width=3,
+                hint="Key that follows the selected target (default P).",
             ),
             heal_interval=create_int_slider(
-                self, "Conjuração (s):", 2, 0, "bot_config.fairy.heal_interval",
+                self, "Cast time (s):", 2, 0, "bot_config.fairy.heal_interval",
                 default=3, min_val=1, max_val=15, suffix="s",
-                hint="Tempo de conjuração da cura + folga, ANTES de apertar o P (e de quanto em "
-                     "quanto ela cura). A cura leva ~2s; o padrão 3s dá 1s de folga pra não "
-                     "cortar o cast. Mude aqui se o jogo alterar o tempo de cast.",
+                hint="Heal cast time + pause, BEFORE pressing P (and how often "
+                     "it heals). The heal takes ~2s; the default 3s gives 1s of pause so it doesn't "
+                     "interrupt the cast. Change here if the game changes cast time.",
             ),
             buff_interval=create_int_slider(
-                self, "Buffar a cada:", 3, 0, "bot_config.fairy.buff_interval",
+                self, "Buff every:", 3, 0, "bot_config.fairy.buff_interval",
                 default=15, min_val=1, max_val=60, suffix="min",
-                hint="Frequência de re-buffar o aliado (em minutos). Buffs duram 10-20 min.",
+                hint="Frequency of re-buffing the ally (in minutes). Buffs last 10-20 min.",
             ),
         )
 
-        # Combo de buffs (sem botão TAB -- buff não troca alvo)
+        # Buff combo (no TAB button -- buff doesn't switch target)
         self._buff_combo = ComboWidget(
             self, "Buffs:", grid_row=4, grid_column=0,
-            hint="Sequência de buffs aplicada no aliado. Cada linha: tecla + intervalo ms. "
-                 "Após o combo, a Fairy aperta P de novo pra seguir.",
+            hint="Sequence of buffs applied to the ally. Each row: key + interval ms. "
+                 "After the combo, the Fairy presses P again to follow.",
             show_tab_button=False,
         )
         self._buff_combo.add_row()

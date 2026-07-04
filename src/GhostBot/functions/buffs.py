@@ -1,4 +1,4 @@
-"""Buff -- EM RECONSTRUCAO (zerado em 2026-05-26). Por enquanto NAO faz nada."""
+"""Buff -- UNDER RECONSTRUCTION (reset on 2026-05-26). For now DOES nothing."""
 from __future__ import annotations
 
 import time
@@ -11,6 +11,6 @@ class Buffs(Runner):
         super().__init__(client)
 
     def _run(self) -> bool:
-        # stub inerte -- nao faz nada (sem busy-loop)
+        # inert stub -- does nothing (no busy-loop)
         time.sleep(1)
         return True

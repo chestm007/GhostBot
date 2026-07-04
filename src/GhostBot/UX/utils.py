@@ -5,12 +5,12 @@ import tkinter as tk
 from GhostBot.UX import theme as T
 
 
-# pasta root das imagens do bot (usado pela captura de icones)
+# bot images root folder (used by icon capture)
 _IMAGES_ROOT = Path(__file__).resolve().parent.parent / "Images"
 
 
 class Tooltip:
-    """Tooltip simples que aparece ao passar mouse sobre o widget."""
+    """Simple tooltip that appears when hovering over a widget."""
     def __init__(self, widget, text: str):
         self.widget = widget
         self.text = text
@@ -80,7 +80,7 @@ def create_entry(
 
     elif v_type is bool:  # Checkbutton
         var = tk.BooleanVar(master=widget, name=v_name, value=False)
-        # largura acompanha o rotulo (min 13) -- senao rotulo longo era CORTADO (ex: "Pet do Tamer (")
+        # width follows the label (min 13) -- otherwise long labels were TRUNCATED (e.g. "Tamer's Pet (")
         _cb = ttk.Checkbutton(master=widget, text=label, variable=var, width=max(len(str(label)) + 2, 13))
         _cb.grid(row=row, column=column, padx=4, pady=2, sticky="w")
         if hint:
@@ -105,7 +105,7 @@ def create_int_slider(
         hint: str = None,
         bg: str = None,
 ) -> tk.Variable:
-    """Slider min-max + Entry editavel sincronizada. Var armazena string para compatibilidade com extract_config."""
+    """Min-max slider + editable Entry synced together. Var stores string for compatibility with extract_config."""
     var = tk.StringVar(master=widget, name=var_name, value=str(default))
 
     if bg:
@@ -139,7 +139,7 @@ def create_int_slider(
     if bg:
         pct_entry_kwargs["bg"] = bg
     pct_entry = tk.Entry(**pct_entry_kwargs)
-    # clique = seleciona tudo (digita por cima sem precisar apagar)
+    # click = select all (type over without needing to delete)
     pct_entry.bind("<FocusIn>", lambda _e: pct_entry.after(1, lambda: pct_entry.select_range(0, "end")))
     if bg:
         pct_suffix = tk.Label(master=widget, text=suffix, anchor="w", bg=bg)
@@ -166,7 +166,7 @@ def create_int_slider(
             return
         raw = var.get()
         if raw == "":
-            return  # usuario apagando pra digitar novo valor — nao mexe na barra
+            return  # user clearing to type new value -- don't touch the slider
         try:
             v = int(float(raw))
         except ValueError:
@@ -175,14 +175,14 @@ def create_int_slider(
         _updating["flag"] = True
         try:
             scale.set(v)
-            # normaliza valor armazenado pra inteiro (ex: "30.0" do config float -> "30")
+            # normalize stored value to int (e.g. "30.0" from config float -> "30")
             if str(v) != raw:
                 var.set(str(v))
         finally:
             _updating["flag"] = False
 
     def _on_focus_out(_=None):
-        # ao perder foco, garante que var tem valor valido entre min-max
+        # on focus loss, ensure var has a valid value between min-max
         raw = var.get()
         if raw == "":
             var.set(str(default))
@@ -205,7 +205,7 @@ def create_int_slider(
     pct_suffix.grid(row=row, column=column + 3, padx=(0, 2), pady=2, sticky="w")
 
     if hint:
-        # Tooltip ao passar o mouse no slider ou na label, em vez de ocupar espaço fixo
+        # Tooltip on hover over slider or label, instead of occupying fixed space
         Tooltip(scale, hint)
         Tooltip(_label_widget, hint)
         Tooltip(pct_entry, hint)
@@ -214,13 +214,13 @@ def create_int_slider(
 
 
 def create_percent_slider(widget, label, row, column, var_name, default=30):
-    """Wrapper de create_int_slider pra 0-100% (compatibilidade)."""
+    """Wrapper of create_int_slider for 0-100% (compatibility)."""
     return create_int_slider(widget, label, row, column, var_name, default, min_val=0, max_val=100, suffix="%")
 
 
 def setup_drag_from_listbox(listbox: tk.Listbox, on_drop):
-    """Permite arrastar item da listbox pra outro widget. Mostra um 'ghost' azul seguindo o cursor.
-    on_drop(item_text, target_widget_under_cursor, source_index) é chamado no release."""
+    """Allows dragging an item from the listbox to another widget. Shows a blue 'ghost' following the cursor.
+    on_drop(item_text, target_widget_under_cursor, source_index) is called on release."""
     state = {"item": None, "ghost": None, "idx": None}
 
     def _start(event):
@@ -260,7 +260,7 @@ def setup_drag_from_listbox(listbox: tk.Listbox, on_drop):
 
 
 def widget_in_container(widget, container) -> bool:
-    """True se widget é descendente de container (ou é o proprio container)."""
+    """True if widget is a descendant of container (or is the container itself)."""
     while widget is not None:
         if widget == container:
             return True
@@ -269,8 +269,8 @@ def widget_in_container(widget, container) -> bool:
 
 
 class ScrollableFrame(tk.Frame):
-    """Container com scroll VERTICAL pra aba inteira. Coloque o conteudo dentro de `.inner`.
-    O conteudo ocupa a largura toda (sem scroll horizontal) e rola na vertical quando precisa."""
+    """Container with VERTICAL scroll for the entire tab. Put content inside `.inner`.
+    Content takes full width (no horizontal scroll) and scrolls vertically when needed."""
 
     def __init__(self, parent, bg: str = None, **kwargs):
         bg = bg or T.BG_MAIN
@@ -283,16 +283,16 @@ class ScrollableFrame(tk.Frame):
 
         self.inner = tk.Frame(self.canvas, bg=bg)
         self._win = self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
-        # scrollregion acompanha o conteudo; inner acompanha a largura do canvas (sem scroll horizontal)
+        # scrollregion follows content; inner follows canvas width (no horizontal scroll)
         self.inner.bind("<Configure>", lambda _e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
         self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfigure(self._win, width=e.width))
-        # roda do mouse rola, mas so quando o cursor esta sobre esta aba
+        # mouse wheel scrolls, but only when cursor is over this tab
         self.canvas.bind("<Enter>", lambda _e: self.canvas.bind_all("<MouseWheel>", self._on_wheel))
         self.canvas.bind("<Leave>", lambda _e: self.canvas.unbind_all("<MouseWheel>"))
 
     def _on_wheel(self, event):
-        # so rola se o conteudo for MAIOR que a area visivel (senao "rolar pra cima" empurrava
-        # o conteudo pro meio deixando vazio em cima). Se tudo cabe, trava no topo.
+        # only scroll if content is LARGER than the visible area (otherwise "scroll up" pushed
+        # content to the middle leaving empty space at top). If everything fits, lock at top.
         try:
             bbox = self.canvas.bbox("all")
             if not bbox:
@@ -308,22 +308,22 @@ class ScrollableFrame(tk.Frame):
 
 def capture_icon_dialog(parent, folder: Path, on_saved=None):
     """
-    Popup pra capturar icone de item do TO via Win+Shift+S.
+    Popup to capture TO item icon via Win+Shift+S.
 
-    `folder`: pasta dentro de Images/ onde o BMP vai ser salvo (ex: SELL, ALERTS/RARE).
-    `on_saved(item_name)`: callback opcional chamado depois que o BMP foi salvo.
+    `folder`: folder inside Images/ where the BMP will be saved (e.g. SELL, ALERTS/RARE).
+    `on_saved(item_name)`: optional callback called after the BMP is saved.
     """
     folder.mkdir(parents=True, exist_ok=True)
 
-    # Import lazy do PIL pra nao quebrar import circular ou quem nao tem PIL ainda
+    # Lazy import of PIL to avoid circular import or issues if PIL isn't installed yet
     try:
         from PIL import ImageGrab, ImageTk
     except ImportError:
-        tk.messagebox.showerror("Pillow ausente", "Instale Pillow: pip install pillow")
+        tk.messagebox.showerror("Pillow missing", "Install Pillow: pip install pillow")
         return
 
     win = tk.Toplevel(parent)
-    win.title(f"Capturar icone -> {folder.name}")
+    win.title(f"Capture icon -> {folder.name}")
     win.geometry("420x340")
     win.transient(parent)
     win.grab_set()
@@ -331,10 +331,10 @@ def capture_icon_dialog(parent, folder: Path, on_saved=None):
 
     state = {"img": None, "preview_label": None}
 
-    tk.Label(win, text=f"Salvando em: Images/{folder.relative_to(_IMAGES_ROOT)}",
+    tk.Label(win, text=f"Saving to: Images/{folder.relative_to(_IMAGES_ROOT)}",
              bg=T.BG_PANEL, fg=T.FG_MUTED, font=("TkDefaultFont", 11)).pack(pady=(8, 4))
 
-    tk.Label(win, text="Nome do item (sem espacos, sem .bmp):",
+    tk.Label(win, text="Item name (no spaces, no .bmp):",
              bg=T.BG_PANEL, font=("TkDefaultFont", 12)).pack(pady=(8, 2))
     name_entry = tk.Entry(win, width=30, justify="center")
     name_entry.pack(pady=2)
@@ -342,7 +342,7 @@ def capture_icon_dialog(parent, folder: Path, on_saved=None):
 
     instr = tk.Label(
         win,
-        text="1. Vai pro jogo\n2. Win+Shift+S, recorta SO o icone\n3. Volta aqui e clica 'Ler clipboard'",
+        text="1. Go to the game\n2. Win+Shift+S, crop ONLY the icon\n3. Come back here and click 'Read clipboard'",
         bg=T.BG_PANEL, fg=T.FG_MUTED, justify="left", font=("TkDefaultFont", 11),
     )
     instr.pack(pady=(8, 4))
@@ -359,32 +359,32 @@ def capture_icon_dialog(parent, folder: Path, on_saved=None):
     def _read_clipboard():
         img = ImageGrab.grabclipboard()
         if img is None or isinstance(img, list):
-            status.config(text="Clipboard sem imagem. Use Win+Shift+S primeiro.", fg="#c62828")
+            status.config(text="Clipboard has no image. Use Win+Shift+S first.", fg="#c62828")
             return
         state["img"] = img.convert("RGB")
-        # preview escalado pra caber na caixa de 120x90
+        # scaled preview to fit in the 120x90 box
         ph_w, ph_h = 116, 86
         ratio = min(ph_w / img.width, ph_h / img.height, 3)
         new_size = (max(1, int(img.width * ratio)), max(1, int(img.height * ratio)))
         preview = state["img"].resize(new_size)
         photo = ImageTk.PhotoImage(preview)
         state["preview_label"].configure(image=photo, text="")
-        state["preview_label"].image = photo  # mantem ref
-        status.config(text=f"Capturado: {img.width}x{img.height} -- agora clica Salvar",
+        state["preview_label"].image = photo  # keep ref
+        status.config(text=f"Captured: {img.width}x{img.height} -- now click Save",
                       fg=T.GREEN_HI)
 
     def _save():
         if state["img"] is None:
-            status.config(text="Recorta e clica 'Ler clipboard' antes de salvar.", fg="#c62828")
+            status.config(text="Crop and click 'Read clipboard' before saving.", fg="#c62828")
             return
         name = name_entry.get().strip()
         if not name or "/" in name or "\\" in name or name.startswith("."):
-            status.config(text="Nome invalido (sem espacos, sem barras, sem ponto inicial).", fg="#c62828")
+            status.config(text="Invalid name (no spaces, no slashes, no leading dot).", fg="#c62828")
             return
         bmp_path = folder / f"{name}.bmp"
         if bmp_path.exists():
             from tkinter import messagebox
-            if not messagebox.askyesno("Sobrescrever?", f"{name}.bmp ja existe. Sobrescrever?",
+            if not messagebox.askyesno("Overwrite?", f"{name}.bmp already exists. Overwrite?",
                                        parent=win):
                 return
         state["img"].save(bmp_path, format="BMP")
@@ -397,16 +397,16 @@ def capture_icon_dialog(parent, folder: Path, on_saved=None):
 
     btn_bar = tk.Frame(win, bg=T.BG_PANEL)
     btn_bar.pack(pady=8)
-    ttk.Button(btn_bar, text="Ler clipboard", command=_read_clipboard).pack(side="left", padx=4)
-    ttk.Button(btn_bar, text="Salvar", command=_save, style="Accent.TButton").pack(side="left", padx=4)
-    ttk.Button(btn_bar, text="Cancelar", command=win.destroy).pack(side="left", padx=4)
+    ttk.Button(btn_bar, text="Read clipboard", command=_read_clipboard).pack(side="left", padx=4)
+    ttk.Button(btn_bar, text="Save", command=_save, style="Accent.TButton").pack(side="left", padx=4)
+    ttk.Button(btn_bar, text="Cancel", command=win.destroy).pack(side="left", padx=4)
 
 
 class NamedListWidget:
-    """Listbox simples com input + botoes adicionar/remover. Usado pra listas de nomes (itens, etc.).
+    """Simple listbox with input + add/remove buttons. Used for name lists (items, etc.).
 
-    Se `capture_folder` for passado, mostra botao '+ Capturar icone' que abre dialog pra
-    salvar um BMP do icone do item nessa pasta.
+    If `capture_folder` is passed, shows a '+ Capture icon' button that opens a dialog to
+    save a BMP of the item icon in that folder.
     """
 
     def __init__(self, parent, title: str, grid_row: int, grid_column: int,
@@ -438,9 +438,9 @@ class NamedListWidget:
         ttk.Button(entry_frame, text="×", width=2, command=self.remove_selected).pack(side="left", padx=1)
 
         if capture_folder is not None:
-            cap_btn = ttk.Button(self.container, text="📷 Capturar icone", command=self._open_capture)
+            cap_btn = ttk.Button(self.container, text="📷 Capture icon", command=self._open_capture)
             cap_btn.pack(side="top", padx=4, pady=(0, 6), fill="x")
-            Tooltip(cap_btn, f"Capturar BMP de um item do jogo (Win+Shift+S) e salvar em Images/{capture_folder.name}/")
+            Tooltip(cap_btn, f"Capture a BMP of a game item (Win+Shift+S) and save to Images/{capture_folder.name}/")
 
     def _open_capture(self):
         capture_icon_dialog(self.container, self._capture_folder, on_saved=self.add_item)
@@ -469,10 +469,10 @@ class NamedListWidget:
 
 
 class ComboWidget:
-    """Widget de combo dinamico: usuario adiciona/remove linhas de (tecla, intervalo ms).
-    Container com altura fixa (~5 linhas visiveis) + scroll vertical quando passa disso."""
+    """Dynamic combo widget: user adds/removes rows of (key, interval ms).
+    Container with fixed height (~5 visible lines) + vertical scroll when exceeded."""
 
-    VISIBLE_HEIGHT_PX = 180  # ~6 linhas visiveis
+    VISIBLE_HEIGHT_PX = 180  # ~6 visible lines
 
     def __init__(self, parent, label_text: str, grid_row: int, grid_column: int, hint: str = None, show_tab_button: bool = True):
         self.parent = parent
@@ -488,22 +488,22 @@ class ComboWidget:
         self.container = ttk.Frame(parent)
         self.container.grid(row=grid_row, column=grid_column + 1, columnspan=8, sticky="nw", padx=4, pady=2)
 
-        # Linhas empilham direto aqui (sem scroll proprio) -- a ABA inteira rola agora.
+        # Rows stack directly here (no own scroll) -- the ENTIRE TAB scrolls now.
         self._inner = ttk.Frame(self.container)
         self._inner.pack(side="top", fill="x", anchor="w")
 
-        # Botoes na base do container
+        # Buttons at the base of the container
         self._btn_bar = ttk.Frame(self.container)
         self._btn_bar.pack(side="top", anchor="w", pady=(4, 2))
 
-        self._add_btn = ttk.Button(self._btn_bar, text="+ Adicionar tecla", command=self.add_row)
+        self._add_btn = ttk.Button(self._btn_bar, text="+ Add key", command=self.add_row)
         self._add_btn.pack(side="left", padx=(0, 4))
 
         if self._show_tab_button:
-            self._tab_btn = ttk.Button(self._btn_bar, text="+ TAB (trocar alvo)",
+            self._tab_btn = ttk.Button(self._btn_bar, text="+ TAB (switch target)",
                                        command=lambda: self.add_row("tab", "500"))
             self._tab_btn.pack(side="left")
-            Tooltip(self._tab_btn, "Adiciona uma linha com a tecla TAB pra trocar de alvo. Útil pra lurar vários mobs antes de AOE.")
+            Tooltip(self._tab_btn, "Adds a row with the TAB key to switch targets. Useful for kiting multiple mobs before AOE.")
 
     def add_row(self, key: str = "", interval: str = ""):
         row_frame = ttk.Frame(self._inner)
@@ -512,12 +512,12 @@ class ComboWidget:
         num_label = ttk.Label(row_frame, text="?", width=3, anchor="e")
         num_label.grid(row=0, column=0, padx=(0, 4))
 
-        ttk.Label(row_frame, text="Tecla").grid(row=0, column=1)
+        ttk.Label(row_frame, text="Key").grid(row=0, column=1)
         key_var = tk.StringVar(value=key)
         key_entry = tk.Entry(row_frame, textvariable=key_var, width=5, justify="center")
         key_entry.grid(row=0, column=2, padx=2)
 
-        ttk.Label(row_frame, text="Intervalo").grid(row=0, column=3, padx=(8, 2))
+        ttk.Label(row_frame, text="Interval").grid(row=0, column=3, padx=(8, 2))
         int_var = tk.StringVar(value=interval)
         int_entry = tk.Entry(row_frame, textvariable=int_var, width=6, justify="center")
         int_entry.grid(row=0, column=4, padx=2)
@@ -543,7 +543,7 @@ class ComboWidget:
 
     def _renumber(self):
         for i, r in enumerate(self.rows):
-            r['num_label'].config(text=f"{i + 1}ª")
+            r['num_label'].config(text=f"{i + 1}°")
 
     def get_attacks(self) -> list:
         attacks = []
@@ -580,7 +580,7 @@ def create_combo_slots(
         num_slots: int = 5,
         hint: str = None,
 ) -> list:
-    """N linhas de (Tecla, Intervalo ms). Retorna lista de (key_var, interval_var)."""
+    """N rows of (Key, Interval ms). Returns list of (key_var, interval_var)."""
     _header = ttk.Label(master=parent, text=label_text, anchor="ne")
     _header.grid(row=start_row, column=column, padx=4, pady=2, sticky="ne", rowspan=num_slots)
     if hint:
@@ -592,16 +592,16 @@ def create_combo_slots(
         key_var = tk.StringVar(master=parent, name=f"{name_prefix}.{i}.key", value="")
         int_var = tk.StringVar(master=parent, name=f"{name_prefix}.{i}.interval", value="")
 
-        # "Nª"
-        ttk.Label(master=parent, text=f"{i+1}ª", anchor="e", width=3).grid(row=row, column=column+1, padx=2)
+        # "N°"
+        ttk.Label(master=parent, text=f"{i+1}°", anchor="e", width=3).grid(row=row, column=column+1, padx=2)
 
-        # Tecla [_]
-        ttk.Label(master=parent, text="Tecla", anchor="e").grid(row=row, column=column+2)
+        # Key [_]
+        ttk.Label(master=parent, text="Key", anchor="e").grid(row=row, column=column+2)
         _key_entry = tk.Entry(master=parent, textvariable=key_var, width=3, justify="center")
         _key_entry.grid(row=row, column=column+3, padx=2)
 
-        # Intervalo [____] ms
-        ttk.Label(master=parent, text="Intervalo").grid(row=row, column=column+4)
+        # Interval [____] ms
+        ttk.Label(master=parent, text="Interval").grid(row=row, column=column+4)
         _int_entry = tk.Entry(master=parent, textvariable=int_var, width=6, justify="center")
         _int_entry.grid(row=row, column=column+5, padx=2)
         ttk.Label(master=parent, text="ms").grid(row=row, column=column+6)
@@ -613,5 +613,3 @@ def create_combo_slots(
         vars_list.append((key_var, int_var))
 
     return vars_list
-
-

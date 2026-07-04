@@ -28,4 +28,3 @@ class LogWindow(tk.Frame):
         self['state'] = 'normal'
         self.text.insert(index, chars=f"{text}\n")
         self['state'] = 'disabled'
-

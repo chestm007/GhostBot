@@ -1,30 +1,29 @@
 """
-Loop simples de venda (sem deteccao item-a-item):
-  1. Acha o titulo "Sell" do dialog UMA vez (ancora)
-  2. Clica no slot 1 CLICKS vezes (o grid faz reflow: o proximo item sobe
-     pro slot 1; invendiveis nem aparecem)
-  3. Clica no botao "Sell" de baixo pra confirmar a venda  -- SO se DRY_RUN=False
+Simple sell loop (without item-by-item detection):
+  1. Find the "Sell" title of the dialog ONCE (anchor)
+  2. Click on slot 1 CLICKS times (the grid does reflow: the next item rises
+     to slot 1; unsellable items don't appear)
+  3. Click the "Sell" button at the bottom to confirm the sale  -- ONLY if DRY_RUN=False
 
-Acha o titulo so no comeco (o tooltip do item cobre o titulo depois,
-entao nao da pra re-procurar no meio do loop).
+Find the title only at the start (the item tooltip covers the title after,
+so we can't re-search in the middle of the loop).
 
-NAO mexe no codigo de producao.
+DO NOT modify production code.
 """
 import time
-import cv2
-from GhostBot.client_window import Win32ClientWindow
-from GhostBot.lib.win32.process import PymemProcess
+
+from GhostBot.lib.tooling import find_template_center, get_client
 
 SELL_HEADER_BMP = r"C:\Bot\BotTO\src\GhostBot\Images\misc\npc_sell_dialog_header.bmp"
-HEADER_TO_SLOT1 = (-97, 43)          # titulo Sell -> slot 1
-HEADER_TO_SELL_CONFIRM = (-76, 461)  # titulo Sell -> botao Sell de baixo (confirmar)
-COL_SPACING = 34.4                   # grid 6 col x 4 linhas = 24 slots
+HEADER_TO_SLOT1 = (-97, 43)          # Sell title -> slot 1
+HEADER_TO_SELL_CONFIRM = (-76, 461)  # Sell title -> Sell button at bottom (confirm)
+COL_SPACING = 34.4                   # grid 6 cols x 4 rows = 24 slots
 ROW_SPACING = 35.333
-START_SLOT = 2                       # vende deste slot em diante, mantem 1..N-1
+START_SLOT = 2                       # sell from this slot onward, keep 1..N-1
 
 CLICKS = 30
 CLICK_DELAY = 0.2
-DRY_RUN = True   # True = NAO confirma a venda (so move itens pro grid de baixo)
+DRY_RUN = True   # True = DO NOT confirm the sale (just move items to the lower grid)
 
 
 def slot_pos(hdr, n):
@@ -34,44 +33,27 @@ def slot_pos(hdr, n):
             int(hdr[1] + HEADER_TO_SLOT1[1] + row * ROW_SPACING))
 
 
-def find_header(client, thr=0.70):
-    win = client.capture_window()
-    bmp = cv2.imread(SELL_HEADER_BMP, cv2.IMREAD_GRAYSCALE)
-    res = cv2.matchTemplate(win, bmp, cv2.TM_CCOEFF_NORMED)
-    _, mv, _, ml = cv2.minMaxLoc(res)
-    h, w = bmp.shape[:2]
-    if mv < thr:
-        return None, mv
-    return (ml[0] + w // 2, ml[1] + h // 2), mv
-
-
 def main():
-    proc = next(iter(PymemProcess.list_clients()), None)
-    if proc is None:
-        raise SystemExit("client.exe nao encontrado")
-    client = Win32ClientWindow(proc)
+    client = get_client()
 
-    hdr, score = find_header(client)
-    if hdr is None:
-        raise SystemExit(f">>> titulo 'Sell' nao achado (score {score:.3f}). "
-                         "Dialog aberto? Mouse real cobrindo o titulo?")
+    hdr, score = find_template_center(client, SELL_HEADER_BMP, threshold=0.70)
     start = slot_pos(hdr, START_SLOT)
     confirm = (hdr[0] + HEADER_TO_SELL_CONFIRM[0], hdr[1] + HEADER_TO_SELL_CONFIRM[1])
-    print(f"Titulo 'Sell' em {hdr} (score {score:.3f})")
-    print(f"Slot inicial {START_SLOT} em {start} | Confirmar em {confirm}")
-    print(f"Clicando slot {START_SLOT} {CLICKS}x (mantem slots 1..{START_SLOT-1})...")
+    print(f"'Sell' title at {hdr} (score {score:.3f})")
+    print(f"Starting slot {START_SLOT} at {start} | Confirm at {confirm}")
+    print(f"Clicking slot {START_SLOT} {CLICKS}x (keeping slots 1..{START_SLOT-1})...")
 
     for i in range(CLICKS):
         client.left_click(start)
         time.sleep(CLICK_DELAY)
 
     if DRY_RUN:
-        print(">>> DRY_RUN: NAO clicou o 'Sell' de confirmar. Confere os itens no grid de baixo.")
+        print(">>> DRY_RUN: DID NOT click the 'Sell' confirm. Check the items in the lower grid.")
     else:
-        print(f"Confirmando venda (clique em {confirm})...")
+        print(f"Confirming sale (click at {confirm})...")
         client.left_click(confirm)
         time.sleep(1.0)
-        print(">>> Venda confirmada.")
+        print(">>> Sale confirmed.")
 
 
 if __name__ == "__main__":

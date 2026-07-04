@@ -1,24 +1,25 @@
-"""Modo Cave Boss -- papel por char (Tank / DPS / Fairy).
+"""Cave Boss mode -- role per class (Tank / DPS / Fairy).
 
-A aba "Boss" da UI escolhe o papel; este runner age conforme `config.boss.role`.
-Os 3 papeis estao implementados (2026-05-27):
+The "Boss" tab in the UI selects the role; this runner acts according to `config.boss.role`.
+The 3 roles are implemented (2026-05-27):
 
-- TANK: trava no boss (TAB ate o nome), ataca com o combo SEM parar, e a cada
-  `buff_interval_secs` reaplica os buffs do tank (so aperta a tecla; auto-cast, nao
-  troca de alvo). Pots HP/MP opcionais (tecla vazia = off; tank deixa MP vazio).
-- DPS: bate no boss; se PUXA AGGRO (perde vida em combate -- inferimos, nao da pra ler
-  o aggro do boss direto) recua com F1 -> espera sair de combate -> o tank repuxa ->
-  volta. MP baixo: F1 -> espera sair de combate -> pot. Aggro sempre ligado.
-- FAIRY: spama a tecla de cura no ALVO ATUAL a cada `heal_interval_secs`; o jogador
-  troca o alvo (sem mira automatica -- nao da pra ler o HP dos outros membros).
+- TANK: locks on boss (TAB until name matches), attacks with combo WITHOUT stopping, and every
+  `buff_interval_secs` reapplies tank buffs (just presses the key; auto-cast, does not
+  change target). HP/MP pots optional (empty key = off; tank leaves MP empty).
+- DPS: hits the boss; if PULLS AGGRO (loses HP in combat -- we infer, cannot read
+  boss aggro directly) retreats with F1 -> waits to exit combat -> tank re-pulls ->
+  returns. Low MP: F1 -> waits to exit combat -> pot. Aggro always on.
+- FAIRY: spam healing key on CURRENT TARGET every `heal_interval_secs`; the player
+  changes the target (no auto-aiming -- cannot read other members' HP).
 
-Reusa a mesma logica de boss-lock do Attack (_target_is_boss / _find_boss).
+Reuses shared boss-lock logic from `GhostBot.functions.combat_helpers.TargetLockMixin`.
 """
 from __future__ import annotations
 
 import time
 from typing import TYPE_CHECKING
 
+from GhostBot.functions.combat_helpers import TargetLockMixin
 from GhostBot.functions.runner import Runner, POT_DURATION_SECS
 
 if TYPE_CHECKING:
@@ -26,12 +27,12 @@ if TYPE_CHECKING:
     from GhostBot.config import BossConfig
 
 
-class Boss(Runner):
+class Boss(TargetLockMixin, Runner):
     def __init__(self, client: "BotClientWindow"):
         super().__init__(client)
         self.config: BossConfig = client.config.boss
         self._cur_attack_queue: list = []
-        self._last_buff_time = 0.0   # timestamp do ultimo ciclo de buffs do tank
+        self._last_buff_time = 0.0   # timestamp of last tank buff cycle
 
     def _run(self) -> bool:
         role = (self.config.role or '').strip().lower()
@@ -41,46 +42,46 @@ class Boss(Runner):
             return self._run_dps()
         if role == 'fairy':
             return self._run_fairy()
-        self._client.set_action("🐉 Boss: selecione um Papel na aba")
+        self._client.set_action("🐉 Boss: select a Role in the tab")
         return True
 
     # ------------------------------------------------------------------- DPS
     def _run_dps(self) -> bool:
-        """Bate no boss; se PUXAR AGGRO (perde vida em combate) recua: F1 -> espera sair de
-        combate -> o tank repuxa -> volta. Mesma logica pra MP baixo: F1 -> espera sair de
-        combate -> pot. (Nao da pra ler o aggro do boss direto; inferimos pela queda de HP.)"""
+        """Hits the boss; if PULLS AGGRO (loses HP in combat) retreats: F1 -> waits to
+        exit combat -> tank re-pulls -> returns. Same logic for low MP: F1 -> waits to
+        exit combat -> pot. (Cannot read boss aggro directly; we infer from HP drop.)"""
         boss = (self.config.boss_name or '').strip()
         if not boss:
-            self._client.set_action("🐉 DPS: configure o Nome do Boss")
+            self._client.set_action("🐉 DPS: configure Boss Name")
             return True
 
-        # MP baixo (antes de engajar) -> recua e recupera
+        # Low MP (before engaging) -> retreat and recover
         if self._mp_low():
             return self._recover_mp(boss)
 
         if not self._target_is_boss(boss):
             if not self._find_boss(boss):
-                self._client.set_action(f"🔍 Procurando boss: {boss}")
+                self._client.set_action(f"🔍 Looking for boss: {boss}")
                 return True
 
-        self._client.set_action(f"⚔️ DPS no boss: {boss}")
+        self._client.set_action(f"⚔️ DPS on boss: {boss}")
         last_hp = self._safe_hp()
         while self._client.target_hp is not None and self._client.target_hp >= 0 and self._client.running:
             if not self._target_is_boss(boss):
                 return True
-            # AGGRO: perdi vida em combate -> puxei o aggro -> recua (F1) e espera o tank
+            # AGGRO: lost HP in combat -> pulled aggro -> retreat (F1) and wait for tank
             cur_hp = self._safe_hp()
             if last_hp is not None and cur_hp is not None and cur_hp < last_hp:
                 return self._backoff_aggro(boss)
             last_hp = cur_hp
-            # MP baixo no meio da luta -> recua e recupera
+            # Low MP mid-fight -> retreat and recover
             if self._mp_low():
                 return self._recover_mp(boss)
-            self._hp_pot_simple()   # pot HP opcional (tecla vazia = off)
+            self._hp_pot_simple()   # optional HP pot (empty key = off)
             if not self._cur_attack_queue:
                 self._cur_attack_queue = list(self.config.attacks or [])
             if not self._cur_attack_queue:
-                self._client.set_action("⚔️ DPS: configure o Combo de ataque")
+                self._client.set_action("⚔️ DPS: configure Attack Combo")
                 return True
             key, interval = self._cur_attack_queue.pop(0)
             self._client.press_key(key)
@@ -88,28 +89,28 @@ class Boss(Runner):
         return True
 
     def _backoff_aggro(self, boss: str) -> bool:
-        """Puxou aggro: F1 (seleciona a si mesmo -> para de atacar o boss) -> espera sair de
-        combate (o tank repuxa pela ameaca) -> TAB pra re-pegar o boss -> volta a bater."""
-        self._client.set_action("🛑 Puxei aggro → F1, esperando o tank repuxar")
-        self._log_info("DPS: puxei aggro -> F1 + espera sair de combate")
+        """Pulled aggro: F1 (selects self -> stops attacking boss) -> waits to exit
+        combat (tank re-pulls due to threat) -> TAB to re-grab boss -> resume hitting."""
+        self._client.set_action("🛑 Pulled aggro -> F1, waiting for tank to re-pull")
+        self._log_info("DPS: pulled aggro -> F1 + wait to exit combat")
         self._client.press_key('f1')
         self._wait_out_of_combat()
-        self._find_boss(boss)   # TAB de volta pro boss -> continua no proximo ciclo
+        self._find_boss(boss)   # TAB back to boss -> continues in next cycle
         return True
 
     def _recover_mp(self, boss: str) -> bool:
-        """MP baixo: F1 (para de atacar) -> espera sair de combate -> toma o pot MP -> deixa
-        subir um pouco -> TAB pra RE-PEGAR o alvo (pedido do dono) -> volta a bater. Sem pot
-        configurado, so recua, espera e re-pega."""
-        self._client.set_action("💧 MP baixo → F1, recuperando fora de combate")
-        self._log_info("DPS: MP baixo -> F1 + recupera")
+        """Low MP: F1 (stop attacking) -> waits to exit combat -> takes MP pot -> lets
+        it rise a bit -> TAB to RE-GRAB target (owner's request) -> resume hitting. No pot
+        configured, just retreats, waits and re-grabs."""
+        self._client.set_action("💧 Low MP -> F1, recovering out of combat")
+        self._log_info("DPS: Low MP -> F1 + recover")
         self._client.press_key('f1')
         self._wait_out_of_combat()
         mp_key = (self.config.bindings or {}).get('battle_mana_pot')
         if mp_key:
-            self._use_pot(mp_key)   # so pota se fora do cooldown (16s) -- evita pot duplicado
+            self._use_pot(mp_key)   # only pot if not on cooldown (16s) -- avoids duplicate pot
             thr = self._as_decimal(self.config.battle_mana_threshold) if self.config.battle_mana_threshold is not None else 0.5
-            # espera o MP subir (recuou, nao esta atacando -> o pot age). Ate a duracao do pot.
+            # wait for MP to rise (retreated, not attacking -> pot acts). Up to pot duration.
             start = time.time()
             while self._client.running and (time.time() - start) < POT_DURATION_SECS:
                 time.sleep(0.5)
@@ -118,12 +119,12 @@ class Boss(Runner):
                         break
                 except Exception:
                     break
-        self._find_boss(boss)   # TAB de volta pro alvo -> continua batendo
+        self._find_boss(boss)   # TAB back to target -> resume hitting
         return True
 
     def _wait_out_of_combat(self, timeout_s: int = 20) -> None:
-        """Espera o personagem SAIR de combate (o tank repuxou). Bounded por timeout e
-        respeita o Stop (client.running)."""
+        """Waits for character to EXIT combat (tank re-pulled). Bounded by timeout and
+        respects Stop (client.running)."""
         start = time.time()
         while self._client.running and self._client.in_battle and (time.time() - start) < timeout_s:
             time.sleep(0.5)
@@ -138,8 +139,8 @@ class Boss(Runner):
             return False
 
     def _hp_pot_simple(self) -> None:
-        """Pot HP em combate (opcional, em branco = off). HP only -- o MP do DPS usa o recuo.
-        Com cooldown (16s) pra nao re-potar enquanto o pot anterior ainda age."""
+        """HP pot in combat (optional, blank = off). HP only -- DPS MP uses retreat.
+        With cooldown (16s) to not re-pot while previous pot is still active."""
         hp_key = (self.config.bindings or {}).get('battle_hp_pot')
         hp_thr = self.config.battle_hp_threshold
         if hp_key and hp_thr is not None and self._client.hp_percent < self._as_decimal(hp_thr):
@@ -153,15 +154,15 @@ class Boss(Runner):
 
     # ----------------------------------------------------------------- FAIRY
     def _run_fairy(self) -> bool:
-        """Cura no ALVO ATUAL (opcao 'a'): a Fairy so spama a tecla de cura; o jogador
-        troca o alvo (clica em quem precisa). Sem logica de mira -- nao da pra ler o HP
-        dos outros membros. Pots HP/MP proprios sao opcionais (tecla vazia = off)."""
+        """Heal on CURRENT TARGET (option 'a'): Fairy only spam the heal key; the player
+        changes the target (clicks on who needs it). No aiming logic -- cannot read HP
+        of other members. HP/MP pots for self are optional (empty key = off)."""
         heal = (self.config.bindings or {}).get('heal')
         if not heal:
-            self._client.set_action("🧚 Fairy: configure a Tecla de Cura")
+            self._client.set_action("🧚 Fairy: configure Heal Key")
             return True
-        self._battle_pots()   # cuida da PROPRIA Fairy (HP/MP), se configurado
-        self._client.set_action("💚 Curando (alvo atual)")
+        self._battle_pots()   # takes care of OWN Fairy (HP/MP), if configured
+        self._client.set_action("💚 Healing (current target)")
         self._client.press_key(heal)
         time.sleep(float(self.config.heal_interval_secs or 2))
         return True
@@ -170,34 +171,34 @@ class Boss(Runner):
     def _run_tank(self) -> bool:
         boss = (self.config.boss_name or '').strip()
         if not boss:
-            self._client.set_action("🐉 Tank: configure o Nome do Boss")
+            self._client.set_action("🐉 Tank: configure Boss Name")
             return True
 
-        # garante que o alvo e o boss (TAB ate achar)
+        # ensures target is the boss (TAB until found)
         if not self._target_is_boss(boss):
             if not self._find_boss(boss):
-                self._client.set_action(f"🔍 Procurando boss: {boss}")
+                self._client.set_action(f"🔍 Looking for boss: {boss}")
                 return True
 
-        self._client.set_action(f"🛡️ TANK no boss: {boss}")
+        self._client.set_action(f"🛡️ TANK on boss: {boss}")
         while self._client.target_hp is not None and self._client.target_hp >= 0 and self._client.running:
             if not self._target_is_boss(boss):
-                return True   # alvo deixou de ser o boss -> re-acha no proximo ciclo
+                return True   # target is no longer the boss -> re-find in next cycle
             self._maybe_buff()
-            # TANK NAO pota no boss -- as Fairies curam o tank (decisao do dono).
+            # TANK does not pot on boss -- Fairies heal the tank (owner's decision).
             if not self._cur_attack_queue:
                 self._cur_attack_queue = list(self.config.attacks or [])
             if not self._cur_attack_queue:
-                self._client.set_action(f"🛡️ Tank: configure o Combo de ataque")
-                return True   # sem combo -> nada a apertar
+                self._client.set_action(f"🛡️ Tank: configure Attack Combo")
+                return True   # no combo -> nothing to press
             key, interval = self._cur_attack_queue.pop(0)
             self._client.press_key(key)
             time.sleep(int(interval) / 1000)
         return True
 
     def _maybe_buff(self) -> None:
-        """Reaplica os buffs do tank a cada buff_interval_secs (so aperta a tecla --
-        buff de tank e auto-cast, nao troca de alvo)."""
+        """Reapplies tank buffs every buff_interval_secs (just presses the key --
+        tank buff is auto-cast, does not change target)."""
         buffs = self.config.buffs or []
         interval = self.config.buff_interval_secs
         if not buffs or not interval:
@@ -211,35 +212,10 @@ class Boss(Runner):
             time.sleep(int(delay_ms) / 1000)
         self._last_buff_time = time.time()
 
-    # ------------------------------------------------- boss targeting (= Attack)
-    def _target_is_boss(self, boss: str) -> bool:
-        """True se o alvo atual esta vivo e o nome bate (contem) com o boss."""
-        if not self._client.has_alive_target:
-            return False
-        tname = (self._client.target_name or '').lower()
-        return bool(tname) and boss.lower() in tname
-
-    def _find_boss(self, boss: str) -> bool:
-        """Da TAB ate o alvo ser o boss. True se achou, False se nao apareceu."""
-        for _ in range(10):
-            if not self._client.running:
-                return False
-            self._client.new_target()      # TAB
-            time.sleep(0.3)                # deixa o nome do alvo atualizar
-            if self._target_is_boss(boss):
-                return True
-        return False
-
-    # ------------------------------------------------------------- pots (opcionais)
-    @staticmethod
-    def _as_decimal(threshold) -> float:
-        v = float(threshold)
-        return v / 100 if v > 1 else v
-
     def _battle_pots(self) -> None:
-        """Pots HP/MP PROPRIOS, com cooldown (16s) pra nao re-potar. Usado pela FAIRY
-        (pots dela mesma). O TANK NAO chama isto -- as Fairies curam o tank no boss.
-        Opcionais: tecla em branco = desligado."""
+        """OWN HP/MP pots, with cooldown (16s) to not re-pot. Used by FAIRY
+        (her own pots). TANK does not call this -- Fairies heal the tank on boss.
+        Optional: empty key = off."""
         b = self.config.bindings or {}
 
         mp_key = b.get('battle_mana_pot')

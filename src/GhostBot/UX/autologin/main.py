@@ -18,6 +18,7 @@ from GhostBot.UX import theme as T
 
 
 
+
 char_info_refresh_lock = threading.RLock()
 
 class GhostBotAutoLogin(tk.Toplevel):
@@ -35,7 +36,7 @@ class GhostBotAutoLogin(tk.Toplevel):
         self.list_box = ScrollableListbox(parent=self, scrollx=False, scrolly=True, listvariable=self._char_list)
         self.list_box.config(bg=T.BG_LIST, fg=T.FG_MAIN, width=18, height=18,
                              borderwidth=0, highlightthickness=0)
-        tk.Frame.configure(self.list_box, bg=T.BG_MAIN)  # bg do frame em volta da lista
+        tk.Frame.configure(self.list_box, bg=T.BG_MAIN)  # bg of the frame around the list
         self.display_frame = tk.Frame(master=self, bg=T.BG_MAIN)
         self._vars = dict(
             char_name=create_entry(self.display_frame, "Char Name:", 0, 0, ("autologin.char_name", str)),
@@ -74,8 +75,8 @@ class GhostBotAutoLogin(tk.Toplevel):
             if _selected := self.selected_char():
                 self.client.open_client(_selected)
 
-        # Layout: lista a esquerda (preenche a altura), form ancorado no topo a direita,
-        # botoes numa barra embaixo (no lugar de place() x/y fixo, que quebrava com fonte maior).
+        # Layout: list on the left (fills height), form anchored to top right,
+        # buttons in a bar at the bottom (instead of place() with fixed x/y, which broke with larger fonts).
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
 
@@ -137,5 +138,5 @@ class GhostBotAutoLogin(tk.Toplevel):
     def destroy(self):
         self.client.del_callback(Command.INFO_AUTOLOGIN, self.set_char_list)
         self.client.del_callback(Command.CONFIG_AUTOLOGIN_GET, self.update_login_config_display)
-        self.client.add_callback(Command.CONFIG_AUTOLOGIN_DELETE, self._delete_from_char_list)
+        self.client.del_callback(Command.CONFIG_AUTOLOGIN_DELETE, self._delete_from_char_list)
         super().destroy()

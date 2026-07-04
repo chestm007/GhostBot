@@ -1,15 +1,15 @@
 """
-Deteccao de drop pelo chat System do TO via OCR (Tesseract).
+Drop detection via TO System chat OCR (Tesseract).
 
-Fluxo:
-  captura a janela -> acha a ANCORA (3 icones do chat) -> recorta a regiao de
-  leitura (offsets calibrados) -> trata a imagem (cinza+ampliar+Otsu) -> OCR
-  -> extrai nomes de item das linhas "You got the item: [Nome(lvl X)]".
+Flow:
+  capture the window -> find the ANCHOR (3 chat icons) -> crop the read region
+  (calibrated offsets) -> preprocess image (grayscale+zoom+Otsu) -> OCR
+  -> extract item names from "You got the item: [Name(lvl X)]" lines.
 
-Calibracao inicial (2026-05-25, janela do dono): ancora 64x24; regiao relativa
-ao top-left da ancora. Cada jogador pode recalibrar com
-`tools/calibrate_chat_region.py` (os offsets viram config por jogador na UI
-mais pra frente).
+Initial calibration (2026-05-25, owner's window): anchor 64x24; region relative
+to anchor's top-left. Each player can recalibrate with
+`tools/calibrate_chat_region.py` (offsets become per-player config in UI
+later on).
 """
 from __future__ import annotations
 
@@ -27,9 +27,10 @@ import numpy as np
 import pytesseract
 
 from GhostBot import logger
+from GhostBot.lib.text_utils import clean_item_name
 
-# pytesseract loga a linha de comando inteira a cada chamada (INFO) -> poluicao.
-# Como lemos o chat de poucos em poucos segundos, isso entope o log. Silencia.
+# pytesseract logs the full command line on every call (INFO) -> spam.
+# Since we read the chat every few seconds, this floods the log. Silence it.
 logging.getLogger("pytesseract").setLevel(logging.WARNING)
 
 if TYPE_CHECKING:
@@ -39,14 +40,14 @@ _path_base = os.path.dirname(__file__)
 
 
 # ----------------------------------------------------------------------------
-# Tesseract: nao fica no PATH por padrao. Procura o .exe instalado, e tambem
-# uma copia embutida no pacote (pro futuro .exe que distribuimos pros amigos).
+# Tesseract: not on PATH by default. Look for the installed .exe, and also
+# a bundled copy in the package (for the future .exe we distribute to friends).
 # ----------------------------------------------------------------------------
 def _find_tesseract() -> str | None:
-    # Pastas onde a copia PORTATIL pode estar (rodando do fonte OU compilado):
-    #  - _path_base = dir do pacote GhostBot. No fonte e' src/GhostBot; no nuitka
-    #    o data-dir incluido como GhostBot/Tesseract-OCR cai aqui (__file__ resolve).
-    #  - dir do executavel (.exe standalone/dist: a pasta fica ao lado / em GhostBot/).
+    # Folders where the PORTABLE copy may be (running from source OR compiled):
+    #  - _path_base = dir of the GhostBot package. In source it's src/GhostBot; in nuitka
+    #    the included data-dir as GhostBot/Tesseract-OCR ends up here (__file__ resolves).
+    #  - .exe directory (standalone/dist .exe: the folder sits alongside / in GhostBot/).
     bases = [_path_base]
     try:
         exe_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
@@ -66,16 +67,16 @@ _TESS = _find_tesseract()
 if _TESS:
     pytesseract.pytesseract.tesseract_cmd = _TESS
 else:
-    logger.warning("drop_watcher :: Tesseract nao encontrado -- OCR de drop vai falhar")
+    logger.warning("drop_watcher :: Tesseract not found -- drop OCR will fail")
 
 
 def tesseract_available() -> bool:
     return _TESS is not None
 
-_TESS_CONFIG = "--psm 6"  # bloco uniforme de texto (varias linhas de chat)
+_TESS_CONFIG = "--psm 6"  # uniform text block (multiple chat lines)
 
 # ----------------------------------------------------------------------------
-# Regiao de leitura: offsets relativos ao TOP-LEFT da ancora (calibrado).
+# Read region: offsets relative to the TOP-LEFT of the anchor (calibrated).
 # (left, top, right, bottom) -> x in [ax+left, ax+right], y in [ay+top, ay+bottom]
 # ----------------------------------------------------------------------------
 ANCHOR_BMP = os.path.join(_path_base, "Images", "misc", "chat_anchor.bmp")
@@ -83,22 +84,17 @@ ANCHOR_THRESHOLD = 0.80
 OCR_REGION_OFFSETS = (0, -158, 378, 0)
 
 # ----------------------------------------------------------------------------
-# Extracao de nome de item das linhas do chat
+# Item name extraction from chat lines
 # ----------------------------------------------------------------------------
-# Caso ideal: "got the item: [Nome]" / "[Nome(lvl X)]"
+# Ideal case: "got the item: [Name]" / "[Name(lvl X)]"
 _ITEM_RE = re.compile(r"got the item:\s*[\[\(]\s*(.+?)\s*[\]\)]", re.IGNORECASE)
-# Fallback: o OCR embola o prefixo "got the item" mas le o "[nome]" certo.
-# Tolera [<->( e ]<->), e pula um "(lvl N)" opcional antes do fechamento.
+# Fallback: OCR mangles the "got the item" prefix but reads "[name]" correctly.
+# Tolerates [<->( and ]<->), and skips an optional "(lvl N)" before closing.
 _BRACKET_RE = re.compile(
     r"[\[\(]\s*([A-Za-z][A-Za-z '\-]{3,40}?)\s*(?:\(lvl\s*\d+\))?\s*[\]\)]"
 )
-_LVL_RE = re.compile(r"\s*\(lvl\s*\d+\)\s*$", re.IGNORECASE)
 
-MIN_NAME_LEN = 4  # item de verdade tem nome >= 4 letras; corta fragmentos ('XY', 'Red')
-
-
-def _clean(raw: str) -> str:
-    return _LVL_RE.sub("", raw).strip()
+MIN_NAME_LEN = 4  # real item names are >= 4 letters; cuts fragments ('XY', 'Red')
 
 
 def _looks_like_item(name: str) -> bool:
@@ -106,40 +102,40 @@ def _looks_like_item(name: str) -> bool:
 
 
 def extract_item_names(text: str) -> list[str]:
-    """Pega os nomes de item das linhas de drop no texto lido pelo OCR.
+    """Extract item names from drop lines in text read by OCR.
 
-    Linhas tipo "Congratulations! [Jogador]" tambem tem colchete mas NAO sao
-    item -- sao ignoradas. Fragmentos curtos de ruido de OCR sao descartados.
+    Lines like "Congratulations! [Player]" also have brackets but are NOT
+    items -- they are ignored. Short OCR noise fragments are discarded.
     """
     names: list[str] = []
     for line in text.splitlines():
         if (m := _ITEM_RE.search(line)):
-            if _looks_like_item(name := _clean(m.group(1))):
+            if _looks_like_item(name := clean_item_name(m.group(1))):
                 names.append(name)
             continue
         if "congrat" in line.lower():
             continue
         for raw in _BRACKET_RE.findall(line):
-            if _looks_like_item(name := _clean(raw)):
+            if _looks_like_item(name := clean_item_name(raw)):
                 names.append(name)
     return names
 
 
 # ----------------------------------------------------------------------------
-# Deteccao de "mochila cheia" -- MESMA regiao do chat (mesma leitura OCR).
-# Frase do jogo: "Your item box is full." O OCR embola letras, entao normaliza
-# a linha pra so-letras e casa o nucleo distintivo ('item box is full').
+# "Inventory full" detection -- SAME chat region (same OCR read).
+# Game text: "Your item box is full." OCR mangles letters, so normalize
+# to letters-only and match the distinctive core ('item box is full').
 # ----------------------------------------------------------------------------
 _BOX_FULL_CORE = "itemboxisfull"
-# O OCR troca letra<->digito (o->0, l->1, e->3...). Desfaz as trocas comuns
-# ANTES de comparar, senao 'Y0ur 1tem b0x is fu11' nao casa com 'item box is full'.
+# OCR swaps letter<->digit (o->0, l->1, e->3...). Undo common swaps
+# BEFORE comparing, otherwise 'Y0ur 1tem b0x is fu11' won't match 'item box is full'.
 _OCR_DIGIT_FIX = str.maketrans({"0": "o", "1": "l", "3": "e", "5": "s", "8": "b", "!": "l", "|": "l"})
-_BOX_FULL_SIM = 0.72  # limiar de semelhanca (nucleo distintivo -> seguro contra falso positivo)
+_BOX_FULL_SIM = 0.72  # similarity threshold (distinctive core -> safe against false positive)
 
 
 def chat_says_box_full(text: str) -> bool:
-    """True se alguma linha do chat parece 'Your item box is full.'
-    (nucleo 'itemboxisfull' como substring OU semelhanca >= limiar; tolera ruido de OCR)."""
+    """True if any chat line looks like 'Your item box is full.'
+    (core 'itemboxisfull' as substring OR similarity >= threshold; tolerates OCR noise)."""
     for line in text.splitlines():
         norm = re.sub(r"[^a-z]", "", line.lower().translate(_OCR_DIGIT_FIX))
         if len(norm) < 8:
@@ -152,35 +148,35 @@ def chat_says_box_full(text: str) -> bool:
 
 
 def _preprocess(bgr):
-    """Tratamento B (vencedor nos testes): cinza + ampliar 4x + Otsu."""
+    """Treatment B (winner in tests): grayscale + 4x zoom + Otsu."""
     gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
     big = cv2.resize(gray, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
     _, thr = cv2.threshold(big, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    if np.mean(thr) < 127:  # texto claro sobre fundo escuro -> inverte
+    if np.mean(thr) < 127:  # light text on dark background -> invert
         thr = cv2.bitwise_not(thr)
     return thr
 
 
 def find_anchor_top_left(client: "AbstractClientWindow") -> tuple[int, int] | None:
-    """Top-left da ancora (3 icones do chat) na janela. None se nao achar
-    (chat fechado, aba diferente, janela coberta...)."""
+    """Top-left of the anchor (3 chat icons) in the window. None if not found
+    (chat closed, different tab, window covered...)."""
     tmpl = cv2.imread(ANCHOR_BMP, cv2.IMREAD_GRAYSCALE)
     if tmpl is None:
-        logger.error("drop_watcher :: ancora bmp nao encontrada: %s", ANCHOR_BMP)
+        logger.error("drop_watcher :: anchor bmp not found: %s", ANCHOR_BMP)
         return None
     win = client.capture_window()  # grayscale, como o resto do bot
     res = cv2.matchTemplate(win, tmpl, cv2.TM_CCOEFF_NORMED)
     _, score, _, (x, y) = cv2.minMaxLoc(res)
     if score < ANCHOR_THRESHOLD:
-        logger.debug("drop_watcher :: ancora score baixo %.3f (<%.2f)", score, ANCHOR_THRESHOLD)
+        logger.debug("drop_watcher :: anchor score low %.3f (<%.2f)", score, ANCHOR_THRESHOLD)
         return None
     return x, y
 
 
 def read_chat_text(client: "AbstractClientWindow") -> str | None:
-    """Le a regiao do chat e devolve o TEXTO BRUTO do OCR.
-    None = ancora nao achada (nao da pra ler agora); "" = regiao vazia.
-    Base comum: 1 leitura serve pra drops E pra 'mochila cheia'."""
+    """Read the chat region and return the RAW OCR text.
+    None = anchor not found (can't read now); "" = empty region.
+    Common base: 1 read works for both drops and 'inventory full'."""
     anchor = find_anchor_top_left(client)
     if anchor is None:
         return None
@@ -197,7 +193,7 @@ def read_chat_text(client: "AbstractClientWindow") -> str | None:
 
 
 def read_chat_items(client: "AbstractClientWindow") -> list[str] | None:
-    """Nomes de item detectados no chat. None = ancora nao achada."""
+    """Item names detected in chat. None = anchor not found."""
     text = read_chat_text(client)
     if text is None:
         return None
@@ -208,13 +204,13 @@ def read_chat_items(client: "AbstractClientWindow") -> list[str] | None:
 # Watchlist (alertas_drop.txt)
 # ----------------------------------------------------------------------------
 def _watchlist_candidates() -> list[str]:
-    """Pastas onde alertas_drop.txt pode estar (fonte E .exe compilado)."""
+    """Folders where alertas_drop.txt may be (source AND compiled .exe)."""
     bases = [
-        os.path.join(os.path.expanduser("~"), "GhostBot"),        # config por jogador
-        os.path.normpath(os.path.join(_path_base, "..", "..")),   # raiz do repo (fonte)
+        os.path.join(os.path.expanduser("~"), "GhostBot"),        # per-player config
+        os.path.normpath(os.path.join(_path_base, "..", "..")),   # repo root (source)
         _path_base,
     ]
-    try:  # pasta do .exe (e /GhostBot) -- onde o pacote dos amigos poe o arquivo
+    try:  # .exe folder (and /GhostBot) -- where the friends' package puts the file
         exe_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
         bases += [exe_dir, os.path.join(exe_dir, "GhostBot")]
     except Exception:
@@ -226,15 +222,15 @@ _WATCHLIST_CANDIDATES = _watchlist_candidates()
 
 
 def default_watchlist_path() -> str:
-    """Acha o alertas_drop.txt (HOME/GhostBot, depois raiz do repo/.exe)."""
+    """Find alertas_drop.txt (HOME/GhostBot, then repo root/.exe)."""
     for p in _WATCHLIST_CANDIDATES:
         if os.path.exists(p):
             return p
-    return _WATCHLIST_CANDIDATES[0]  # default: HOME/GhostBot (criado por quem usar)
+    return _WATCHLIST_CANDIDATES[0]  # default: HOME/GhostBot (created by whoever uses it)
 
 
 def load_watchlist(path) -> tuple[set[str], set[str]]:
-    """Le o alertas_drop.txt -> (quero, nao_quero) em minusculo."""
+    """Read alertas_drop.txt -> (want, not_want) in lowercase."""
     want: set[str] = set()
     ignore: set[str] = set()
     target: set[str] | None = None
@@ -244,16 +240,16 @@ def load_watchlist(path) -> tuple[set[str], set[str]]:
             if not line or line.startswith("#"):
                 continue
             up = line.upper()
-            if up.startswith("[QUERO"):
+            if up.startswith("[WANT"):
                 target = want
                 continue
-            if up.startswith("[NAO QUERO") or up.startswith("[NÃO QUERO"):
+            if up.startswith("[DON'T WANT") or up.startswith("[DON'T WANT"):
                 target = ignore
                 continue
             if target is not None:
                 target.add(line.lower())
     except FileNotFoundError:
-        logger.warning("drop_watcher :: watchlist nao encontrada: %s", path)
+        logger.warning("drop_watcher :: watchlist not found: %s", path)
     return want, ignore
 
 
@@ -268,9 +264,9 @@ def classify(name: str, want: set[str], ignore: set[str]) -> str:
 
 
 def add_to_watchlist(name: str, which: str, path=None) -> None:
-    """Adiciona `name` na secao 'want' (QUERO) ou 'ignore' (NAO QUERO) do
-    alertas_drop.txt, tirando de onde estava antes (sem duplicar). UI e server
-    ficam na mesma maquina -> a UI escreve o arquivo e o DropWatch recarrega."""
+    """Add `name` to the 'want' (WANT) or 'ignore' (DON'T WANT) section of
+    alertas_drop.txt, removing it from wherever it was before (no duplicates). UI and server
+    are on the same machine -> UI writes the file and DropWatch reloads."""
     path = path or default_watchlist_path()
     name = name.strip()
     is_want = which == "want"
@@ -278,16 +274,16 @@ def add_to_watchlist(name: str, which: str, path=None) -> None:
     def _is_header(ln: str, want: bool) -> bool:
         up = ln.strip().upper()
         if want:
-            return up.startswith("[QUERO")
-        return up.startswith("[NAO QUERO") or up.startswith("[NÃO QUERO")
+            return up.startswith("[WANT")
+        return up.startswith("[DON'T WANT") or up.startswith("[NÃO QUERO")
 
     try:
         lines = Path(path).read_text(encoding="utf-8").splitlines()
     except (FileNotFoundError, OSError):
-        lines = ["[QUERO ALERTA]", "", "[NAO QUERO]", ""]
+        lines = ["[WANT ALERT]", "", "[DON'T WANT]", ""]
 
     low = name.lower()
-    lines = [ln for ln in lines if ln.strip().lower() != low]  # tira duplicata
+    lines = [ln for ln in lines if ln.strip().lower() != low]  # remove duplicate
 
     out: list[str] = []
     inserted = False
@@ -296,32 +292,32 @@ def add_to_watchlist(name: str, which: str, path=None) -> None:
         if not inserted and _is_header(ln, is_want):
             out.append(name)
             inserted = True
-    if not inserted:  # secao nao existia no arquivo
-        out += ["", "[QUERO ALERTA]" if is_want else "[NAO QUERO]", name]
+    if not inserted:  # section didn't exist in the file
+        out += ["", "[WANT ALERT]" if is_want else "[DON'T WANT]", name]
 
     Path(path).write_text("\n".join(out) + "\n", encoding="utf-8")
 
 
-# Dedup robusto a ruido de OCR:
-SIM_THRESHOLD = 0.85   # similaridade (0-1) p/ tratar dois nomes como o MESMO item
-DEDUP_WINDOW = 45      # segundos sem ver o item antes de poder alertar de novo
+# Robust dedup for OCR noise:
+SIM_THRESHOLD = 0.85   # similarity (0-1) to treat two names as the SAME item
+DEDUP_WINDOW = 45      # seconds without seeing the item before alerting again
 
 
 def _similar(a: str, b: str) -> float:
-    """Quao parecidos dois nomes sao (0-1). 'Blue Stee! Dagger' ~ 'Blue Steel Dagger'."""
+    """How similar two names are (0-1). 'Blue Stee! Dagger' ~ 'Blue Steel Dagger'."""
     return difflib.SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
 
 class DropWatcher:
-    """Detecta drops NOVOS com dedup robusto a ruido de OCR.
+    """Detect NEW drops with robust dedup for OCR noise.
 
-    Dois mecanismos contra o problema de o mesmo drop ser avisado varias vezes:
-      - SEMELHANCA: 'Blue Stee! Dagger' ~ 'Blue Steel Dagger' contam como o
-        mesmo item (OCR troca 1 letra) -> nao re-alerta.
-      - ESTABILIDADE: so alerta um nome que apareceu em 2 leituras SEGUIDAS
-        -> corta fragmentos de lixo que o OCR cospe 1 vez so ('Red', '3.u...').
-    Nao re-alerta enquanto o item continua visivel (renova o timer a cada
-    leitura); libera de novo se ele sumir por DEDUP_WINDOW segundos (= novo drop).
+    Two mechanisms against the problem of the same drop being alerted multiple times:
+      - SIMILARITY: 'Blue Stee! Dagger' ~ 'Blue Steel Dagger' count as the
+        same item (OCR swaps 1 letter) -> don't re-alert.
+      - STABILITY: only alert a name that appeared in 2 CONSECUTIVE reads
+        -> cuts garbage fragments that OCR spits out once ('Red', '3.u...').
+    Doesn't re-alert while the item is still visible (resets timer on each
+    read); releases again if it disappears for DEDUP_WINDOW seconds (= new drop).
     """
 
     def __init__(self, watchlist_path):
@@ -360,7 +356,7 @@ class DropWatcher:
         return counts
 
     def prime(self, client: "AbstractClientWindow") -> None:
-        """Marca tudo que ja esta na tela como 'ja visto' -> nao alerta NEM conta no inicio."""
+        """Mark everything already on screen as 'already seen' -> don't alert NOR count at start."""
         text = read_chat_text(client) or ""
         raw = extract_item_names(text)
         items = self._dedup_within(raw)
@@ -371,12 +367,12 @@ class DropWatcher:
         self.box_full = chat_says_box_full(text)
 
     def poll(self, client: "AbstractClientWindow") -> tuple[list[tuple[str, str]], dict[str, int]]:
-        """Retorna (alerts, deltas):
-          - alerts: [(nome, categoria)] pra avisar no Discord -- com DEDUP (nao spamma o
-            mesmo item na janela).
-          - deltas: {nome: n} drops NOVOS pra somar no dashboard -- CONTA repeticoes
-            (2 linhas iguais visiveis = +2; reler as mesmas linhas nao re-conta).
-        Tambem atualiza self.box_full ('Your item box is full.' na mesma leitura)."""
+        """Returns (alerts, deltas):
+          - alerts: [(name, category)] to alert on Discord -- with DEDUP (don't spam the
+            same item in the window).
+          - deltas: {name: n} NEW drops to add to the dashboard -- COUNTS repetitions
+            (2 identical visible lines = +2; re-reading the same lines doesn't re-count).
+        Also updates self.box_full ('Your item box is full.' on the same read)."""
         text = read_chat_text(client)
         if text is None:
             return [], {}
@@ -384,7 +380,7 @@ class DropWatcher:
         self.box_full = chat_says_box_full(text)
         now = time.time()
 
-        # CONTAGEM (dashboard): soma os AUMENTOS de ocorrencia visivel por item.
+        # COUNTING (dashboard): sum the VISIBLE occurrence INCREASES per item.
         cur_counts = self._count_occurrences(raw)
         deltas: dict[str, int] = {}
         for name, cnt in cur_counts.items():
@@ -393,7 +389,7 @@ class DropWatcher:
                 deltas[name] = cnt - prev
         self._visible_counts = cur_counts
 
-        # ALERTAS (Discord): dedup -- nao re-alerta o mesmo item dentro da janela.
+        # ALERTS (Discord): dedup -- don't re-alert the same item within the window.
         self._alerted = {n: t for n, t in self._alerted.items() if now - t < DEDUP_WINDOW}
         items = self._dedup_within(raw)
         alerts: list[tuple[str, str]] = []

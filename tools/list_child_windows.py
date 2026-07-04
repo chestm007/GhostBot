@@ -1,4 +1,4 @@
-"""Lista janelas-filho (child windows) do TO."""
+"""List child windows of TO."""
 import win32gui
 import win32process
 import pymem
@@ -9,7 +9,7 @@ for proc in pymem.process.list_processes():
         pid = proc.th32ProcessID
         break
 if pid is None:
-    raise SystemExit("client.exe nao encontrado")
+    raise SystemExit("client.exe not found")
 
 def find_top_windows():
     tops = []
@@ -31,7 +31,7 @@ def enum_children(hwnd, depth=0):
             print(f"{'  '*(depth+1)}- handle={child_hwnd} class={cls!r} text={text!r} size={w}x{h}")
             enum_children(child_hwnd, depth + 1)
         except Exception as e:
-            print(f"{'  '*(depth+1)}- (erro: {e})")
+            print(f"{'  '*(depth+1)}- (error: {e})")
     try:
         win32gui.EnumChildWindows(hwnd, cb, None)
     except Exception:

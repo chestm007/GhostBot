@@ -1,16 +1,16 @@
 """
-Captura icone de item do TO via clipboard e salva como BMP.
+Capture TO item icon via clipboard and save as BMP.
 
-Fluxo:
-  1. Roda o script.
-  2. Escolhe a categoria (SELL, DELETE, ALERTS/RARE, etc.).
-  3. Digita o nome do item (sem espacos, ex: 'DragonRing').
-  4. No jogo: aperta Win+Shift+S, recorta o icone do item.
-  5. Volta no terminal e aperta Enter -- o script le da area de transferencia
-     e salva como Images/<categoria>/<nome>.bmp.
-  6. Pergunta se quer capturar outro.
+Flow:
+  1. Run the script.
+  2. Choose the category (SELL, DELETE, ALERTS/RARE, etc.).
+  3. Type the item name (no spaces, e.g. 'DragonRing').
+  4. In-game: press Win+Shift+S, crop the item icon.
+  5. Back in terminal and press Enter -- the script reads from clipboard
+     and saves as Images/<category>/<name>.bmp.
+  6. Asks if you want to capture another.
 
-Requer: Pillow (ja esta em pyproject.toml).
+Requires: Pillow (already in pyproject.toml).
 """
 from __future__ import annotations
 
@@ -20,19 +20,19 @@ from pathlib import Path
 from PIL import ImageGrab, Image
 
 
-# pasta root das imagens do bot
+# root image folder for the bot
 IMAGES_ROOT = Path(__file__).resolve().parent.parent / "src" / "GhostBot" / "Images"
 
 # categorias pre-existentes + sugestoes novas
 CATEGORIES = {
-    "1": ("SELL", "Itens que o NPC compra (auto-sell)"),
-    "2": ("DELETE", "Itens pra apagar (limpa bag)"),
-    "3": ("BC_DELETE", "Delete especifico Bird's Cave"),
-    "4": ("ALERTS/BLUE", "Alerta Discord -- raridade azul"),
-    "5": ("ALERTS/PURPLE", "Alerta Discord -- raridade roxa"),
-    "6": ("ALERTS/BOSS", "Alerta Discord -- drop de Boss"),
-    "7": ("misc", "Elementos de UI (botoes, dialogs do jogo)"),
-    "8": ("custom", "Outra pasta (voce digita)"),
+    "1": ("SELL", "Items the NPC buys (auto-sell)"),
+    "2": ("DELETE", "Items to delete (clear bag)"),
+    "3": ("BC_DELETE", "Specific Bird's Cave delete"),
+    "4": ("ALERTS/BLUE", "Discord alert -- blue rarity"),
+    "5": ("ALERTS/PURPLE", "Discord alert -- purple rarity"),
+    "6": ("ALERTS/BOSS", "Discord alert -- Boss drop"),
+    "7": ("misc", "UI elements (buttons, game dialogs)"),
+    "8": ("custom", "Other folder (you type it)"),
 }
 
 
@@ -55,20 +55,20 @@ def menu_pick_category() -> Path:
             target = IMAGES_ROOT / folder
             target.mkdir(parents=True, exist_ok=True)
             return target
-        print("Opcao invalida. Escolhe um numero da lista.")
+        print("Invalid option. Pick a number from the list.")
 
 
 def ask_item_name(target: Path) -> str | None:
     while True:
-        name = input("Nome do item (sem .bmp, sem espacos -- vazio pra cancelar): ").strip()
+        name = input("Item name (no .bmp, no spaces -- empty to cancel): ").strip()
         if not name:
             return None
         if "/" in name or "\\" in name or name.startswith("."):
-            print("  Nome invalido. Sem barras nem pontos no inicio.")
+            print("  Invalid name. No slashes or dots at the start.")
             continue
         bmp_path = target / f"{name}.bmp"
         if bmp_path.exists():
-            ans = input(f"  '{bmp_path.name}' ja existe. Sobrescrever? [s/N] ").strip().lower()
+            ans = input(f"  '{bmp_path.name}' already exists. Overwrite? [s/N] ").strip().lower()
             if ans != "s":
                 continue
         return name
@@ -93,18 +93,18 @@ def capture_one():
         return False
 
     print(
-        "\n>>> Agora no jogo: aperta Win+Shift+S, recorta SO o icone do item\n"
-        "    (apertado bem nas bordas), depois aperta ENTER aqui.\n"
+        "\n>>> Now in-game: press Win+Shift+S, crop ONLY the item icon\n"
+        "    (snug on the edges), then press ENTER here.\n"
     )
-    input("Pressione ENTER quando tiver recortado: ")
+    input("Press ENTER when you've cropped: ")
 
     img = grab_clipboard_image()
     if img is None:
-        print("  ERRO: area de transferencia nao tem imagem.")
-        print("  Voce recortou com Win+Shift+S? Tenta de novo.")
-        return True  # loop continua
+        print("  ERROR: clipboard has no image.")
+        print("  Did you crop with Win+Shift+S? Try again.")
+        return True  # loop continues
 
-    # converte pra RGB e salva como BMP (mesmo formato dos arquivos atuais)
+    # convert to RGB and save as BMP (same format as current files)
     img_rgb = img.convert("RGB")
     bmp_path = target / f"{name}.bmp"
     img_rgb.save(bmp_path, format="BMP")
@@ -117,7 +117,7 @@ def capture_one():
 
 def main():
     if not IMAGES_ROOT.is_dir():
-        print(f"ERRO: pasta de imagens nao encontrada em {IMAGES_ROOT}")
+        print(f"ERROR: image folder not found at {IMAGES_ROOT}")
         sys.exit(1)
 
     print("=" * 60)
@@ -128,11 +128,11 @@ def main():
     while True:
         if not capture_one():
             break
-        again = input("Capturar outro? [S/n] ").strip().lower()
+        again = input("Capture another? [S/n] ").strip().lower()
         if again == "n":
             break
 
-    print("\nFim. Os BMPs salvos vao ser carregados na proxima vez que o bot rodar.")
+    print("\nDone. The saved BMPs will be loaded next time the bot runs.")
 
 
 if __name__ == "__main__":

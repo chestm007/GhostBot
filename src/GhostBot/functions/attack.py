@@ -4,6 +4,7 @@ import time
 
 from typing import TYPE_CHECKING
 
+from GhostBot.functions.combat_helpers import TargetLockMixin
 from GhostBot.functions.runner import Locational, InjectedLoggingMixin, POT_DURATION_SECS
 from GhostBot.lib.math import linear_distance
 
@@ -66,20 +67,20 @@ class AttackContext(InjectedLoggingMixin):
         return False
 
 
-class Attack(Locational):
+class Attack(TargetLockMixin, Locational):
     """
     returns True when mob killed or not found
 
     otherwise returns Falsey
     """
     _cur_attack_queue = []
-    RETURN_DONE_DISTANCE = 15   # 'centralizou' no spot (sai do modo voltar) dentro disso
-    MAX_RETURN_CYCLES = 6       # ciclos tentando voltar antes de aceitar e farmar (anti-trava)
+    RETURN_DONE_DISTANCE = 15   # 'arrived' at spot (exits return mode) within this range
+    MAX_RETURN_CYCLES = 6       # cycles trying to return before accepting and farming here (anti-stuck)
 
     def __init__(self, client: BotClientWindow):
         super().__init__(client)
         self.config: AttackConfig = client.config.attack
-        # Classe pro farm: 'dps' (padrao) | 'tamer' (comanda o pet) | 'fairy' (se cura, sem pot HP)
+        # Farm class: 'dps' (default) | 'tamer' (commands pet) | 'fairy' (heals, no HP pot)
         self._char_class = (getattr(self.config, 'char_class', None) or 'dps').strip().lower()
         try:
             self._stuck_interval = int(self.config.stuck_interval or 10)
@@ -88,52 +89,52 @@ class Attack(Locational):
             self._log_err(f"{self._client.name} error {e}")
             self._stuck_interval = 10
             self.roam_distance = 40
-        self._returning = False     # modo 'voltando ao spot': persiste ate CENTRALIZAR
+        self._returning = False     # 'returning to spot' mode: persists until ARRIVING
         self._return_cycles = 0
-        self._last_buff_time = 0    # buffs periodicos (vieram da extinta aba Buff)
+        self._last_buff_time = 0    # periodic buffs (came from the defunct Buff tab)
 
     def _run(self) -> bool:
         self._client.close_inventory()
         self._client.dismount()
-        self._maybe_buff()   # buffs periodicos (a cada buff_interval_mins)
+        self._maybe_buff()   # periodic buffs (every buff_interval_mins)
 
         context = AttackContext(self._client, self._stuck_interval)
 
-        # MODO 'VOLTANDO': passou do raio ('Distancia max do spot') -> entra no modo voltar.
-        # So SAI quando CENTRALIZA perto do spot -- assim um mob no caminho NAO cancela a
-        # viagem (antes ele parava no meio do caminho pra farmar). Anti-trava: desiste apos
-        # MAX_RETURN_CYCLES (ex.: mob bloqueando de vez) e farma onde esta.
+        # RETURN MODE: passed max radius ('Max distance from spot') -> enters return mode.
+        # Only EXITS when ARRIVING close to the spot -- so a mob on the path does NOT cancel
+        # the trip (before it would stop mid-path to farm). Anti-stuck: gives up after
+        # MAX_RETURN_CYCLES (e.g. mob permanently blocking) and farms where it is.
         dist = linear_distance(self.start_location, self._client.location)
         if dist > self.roam_distance:
             self._returning = True
         if self._returning:
             if dist <= self.RETURN_DONE_DISTANCE:
-                self._returning = False            # chegou perto do spot -> pode farmar
+                self._returning = False            # arrived close to spot -> can farm
                 self._return_cycles = 0
             else:
                 self._return_cycles += 1
                 if self._return_cycles > self.MAX_RETURN_CYCLES:
-                    self._log_info("voltar ao spot: nao centralizou em %s ciclos (bloqueado?), "
-                                   "farmando aqui", self.MAX_RETURN_CYCLES)
+                    self._log_info("return to spot: did not arrive in %s cycles (blocked?), "
+                                   "farming here", self.MAX_RETURN_CYCLES)
                     self._returning = False
                     self._return_cycles = 0
                 else:
-                    self._log_debug('voltando ao spot C:%s | T:%s', self._client.location, self.start_location)
-                    self._client.set_action("🏃 Voltando ao spot")
-                    self._goto_start_location()    # so VIAJA; nao ataca mob no caminho
+                    self._log_debug('returning to spot C:%s | T:%s', self._client.location, self.start_location)
+                    self._client.set_action("🏃 Returning to spot")
+                    self._goto_start_location()    # only TRAVELS; does not attack mobs on the path
                     return True
 
-        # BOSS LOCK: ataca SO o boss (da TAB ate o nome bater). Ignora mobs comuns.
+        # BOSS LOCK: attacks ONLY the boss (TAB until name matches). Ignores common mobs.
         if self.config.boss_lock and self.config.boss_name:
             return self._run_boss(self.config.boss_name.strip())
 
         if not self._client.has_alive_target:# or (self._distance_to_target() or 0) > self.roam_distance:
-            self._client.set_action("🔍 Procurando alvo")
+            self._client.set_action("🔍 Looking for target")
             self._client.new_target()
             return True
 
-        self._client.set_action(f"⚔️ Atacando {self._client.target_name or 'alvo'}")
-        self._command_pet()   # Tamer: manda o pet atacar este alvo (1x por mob)
+        self._client.set_action(f"⚔️ Attacking {self._client.target_name or 'target'}")
+        self._command_pet()   # Tamer: commands pet to attack this target (1x per mob)
         while self._client.target_hp is not None and self._client.target_hp >= 0 and self._client.running:
             if self._client.target_name == self._client.name:  # if were targeting ourselves, get a new target
                 return True
@@ -154,35 +155,17 @@ class Attack(Locational):
                 return True
         return False
 
-    def _target_is_boss(self, boss: str) -> bool:
-        """True se o alvo atual esta vivo e o nome bate (contem) com o boss."""
-        if not self._client.has_alive_target:
-            return False
-        tname = (self._client.target_name or '').lower()
-        return bool(tname) and boss.lower() in tname
-
-    def _find_boss(self, boss: str) -> bool:
-        """Da TAB ate o alvo ser o boss. True se achou, False se nao apareceu."""
-        for _ in range(10):
-            if not self._client.running:
-                return False
-            self._client.new_target()      # TAB
-            time.sleep(0.3)                # deixa o nome do alvo atualizar
-            if self._target_is_boss(boss):
-                return True
-        return False
-
     def _run_boss(self, boss: str) -> bool:
-        """Modo boss: garante que o alvo e o boss (TAB ate achar) e ataca SO ele."""
+        """Boss mode: ensures target is the boss (TAB until found) and attacks ONLY it."""
         if not self._target_is_boss(boss):
             if not self._find_boss(boss):
-                self._client.set_action(f"🔍 Procurando boss: {boss}")
-                return True   # boss nao apareceu -> espera (nao bate em mob comum)
+                self._client.set_action(f"🔍 Looking for boss: {boss}")
+                return True   # boss not appeared -> wait (do not hit common mob)
         self._client.set_action(f"👑 BOSS: {boss}")
-        self._command_pet()   # Tamer: manda o pet atacar o boss (1x por engajamento)
+        self._command_pet()   # Tamer: commands pet to attack the boss (1x per engagement)
         while self._client.target_hp is not None and self._client.target_hp >= 0 and self._client.running:
             if not self._target_is_boss(boss):
-                return True   # alvo deixou de ser o boss -> re-acha no proximo ciclo
+                return True   # target is no longer the boss -> re-find in next cycle
             self._battle_pots()
             if not self._cur_attack_queue:
                 self._cur_attack_queue = list(self.config.attacks)
@@ -192,8 +175,8 @@ class Attack(Locational):
         return True
 
     def _command_pet(self) -> None:
-        """Tamer: aperta a tecla de ataque do pet pra mandar o pet atacar o alvo atual.
-        Chamado 1x ao engajar o alvo (o while segura o mob ate morrer) = 1 comando por mob."""
+        """Tamer: presses pet attack key to command pet to attack current target.
+        Called 1x when engaging target (the while loop keeps the mob until death) = 1 command per mob."""
         if self._char_class != 'tamer':
             return
         key = (self.config.bindings or {}).get('pet_attack')
@@ -201,15 +184,15 @@ class Attack(Locational):
             self._client.press_key(key)
 
     def _maybe_buff(self) -> None:
-        """Buffs periodicos (vieram da extinta aba Buff): a cada buff_interval_mins aperta o
-        combo de buffs. Auto-buff (aplica em si), nao precisa de alvo nem de estar fora de combate."""
+        """Periodic buffs (came from the defunct Buff tab): every buff_interval_mins presses the
+        buff combo. Auto-buff (applies to self), no target needed and not required to be out of combat."""
         buffs = self.config.buffs
         interval = self.config.buff_interval_mins
         if not buffs or not interval:
             return
         if time.time() - self._last_buff_time < int(interval) * 60:
             return
-        self._client.set_action("✨ Buffando")
+        self._client.set_action("✨ Buffing")
         for key, delay_ms in buffs:
             if not self._client.running:
                 return
@@ -217,32 +200,26 @@ class Attack(Locational):
             time.sleep(int(delay_ms) / 1000)
         self._last_buff_time = time.time()
 
-    @staticmethod
-    def _as_decimal(threshold) -> float:
-        # UI accepts 0-100 (percent). If >1, treat as percent and convert.
-        v = float(threshold)
-        return v / 100 if v > 1 else v
-
     def _battle_pots(self):
         if self.config.bindings is None:
             return
 
-        # MP pot -- so pota se passou a duracao do pot (16s); senao o anterior ainda
-        # esta agindo (evita pot duplicado). Apos potar, espera ele agir.
+        # MP pot -- only pot if pot duration has passed (16s); otherwise the previous one is
+        # still active (avoids duplicate pot). After potting, wait for it to act.
         mp_key = self.config.bindings.get('battle_mana_pot')
         mp_thr = self.config.battle_mana_threshold
         if mp_key is not None and mp_thr is not None:
             if self._client.mana_percent < self._as_decimal(mp_thr) and self._use_pot(mp_key):
                 self._wait_resource_refill("MP")
 
-        # HP: a FAIRY se CURA (skill, em vez de pot -- ela nao usa pot de vida); DPS/Tamer
-        # usam pot de HP (com cooldown de 16s). MP segue por pot pra todos (a cura gasta mana).
+        # HP: FAIRY heals itself (skill, instead of pot -- it does not use HP pot); DPS/Tamer
+        # use HP pot (with 16s cooldown). MP follows pot for all (healing costs mana).
         hp_thr = self.config.battle_hp_threshold
         if hp_thr is not None and self._client.hp_percent < self._as_decimal(hp_thr):
             if self._char_class == 'fairy':
                 heal_key = self.config.bindings.get('heal')
                 if heal_key:
-                    self._client.press_key(heal_key)   # cura nao e pot -> sem cooldown de pot
+                    self._client.press_key(heal_key)   # heal is not pot -> no pot cooldown
                     self._wait_resource_refill("HP")
             else:
                 hp_key = self.config.bindings.get('battle_hp_pot')
@@ -250,26 +227,26 @@ class Attack(Locational):
                     self._wait_resource_refill("HP")
 
     def _wait_resource_refill(self, resource: str, full_pct: float = 0.95, timeout_s: int = POT_DURATION_SECS):
-        """Apos usar pot, espera HP/MP encher antes de voltar a atacar.
-        Atacar interrompe o regen do pot, entao precisa parar. O pot age ao longo de
-        ~POT_DURATION_SECS (16s) -- por isso o timeout = duracao do pot (espera 'usar a
-        pot toda', a nao ser que encha antes).
-        Interrompe se: cheio (>= full_pct), HP caindo (sob ataque), ou timeout."""
-        self._log_debug(f'{resource} baixo, usou pot. Aguardando recuperar...')
+        """After using pot, wait for HP/MP to fill before resuming attack.
+        Attacking interrupts the pot's regen, so need to stop. The pot acts over
+        ~POT_DURATION_SECS (16s) -- hence timeout = pot duration (wait to 'use the
+        whole pot', unless it fills before).
+        Interrupts if: full (>= full_pct), HP dropping (under attack), or timeout."""
+        self._log_debug(f'{resource} low, used pot. Waiting to recover...')
         start = time.time()
         last_pct = self._get_resource_pct(resource)
         while self._client.running and (time.time() - start) < timeout_s:
             time.sleep(0.5)
             current = self._get_resource_pct(resource)
             if current >= full_pct:
-                self._log_debug(f'{resource} cheio ({current:.0%}), retomando ataque')
+                self._log_debug(f'{resource} full ({current:.0%}), resuming attack')
                 return
-            # se HP caiu significativamente, sob ataque -> nao adianta esperar
+            # if HP dropped significantly, under attack -> no point waiting
             if resource == "HP" and current < last_pct - 0.05:
-                self._log_info(f'HP caiu durante regen ({last_pct:.0%} -> {current:.0%}), retomando pra defender')
+                self._log_info(f'HP dropped during regen ({last_pct:.0%} -> {current:.0%}), resuming to defend')
                 return
             last_pct = current
-        self._log_debug(f'Timeout esperando {resource} encher ({timeout_s}s), seguindo')
+        self._log_debug(f'Timeout waiting for {resource} to fill ({timeout_s}s), continuing')
 
     def _get_resource_pct(self, resource: str) -> float:
         if resource == "HP":

@@ -1,23 +1,25 @@
 """
-Teste ao vivo da Etapa 1: le o chat System em loop e loga os drops detectados
-(com a categoria do alertas_drop.txt). SEM Discord ainda.
+Live test of Step 1: read the System chat in a loop and log detected drops
+(with the category from alertas_drop.txt). No Discord yet.
 
-Uso:
-    python tools/test_drop_watch.py [intervalo_seg] [duracao_seg]
+Usage:
+    python tools/test_drop_watch.py [interval_sec] [duration_sec]
 
-  - intervalo: de quanto em quanto tempo le o chat (padrao 2s).
-  - duracao:   por quanto tempo roda no total (padrao 60s).
-               Passe 0 pra um TIRO UNICO (smoke test: loga o que estiver
-               visivel agora e sai).
+  - interval: how often to read the chat (default 2s).
+  - duration: how long to run in total (default 60s).
+               Pass 0 for a SINGLE SHOT (smoke test: log what's currently
+               visible and exit).
 """
-import os
+from pathlib import Path
 import sys
 import time
 
-sys.path.insert(0, r"C:\Bot\BotTO\src")
+ROOT = Path(__file__).resolve().parents[1]
+SRC = str(ROOT / "src")
+if SRC not in sys.path:
+    sys.path.insert(0, SRC)
 
-from GhostBot.client_window import Win32ClientWindow
-from GhostBot.lib.win32.process import PymemProcess
+from GhostBot.lib.tooling import get_client
 from GhostBot.drop_watcher import DropWatcher
 
 WATCHLIST = r"C:\Bot\BotTO\alertas_drop.txt"
@@ -25,10 +27,7 @@ WATCHLIST = r"C:\Bot\BotTO\alertas_drop.txt"
 interval = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
 duration = float(sys.argv[2]) if len(sys.argv) > 2 else 60.0
 
-proc = next(iter(PymemProcess.list_clients()), None)
-if proc is None:
-    raise SystemExit("client.exe nao encontrado -- o jogo esta aberto?")
-client = Win32ClientWindow(proc)
+client = get_client()
 watcher = DropWatcher(WATCHLIST)
 
 ICON = {"want": "[QUERO]  ", "ignore": "[ignora] ", "unknown": "[NOVO?]  "}
@@ -37,20 +36,20 @@ print(f"QUERO   = {sorted(watcher.want)}")
 print(f"NAO QUERO = {sorted(watcher.ignore)}")
 
 if duration <= 0:
-    # tiro unico: sem priming, mostra o que estiver visivel agora
-    print("\n-- tiro unico (o que esta visivel no chat agora) --")
+    # single shot: no priming, show what's currently visible in chat
+    print("\n-- single shot (what's visible in chat now) --")
     alerts, _ = watcher.poll(client)
     if not alerts:
-        print("(nada detectado -- a ancora foi achada? tem linha de drop visivel?)")
+        print("(nothing detected -- was the anchor found? is there a visible drop line?)")
     for name, cat in alerts:
         print(f"  {ICON.get(cat, cat)} {name}")
     raise SystemExit(0)
 
-# loop: PRIMA o dedup (marca o que ja esta na tela como visto),
-# pra so mostrar drops NOVOS dali pra frente.
+# loop: PRIME the dedup (mark what's already on screen as seen),
+# to only show NEW drops from here on.
 watcher.prime(client)
-print(f"\nPrimado. Lendo a cada {interval}s por {duration:.0f}s.")
-print(">>> Vai no jogo e dropa algo -- deve aparecer aqui embaixo:\n")
+print(f"\nPrimed. Reading every {interval}s for {duration:.0f}s.")
+print(">>> Go to the game and drop something -- it should appear below:\n")
 
 end = time.time() + duration
 while time.time() < end:
@@ -60,4 +59,4 @@ while time.time() < end:
         print(f"{ts} {ICON.get(cat, cat)} {name}", flush=True)
     time.sleep(interval)
 
-print("\n-- fim do teste --")
+print("\n-- end of test --")

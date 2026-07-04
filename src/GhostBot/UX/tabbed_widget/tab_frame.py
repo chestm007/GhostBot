@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import ast
 import tkinter as tk
 from abc import ABC, abstractmethod
 from tkinter import Variable, StringVar, BooleanVar
@@ -35,6 +38,18 @@ class TabFrame(tk.Frame, ABC):
 
     def _clear(self) -> None:
         """Override this instead of ``self.clear()``"""
+
+    @staticmethod
+    def _parse_position(value):
+        if not value:
+            return None
+        try:
+            parsed = ast.literal_eval(value) if isinstance(value, str) else value
+        except (ValueError, SyntaxError):
+            return None
+        if isinstance(parsed, tuple) and len(parsed) == 2:
+            return parsed
+        return None
 
     @staticmethod
     def _populate_bindings(bindings: dict):

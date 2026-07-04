@@ -15,40 +15,40 @@ ROLES = ["Tank", "DPS", "Fairy"]
 
 
 class BossFrame(TabFrame):
-    """Aba Boss -- modo Cave Boss. O 'Papel' (Tank/DPS/Fairy) e' um dropdown; os campos
-    de baixo MUDAM conforme o papel escolhido. Passo 1: Tank funcional; DPS/Fairy ficam
-    como 'em construcao' (a gente preenche nos proximos passos)."""
+    """Boss tab -- Cave Boss mode. The 'Role' (Tank/DPS/Fairy) is a dropdown; the fields
+    below CHANGE according to the selected role. Step 1: functional Tank; DPS/Fairy remain
+    as 'under construction' (we'll fill them in later steps)."""
 
     def _init(self, *args, **kwargs) -> None:
         self.grid_columnconfigure(11, weight=1)
 
-        # ---- Papel (dropdown) ----
-        ttk.Label(self, text="Papel:", anchor="w").grid(row=0, column=0, padx=4, pady=(6, 2), sticky="w")
+        # ---- Role (dropdown) ----
+        ttk.Label(self, text="Role:", anchor="w").grid(row=0, column=0, padx=4, pady=(6, 2), sticky="w")
         self._role_var = tk.StringVar(master=self, name="bot_config.boss.role_label", value="Tank")
         self._role_combo = ttk.Combobox(self, textvariable=self._role_var, values=ROLES,
                                          state="readonly", width=10)
         self._role_combo.grid(row=0, column=1, padx=2, pady=(6, 2), sticky="w")
         self._role_combo.bind("<<ComboboxSelected>>", lambda _e: self._on_role_change())
 
-        # ---- Comum a Tank/DPS: nome do boss + combo de ataque ----
+        # ---- Common to Tank/DPS: boss name + attack combo ----
         self._common = tk.Frame(self, bg=T.BG_MAIN)
         self._common.grid(row=1, column=0, columnspan=12, sticky="ew")
         self._vars = dict(
             boss_name=create_entry(
-                self._common, "Nome do Boss:", 0, 0, ("bot_config.boss.boss_name", str), entry_width=18,
-                hint="Nome (ou parte) do boss. O bot da TAB ate achar e ataca SO ele.",
+                self._common, "Boss Name:", 0, 0, ("bot_config.boss.boss_name", str), entry_width=18,
+                hint="Name (or part) of the boss. The bot TABs until it finds it and attacks ONLY it.",
             ),
         )
-        ttk.Button(self._common, text="🎯 Pegar alvo", command=self._grab_target_name).grid(row=0, column=2, padx=4)
+        ttk.Button(self._common, text="🎯 Grab Target", command=self._grab_target_name).grid(row=0, column=2, padx=4)
         self._combo = ComboWidget(
             self._common, "Combo:", grid_row=1, grid_column=0,
-            hint="Sequencia de teclas que o bot aperta em loop no boss. Tecla + intervalo (ms).",
+            hint="Sequence of keys the bot presses in a loop on the boss. Key + interval (ms).",
             show_tab_button=False,
         )
         self._combo.add_row()
 
-        # ---- Pots HP/MP (DPS e Fairy; opcionais: tecla em branco = desligado) ----
-        # O TANK nao ve isto: no boss ele NAO pota -- as Fairies curam o tank.
+        # ---- HP/MP Pots (DPS and Fairy; optional: blank key = disabled) ----
+        # The TANK doesn't see this: in boss mode he DOESN'T pot -- Fairies heal the tank.
         self._pots_frame = tk.Frame(self, bg=T.BG_MAIN)
         self._pots_frame.grid(row=2, column=0, columnspan=12, sticky="ew")
         self._pots_frame.grid_columnconfigure(11, weight=1)
@@ -58,55 +58,55 @@ class BossFrame(TabFrame):
         mp_row.grid(row=1, column=0, columnspan=12, sticky="ew", padx=2, pady=1)
         self._vars.update(
             hp_low=create_int_slider(
-                hp_row, "Pot HP em:", 0, 0, "bot_config.boss.battle_hp_low",
+                hp_row, "Pot HP at:", 0, 0, "bot_config.boss.battle_hp_low",
                 default=30, min_val=0, max_val=100, suffix="%", bg=HP_BG,
-                hint="HP abaixo desse % -> usa o pot HP. Deixe a tecla em branco pra desligar.",
+                hint="HP below this % -> use the HP pot. Leave the key blank to disable.",
             ),
             hp_key=create_entry(
-                hp_row, "Tecla Pot HP:", 0, 4, ("bot_config.boss.battle_hp_key", str), entry_width=3, bg=HP_BG,
-                hint="Tecla do pot HP em combate. Em branco = nao usa.",
+                hp_row, "HP Pot Key:", 0, 4, ("bot_config.boss.battle_hp_key", str), entry_width=3, bg=HP_BG,
+                hint="HP pot key in combat. Blank = don't use.",
             ),
             mp_low=create_int_slider(
-                mp_row, "Pot MP em:", 0, 0, "bot_config.boss.battle_mp_low",
+                mp_row, "Pot MP at:", 0, 0, "bot_config.boss.battle_mp_low",
                 default=30, min_val=0, max_val=100, suffix="%", bg=MP_BG,
-                hint="MP abaixo desse % -> usa o pot MP. Deixe a tecla em branco pra desligar.",
+                hint="MP below this % -> use the MP pot. Leave the key blank to disable.",
             ),
             mp_key=create_entry(
-                mp_row, "Tecla Pot MP:", 0, 4, ("bot_config.boss.battle_mp_key", str), entry_width=3, bg=MP_BG,
-                hint="Tecla do pot MP em combate. Em branco = nao usa (Tank: deixe vazio, nao usa MP).",
+                mp_row, "MP Pot Key:", 0, 4, ("bot_config.boss.battle_mp_key", str), entry_width=3, bg=MP_BG,
+                hint="MP pot key in combat. Blank = don't use (Tank: leave empty, doesn't use MP).",
             ),
         )
 
-        # ---- Bloco TANK ----
+        # ---- TANK block ----
         self._tank_frame = tk.Frame(self, bg=T.BG_MAIN)
         ttk.Label(self._tank_frame, text="— Tank —", anchor="w").grid(
             row=0, column=0, columnspan=4, sticky="w", padx=4, pady=(6, 2))
         self._vars.update(
             buff_interval=create_int_slider(
-                self._tank_frame, "Buffar a cada:", 1, 0, "bot_config.boss.buff_interval",
+                self._tank_frame, "Buff every:", 1, 0, "bot_config.boss.buff_interval",
                 default=30, min_val=5, max_val=300, suffix="s",
-                hint="De quanto em quanto tempo o tank reaplica os buffs (segundos). Padrao 30s.",
+                hint="How often the tank re-applies buffs (seconds). Default 30s.",
             ),
         )
         self._tank_buffs = ComboWidget(
-            self._tank_frame, "Buffs do tank:", grid_row=2, grid_column=0,
-            hint="Buffs do tank (auto-aplicados: o bot so aperta a tecla, sem trocar de alvo). "
-                 "Tecla + intervalo (ms).",
+            self._tank_frame, "Tank buffs:", grid_row=2, grid_column=0,
+            hint="Tank buffs (auto-applied: the bot just presses the key, without switching target). "
+                 "Key + interval (ms).",
             show_tab_button=False,
         )
         self._tank_buffs.add_row()
 
-        # ---- Blocos DPS / FAIRY (placeholders -- proximos passos) ----
+        # ---- DPS / FAIRY blocks (placeholders -- next steps) ----
         self._dps_frame = tk.Frame(self, bg=T.BG_MAIN)
         ttk.Label(self._dps_frame, text="— DPS —", anchor="w").grid(
             row=0, column=0, columnspan=6, sticky="w", padx=4, pady=(6, 2))
         ttk.Label(
             self._dps_frame,
-            text=("Bate sem parar no boss (use Nome do Boss + Combo acima).\n"
-                  "• Aggro (automático): se você perder vida em combate (= puxou o aggro), aperta "
-                  "F1 e espera sair de combate → o tank repuxa → volta a bater.\n"
-                  "• MP: configure o 'Pot MP' acima — ao cair do %, recua (F1), espera sair de "
-                  "combate e toma o pot."),
+            text=("Hits non-stop on the boss (use Boss Name + Combo above).\n"
+                  "• Aggro (automatic): if you lose HP in combat (= you pulled aggro), presses "
+                  "F1 and waits to exit combat → the tank re-pulls → back to hitting.\n"
+                  "• MP: configure the 'MP Pot' above — when it drops below %, retreat (F1), wait to exit "
+                  "combat and take the pot."),
             anchor="w", foreground=T.FG_MUTED, justify="left", wraplength=580,
         ).grid(row=1, column=0, columnspan=8, sticky="w", padx=4, pady=(2, 4))
         self._fairy_frame = tk.Frame(self, bg=T.BG_MAIN)
@@ -114,46 +114,46 @@ class BossFrame(TabFrame):
             row=0, column=0, columnspan=4, sticky="w", padx=4, pady=(6, 2))
         self._vars.update(
             heal_key=create_entry(
-                self._fairy_frame, "Tecla de Cura:", 1, 0, ("bot_config.boss.heal_key", str), entry_width=3,
-                hint="Tecla da skill de cura. A Fairy spama essa tecla no ALVO selecionado no jogo.",
+                self._fairy_frame, "Heal Key:", 1, 0, ("bot_config.boss.heal_key", str), entry_width=3,
+                hint="Heal skill key. The Fairy spams this key on the TARGET selected in the game.",
             ),
             heal_interval=create_int_slider(
-                self._fairy_frame, "Curar a cada:", 2, 0, "bot_config.boss.heal_interval",
+                self._fairy_frame, "Heal every:", 2, 0, "bot_config.boss.heal_interval",
                 default=2, min_val=1, max_val=15, suffix="s",
-                hint="De quanto em quanto tempo aperta a cura (segundos). ~2s = tempo do cast.",
+                hint="How often to press heal (seconds). ~2s = cast time.",
             ),
         )
         ttk.Label(self._fairy_frame,
-                  text="Mira: o ALVO atual — selecione no jogo quem curar (a Fairy não escolhe sozinha).",
+                  text="Aim: the CURRENT TARGET — select in the game who to heal (the Fairy doesn't choose on its own).",
                   anchor="w", foreground=T.FG_MUTED).grid(row=3, column=0, columnspan=6, sticky="w", padx=4, pady=(4, 2))
 
         self._role_blocks = {"Tank": self._tank_frame, "DPS": self._dps_frame, "Fairy": self._fairy_frame}
         self._on_role_change()
 
     def _on_role_change(self) -> None:
-        """Mostra so os campos do papel selecionado."""
+        """Shows only the fields for the selected role."""
         role = self._role_var.get()
         for frame in self._role_blocks.values():
             frame.grid_forget()
         block = self._role_blocks.get(role)
         if block is not None:
             block.grid(row=3, column=0, columnspan=12, sticky="ew")
-        # Fairy nao ataca -> esconde 'Nome do Boss' + 'Combo'
+        # Fairy doesn't attack -> hide 'Boss Name' + 'Combo'
         if role == "Fairy":
             self._common.grid_remove()
         else:
             self._common.grid()
-        # Tank NAO pota no boss (as Fairies curam) -> esconde os pots pro Tank
+        # Tank DOESN'T pot in boss (Fairies heal) -> hide pots for Tank
         if role == "Tank":
             self._pots_frame.grid_remove()
         else:
             self._pots_frame.grid()
 
     def _grab_target_name(self) -> None:
-        """Poe o nome do alvo selecionado no jogo no campo 'Nome do Boss' (= aba Attack)."""
+        """Puts the target name selected in the game into the 'Boss Name' field (= Attack tab)."""
         name = (self.master.getvar('char_info.target_name') or '').strip()
         if name.lower() in ('', 'none', 'loading.', 'loading'):
-            self._vars['boss_name'].set("(selecione um alvo no jogo)")
+            self._vars['boss_name'].set("(select a target in the game)")
             return
         self._vars['boss_name'].set(name)
 

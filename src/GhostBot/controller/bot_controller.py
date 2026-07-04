@@ -36,47 +36,52 @@ class BotClientWindow(Win32ClientWindow):
         if self.disconnected:
             self.bot_status = BotStatus.disconnected
         self.load_config()
-        # Stats simples (dashboard)
+        # Simple stats (dashboard)
         self.kills: int = 0
         self._last_target_hp_seen: int | None = None
-        self._farm_start_ts: float | None = None  # timestamp do ultimo Start
+        self._farm_start_ts: float | None = None  # timestamp of last Start
         self._xp_gained: int = 0
         self._last_xp: int | None = None
         self._gold_start: int | None = None
-        self.drops: dict[str, int] = {}  # contagem de drops da sessao (Dashboard)
-        self.current_action: str = "parado"  # acao atual do bot (barra grifada no Dashboard)
-        self.sell_requested: bool = False  # mochila cheia detectada -> Sell vende na proxima volta
+        self.drops: dict[str, int] = {}  # drop count for the session (Dashboard)
+        self.current_action: str = "stopped"  # current bot action (bold bar in Dashboard)
+        self.sell_requested: bool = False  # backpack full detected -> Sell sells on next loop
 
     def to_json(self) -> dict:
-        # Detecção de kill: alvo estava com HP positivo, agora ta None/<0 (dead/no target)
+        # Kill detection: target had positive HP, now it's None/<0 (dead/no target)
         current_target_hp = self.target_hp
         _last = self._last_target_hp_seen
         if _last is not None and _last > 0:
-            # alvo morreu (None/<=0) OU o HP SUBIU (trocou pra um mob novo = o anterior morreu)
+            # target died (None/<=0) OR HP WENT UP (switched to a new mob = the previous one died)
             if (current_target_hp is None
                     or (isinstance(current_target_hp, int)
                         and (current_target_hp <= 0 or current_target_hp > _last + 15))):
                 self.kills += 1
         self._last_target_hp_seen = current_target_hp
 
-        # Tempo de farm em segundos desde o ultimo Start
-        # conta desde o ultimo Start (nao depende da flag running, que pode oscilar)
+        # Farm time in seconds since last Start
+        # counts from last Start (doesn't depend on running flag, which may fluctuate)
         if self._farm_start_ts is None:
             farm_time_s = 0
         else:
             farm_time_s = int(__import__("time").time() - self._farm_start_ts)
+        farm_h, farm_rem = divmod(farm_time_s, 3600)
+        farm_m, farm_s = divmod(farm_rem, 60)
+        farm_time_hms = f"{farm_h:02d}:{farm_m:02d}:{farm_s:02d}"
 
-        # XP ganho na sessao (acumulado; a prova de level-up: ao upar o XP zera)
+        # XP gained in session (accumulated; level-up proof: when leveling up XP resets)
         _cur_xp = self.pointers.get_xp()
         if _cur_xp is not None:
             if self._last_xp is not None:
                 self._xp_gained += (_cur_xp - self._last_xp) if _cur_xp >= self._last_xp else _cur_xp
             self._last_xp = _cur_xp
-        # Gold ganho (delta desde o 1o read depois do Start)
+        # Gold gained (delta since first read after Start)
         _cur_gold = self.pointers.get_gold()
         if _cur_gold is not None and self._gold_start is None:
             self._gold_start = _cur_gold
         _gold_gained = (_cur_gold - self._gold_start) if (_cur_gold is not None and self._gold_start is not None) else 0
+        _g, _rem = divmod(max(0, int(_gold_gained or 0)), 10000)
+        _s, _c = divmod(_rem, 100)
 
         return dict(
             name=self.name,
@@ -105,9 +110,13 @@ class BotClientWindow(Win32ClientWindow):
             dc=self.pointers.get_dc(),
             kills=self.kills,
             farm_time_s=farm_time_s,
+            farm_time_hms=farm_time_hms,
             energy=self.pointers.get_energy(),
             xp_gained=self._xp_gained,
             gold_gained=_gold_gained,
+            gold_g=_g,
+            gold_s=_s,
+            gold_c=_c,
             drops=dict(self.drops),
             current_action=self.current_action,
         )
@@ -132,11 +141,11 @@ class BotClientWindow(Win32ClientWindow):
         self.config = config
 
     def record_drop(self, name: str, count: int = 1) -> None:
-        """Acumula a contagem de drops detectados (usado pelo DropWatch)."""
+        """Accumulates the count of detected drops (used by DropWatch)."""
         self.drops[name] = self.drops.get(name, 0) + count
 
     def set_action(self, text: str) -> None:
-        """Define a acao atual do bot (mostrada grifada no Dashboard)."""
+        """Sets the current bot action (shown bold in Dashboard)."""
         self.current_action = text
 
     @property
@@ -167,7 +176,7 @@ class BotClientWindow(Win32ClientWindow):
         self.bot_status = BotStatus.starting
         self.running = True
         self.load_config()
-        # Reset stats da sessao
+        # Reset session stats
         self.kills = 0
         self._farm_start_ts = _time.time()
         self._last_target_hp_seen = None
@@ -175,21 +184,21 @@ class BotClientWindow(Win32ClientWindow):
         self._last_xp = None
         self._gold_start = None
         self.drops = {}
-        self.current_action = "iniciando..."
+        self.current_action = "starting..."
         self.sell_requested = False
 
     def stop_bot(self):
         self.logger.info(f'{self.name}: Stopping...')
         self.bot_status = BotStatus.stopping
         self.running = False
-        self.current_action = "parado"
+        self.current_action = "stopped"
 
     def move_to_pos(self, target_pos):
         """
         moves to `target_pos`, will invoke map based pathing if distance is too far.
         :param target_pos: `tuple(x, y)` coordinates to move too
         """
-        if not self.running:   # Stop = emergencia: nao inicia movimento
+        if not self.running:   # Stop = emergency: do not start movement
             return
         while linear_distance(self.location, target_pos) > 50 and self.running:
             self.logger.debug(f"{self.name} moving via map")
@@ -207,30 +216,30 @@ class BotClientWindow(Win32ClientWindow):
         self.block_while_moving()
 
     def move_to_pos_minimap(self, target_pos):
-        """Da UM passo em direcao ao alvo pelo minimapa (relativo ao char -> confiavel),
-        SEM o mapa-calculado antigo. CRITICO: o clique fica DENTRO do minimapa (70% do
-        alcance), NUNCA na borda -- clicar na borda do minimapa vira auto-walk continuo
-        (o char anda naquela direcao sem parar). Assim o char vai num PONTO e PARA.
-        Espera o passo terminar com TIMEOUT (nunca trava se ficar andando). O chamador
-        repete num loop pra cobrir distancias maiores."""
+        """Takes ONE step toward the target via minimap (relative to char -> reliable),
+        WITHOUT the old map-calculated approach. CRITICAL: the click stays INSIDE the minimap (70% of
+        range), NEVER on the edge -- clicking on the minimap edge becomes auto-walk continuous
+        (the char walks in that direction without stopping). This way the char goes to a POINT and STOPS.
+        Waits for the step to finish with TIMEOUT (never freezes if it keeps walking). The caller
+        repeats in a loop to cover larger distances."""
         if not self.running:
             return
         pos_diff = position_difference(self.location, target_pos)
         pos_diff_mm_pix = tuple(map(mul, pos_diff, (-1.7, 1.7)))
         capped = scale_minimap_move_distance(pos_diff_mm_pix)
-        inside = tuple(int(v * 0.7) for v in capped)  # recua pra DENTRO do minimapa -> char PARA
+        inside = tuple(int(v * 0.7) for v in capped)  # pull back INSIDE the minimap -> char STOPS
         minimap_pos = tuple(map(math.ceil, map(add, UI_locations.minimap_centre, inside)))
         self.right_click(minimap_pos)
-        # espera o passo terminar, COM timeout -- nunca trava/anda infinito
+        # waits for the step to finish, WITH timeout -- never freezes/infinitely walks
         t0 = time.time()
         while self.running and time.time() - t0 < 5:
             _loc = self.location
             time.sleep(1)
-            if linear_distance(self.location, _loc) < 1:  # parou de andar
+            if linear_distance(self.location, _loc) < 1:  # stopped moving
                 break
 
     def _move_to_pos_via_map(self, target_pos: tuple[int, int]):
-        if not self.running:   # Stop = emergencia
+        if not self.running:   # Stop = emergency
             return False
         zone = location_to_zone_map[self.location_name.strip()]
         screen_coords = coords_to_map_screen_pos(
@@ -245,7 +254,7 @@ class BotClientWindow(Win32ClientWindow):
             _loc = self.location
             self.right_click(tuple(map(add, screen_coords, (-30, -30)))) # Click away from tgt to clear possible existing tgt
             for offset in offsets:
-                if not self.running:   # Stop no meio do pathing -> aborta (o 'with' fecha o mapa)
+                if not self.running:   # Stop mid-pathing -> abort ('with' closes the map)
                     return False
                 path_tgt = tuple(map(add, screen_coords, offset))
                 self.right_click(path_tgt)
@@ -338,10 +347,10 @@ class BotController(ABC):
         current_client_proc_ids = {c.proc.process_id for c in self.clients.values()}
         running_ids = [p.process_id for p in current_running_procs]
 
-        # So pula o scan se NADA mudou E todos os processos rodando ja viraram
-        # clients na lista. Se um client existe mas ainda nao foi promovido (ex:
-        # abriu antes de logar -> name=None), segue escaneando ate ele logar --
-        # senao ele some da lista ate o bot ser reiniciado.
+        # So skip the scan if NOTHING changed AND all running processes have already become
+        # clients in the list. If a client exists but hasn't been promoted yet (e.g.:
+        # opened before logging in -> name=None), keep scanning until it logs in --
+        # otherwise it disappears from the list until the bot is restarted.
         all_registered = all(pid in current_client_proc_ids for pid in running_ids)
         if running_ids == self._seen_clients and all_registered:
             self.logger.debug('No change in running processes')
@@ -428,17 +437,17 @@ class BotController(ABC):
         return client
 
     def trigger_sell_now(self, client_name: str) -> bool:
-        """Dispara a rotina de Sell uma vez, fora do ciclo agendado.
+        """Triggers the Sell routine once, outside the scheduled cycle.
 
-        Usado pelo botao 'Vender agora' da UI. Bypassa o intervalo configurado e o
-        check de should_run. Roda em thread daemon pra nao bloquear o server.
+        Used by the 'Sell now' button in the UI. Bypasses the configured interval and the
+        should_run check. Runs in a daemon thread so as not to block the server.
         """
         client = self.get_client(client_name)
         if client is None:
-            self.logger.warning('trigger_sell_now: client %s nao encontrado', client_name)
+            self.logger.warning('trigger_sell_now: client %s not found', client_name)
             return False
         if client.config is None or client.config.sell is None:
-            self.logger.warning('trigger_sell_now: %s nao tem config de sell', client_name)
+            self.logger.warning('trigger_sell_now: %s has no sell config', client_name)
             return False
 
         _task_name = f"sell_now_{client.name}"
@@ -448,18 +457,18 @@ class BotController(ABC):
             _prev_running = client.running
             try:
                 self.logger.info("%s: trigger_sell_now firing", client.name)
-                # Status precisa estar running pra Runner.run() permitir, e bypass do
-                # check de intervalo chamando _run direto.
+                # Status must be running for Runner.run() to allow it, and bypass the
+                # interval check by calling _run directly.
                 client.bot_status = BotStatus.running
                 client.running = True
                 try:
                     Sell(client)._run()
                 finally:
-                    # Se o Stop (emergencia) foi apertado durante a venda, client.running
-                    # ja foi pra False -> NAO ressuscitar; fica parado.
+                    # If Stop (emergency) was pressed during selling, client.running
+                    # is already False -> DO NOT resurrect; stay stopped.
                     if not client.running:
                         client.bot_status = BotStatus.stopped
-                        self.logger.info("%s: trigger_sell_now interrompido pelo Stop", client.name)
+                        self.logger.info("%s: trigger_sell_now interrupted by Stop", client.name)
                     else:
                         client.running = _prev_running
                         client.bot_status = _prev_status
@@ -471,7 +480,7 @@ class BotController(ABC):
                 if _tasks is not None:
                     _tasks.pop(_task_name, None)
 
-        # registra a thread (em vez de soltar daemon) pra o Stop conseguir esperar/parar
+        # registers the thread (instead of just spawning a daemon) so Stop can wait/stop it
         if hasattr(self, '_add_task'):
             self._add_task(_go, _task_name)
         else:
@@ -479,7 +488,7 @@ class BotController(ABC):
         return True
 
     def _get_functions_for_client(self, client: BotClientWindow) -> Generator[Runner, None, None]:
-        # Delete REMOVIDO do app (risco de apagar item sem querer). Nao roda mais.
+        # Delete REMOVED from app (risk of accidentally deleting item). No longer runs.
         if client.config.sell is not None:
             yield Sell(client)
         if client.config.pet is not None:
@@ -490,9 +499,9 @@ class BotController(ABC):
             yield Fairy(self, client)
         if client.config.boss is not None:
             yield Boss(client)
-        # DropWatch (OCR de drop) e DeathAlert NAO ficam aqui no loop sequencial -- rodam
-        # numa THREAD paralela (ver ThreadedBotController._run_monitor), pra nao serem
-        # atrasados pelo combate (era a causa do "as vezes detecta, as vezes nao").
+        # DropWatch (drop OCR) and DeathAlert do NOT stay here in the sequential loop -- they run
+        # on a PARALLEL THREAD (see ThreadedBotController._run_monitor), so they are not
+        # delayed by combat (this was the cause of "sometimes detects, sometimes doesn't").
 
     @abstractmethod
     def stop_all_bots(self, timeout=30) -> None: ...

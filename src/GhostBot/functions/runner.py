@@ -13,9 +13,9 @@ if TYPE_CHECKING:
     from GhostBot.controller.bot_controller import BotClientWindow
 
 
-# Pots no TO sao REGEN ao longo de ~16s (nao instantaneos). Nao re-potar a mesma tecla
-# antes disso, senao desperdica pot (logo apos potar a % ainda parece baixa e o bot
-# potava de novo). Cooldown por tecla via Runner._pot_ready/_use_pot.
+# Pots in TO are REGEN over ~16s (not instant). Do not re-pot the same key
+# before that, or it wastes the pot (right after potting the % still looks low and the bot
+# would pot again). Per-key cooldown via Runner._pot_ready/_use_pot.
 POT_DURATION_SECS = 16
 
 
@@ -44,8 +44,8 @@ def run_at_interval(run_on_start: bool = False, run_in_battle: bool = False):
         def should_run(self):
             if not run_in_battle and self._client.in_battle:
                 return False
-            # gancho opcional: roda JA (fora do intervalo) se a funcao pedir
-            # (ex.: Sell._force_run quando a mochila enche). Opt-in via hasattr.
+            # optional hook: run NOW (outside interval) if function requests
+            # (e.g. Sell._force_run when inventory fills). Opt-in via hasattr.
             if hasattr(self, '_force_run') and self._force_run():
                 return True
             return time.time() - self._last_time_ran > self._interval
@@ -90,17 +90,17 @@ class Runner(InjectedLoggingMixin, ABC):
     """
     def __init__(self, client: BotClientWindow):
         super().__init__(client)
-        self._pot_last_used: dict = {}   # tecla do pot -> timestamp do ultimo uso
+        self._pot_last_used: dict = {}   # pot key -> timestamp of last use
 
     def _pot_ready(self, key) -> bool:
-        """True se ja passou a duracao do pot (POT_DURATION_SECS) desde o ultimo uso DESTA
-        tecla -- evita re-potar enquanto o pot anterior ainda esta agindo (pot duplicado)."""
+        """True if pot duration (POT_DURATION_SECS) has passed since last use of THIS
+        key -- avoids re-potting while previous pot is still active (duplicate pot)."""
         if not key:
             return False
         return (time.time() - self._pot_last_used.get(key, 0.0)) >= POT_DURATION_SECS
 
     def _use_pot(self, key) -> bool:
-        """Usa o pot SO se nao estiver em cooldown (16s). Retorna True se usou."""
+        """Uses pot ONLY if not on cooldown (16s). Returns True if used."""
         if not self._pot_ready(key):
             return False
         self._client.press_key(key)
@@ -121,8 +121,8 @@ class Locational(Runner, ABC):
     """
     Represents a function that has a concept of location.
     """
-    ARRIVE_DISTANCE = 10   # ao voltar pro spot, recentraliza ate ficar ~centralizado (dentro disso)
-    MAP_DISTANCE = 40      # LONGE (> isso): volta pelo MAPA aberto (confiavel); PERTO: minimapa
+    ARRIVE_DISTANCE = 10   # when returning to spot, recentralize until ~centered (within this)
+    MAP_DISTANCE = 40      # FAR (> this): return via OPEN MAP (reliable); CLOSE: minimap
 
     def __init__(self, client: BotClientWindow):
         super().__init__(client)
@@ -139,7 +139,7 @@ class Locational(Runner, ABC):
         return self._client.location
 
     def _spot_map_offset(self) -> tuple[int, int] | None:
-        """Offset do spot no MAPA -- vem da config de ATTACK (cai pro sell por compat)."""
+        """Spot offset on the MAP -- comes from ATTACK config (falls back to sell for compat)."""
         atk = getattr(self._client.config, 'attack', None)
         off = getattr(atk, 'return_spot_map_offset', None) if atk else None
         if not off:
@@ -148,16 +148,16 @@ class Locational(Runner, ABC):
         return tuple(off) if off else None
 
     def _goto_start_location(self):
-        """Volta pro spot, HIBRIDO conforme a distancia:
-          - LONGE (> MAP_DISTANCE): abre o MAPA (M), clique-isca + clica no spot, fecha M
-            (igual o sell -- confiavel pra longe; o minimapa estoura o alcance e nao move).
-          - PERTO (<= MAP_DISTANCE): pequenos cliques no MINIMAPA (relativo ao char; o mapa
-            nao move em dist curta -- clique cai em cima do char).
-        Recentraliza ate ARRIVE_DISTANCE. Bounded (passos limitados + desiste) -> nao trava."""
+        """Return to spot, HYBRID depending on distance:
+          - FAR (> MAP_DISTANCE): open the MAP (M), click-bait + click on spot, close M
+            (same as sell -- reliable for far; minimap overflows range and does not move).
+          - CLOSE (<= MAP_DISTANCE): small clicks on the MINIMAP (relative to char; the map
+            does not move at short distance -- click lands on the char).
+        Recentralize until ARRIVE_DISTANCE. Bounded (limited steps + give up) -> does not hang."""
         if not self._client.running:
             return
         if linear_distance(self.start_location, self._client.location) <= self.ARRIVE_DISTANCE:
-            return  # ja centralizado o bastante
+            return  # already centered enough
         offset = self._spot_map_offset()
         last_dist = None
         for _ in range(8):
@@ -166,22 +166,22 @@ class Locational(Runner, ABC):
             dist = linear_distance(self.start_location, self._client.location)
             if dist <= self.ARRIVE_DISTANCE:
                 return
-            if last_dist is not None and dist >= last_dist - 1:  # nao aproximou -> desiste
-                self._log_debug('goto_start: nao aproxima mais (dist=%s), seguindo', round(dist, 1))
+            if last_dist is not None and dist >= last_dist - 1:  # did not get closer -> give up
+                self._log_debug('goto_start: no longer getting closer (dist=%s), continuing', round(dist, 1))
                 return
             last_dist = dist
             if dist > self.MAP_DISTANCE:
-                # LONGE -> MAPA aberto. Precisa do offset do spot no mapa (capturado na UI).
+                # FAR -> OPEN MAP. Needs spot offset on map (captured in UI).
                 if offset is None:
-                    self._client.set_action("⚠️ Configure o 'Spot de farm (mapa)' (📍 Capturar spot)")
-                    self._log_err("goto_start: char longe (%s) mas 'Spot de farm (mapa)' nao "
-                                  "configurado -- nao da pra voltar pelo mapa", round(dist, 1))
+                    self._client.set_action("⚠️ Configure 'Farm spot (map)' (📍 Capture spot)")
+                    self._log_err("goto_start: char far (%s) but 'Farm spot (map)' not "
+                                  "configured -- cannot return via map", round(dist, 1))
                     return
-                if self._client.goto_spot_via_map(offset):  # ja faz o clique-isca (fantasma)
+                if self._client.goto_spot_via_map(offset):  # already does click-bait (ghost)
                     t0 = time.time()
                     while (linear_distance(self.start_location, self._client.location) > self.ARRIVE_DISTANCE
                            and self._client.running and time.time() - t0 < 40):
                         time.sleep(1)
             else:
-                # PERTO -> pequenos cliques no minimapa
+                # CLOSE -> small clicks on minimap
                 self._client.move_to_pos_minimap(self.start_location)

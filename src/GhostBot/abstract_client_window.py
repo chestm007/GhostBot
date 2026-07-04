@@ -122,78 +122,78 @@ class AbstractClientWindow(ABC):
     def _resolve_button_pos(self, bmp_name: str, fallback: tuple[int, int],
                             threshold: float = 0.75) -> tuple[int, int]:
         """
-        Tenta achar um botao na janela via template matching de Images/misc/<bmp_name>.
-        Se nao achar (BMP ausente ou match abaixo do threshold), retorna a coord `fallback`
-        hardcoded (de UI_locations) -- assim o bot continua funcionando ate o usuario
-        capturar o BMP.
+        Tries to find a button in the window via template matching of Images/misc/<bmp_name>.
+        If not found (BMP missing or match below threshold), returns the hardcoded `fallback`
+        coordinate (from UI_locations) -- so the bot keeps working until the user
+        captures the BMP.
         """
         pos = self._image_finder.find_button_center(bmp_name, threshold=threshold)
         if pos is None:
-            self.logger.info("%s nao achado por template, usando coord fallback %s", bmp_name, fallback)
+            self.logger.info("%s not found by template, using fallback coord %s", bmp_name, fallback)
             return fallback
-        self.logger.info("%s achado por template em %s", bmp_name, pos)
+        self.logger.info("%s found by template at %s", bmp_name, pos)
         return pos
 
     # ============================================================
-    # POSICOES DA UI (descobertas via find_anchor.py / where_is_cursor.py)
+    # UI POSITIONS (discovered via find_anchor.py / where_is_cursor.py)
     # ============================================================
     #
-    # A HUD do TO esta "anchored to corners" -- ela nao escala com tamanho de
-    # janela, fica colada no canto. Pra cada elemento da UI a gente sabe:
-    #   - qual canto da janela ele ancora
-    #   - offset (x, y) fixo em pixels a partir desse canto
+    # TO's HUD is "anchored to corners" -- it doesn't scale with window size,
+    # it sticks to the corner. For each UI element we know:
+    #   - which corner it anchors to
+    #   - fixed pixel offset (x, y) from that corner
     #
-    # Pra ADICIONAR um botao novo: rode tools/find_anchor.py, posicione mouse
-    # no botao, ele te diz qual canto e qual offset.
+    # To ADD a new button: run tools/find_anchor.py, position mouse
+    # on the button, it tells you which corner and what offset.
     #
-    # CONVENCAO de coordenadas: CLIENT coord (sem barra de titulo, sem borda).
+    # COORDINATE CONVENTION: CLIENT coord (no title bar, no border).
     # ============================================================
 
-    # Botao do olho no minimapa (top-right anchor)
+    # Minimap surroundings button (top-right anchor)
     _MINIMAP_SURROUNDINGS_OFFSET_RIGHT = 49
     _MINIMAP_SURROUNDINGS_OFFSET_TOP = 60
 
-    # Botao de reset de camera/view (top-right anchor)
+    # Reset camera/view button (top-right anchor)
     _VIEW_RESET_OFFSET_RIGHT = 157
     _VIEW_RESET_OFFSET_TOP = 55
 
-    # NPC / char position (CENTER anchor -- char fica sempre centralizado na tela).
-    # Apos reset_camera + NPC selecionado via surroundings, o NPC fica em cima
-    # do char (mesmo lugar). Offset eh do centro da janela.
+    # NPC / char position (CENTER anchor -- char always centered on screen).
+    # After reset_camera + NPC selected via surroundings, the NPC is on top
+    # of the char (same spot). Offset is from window center.
     _NPC_LOCATION_OFFSET_X = -19
     _NPC_LOCATION_OFFSET_Y = +21
 
     # ------------------------------------------------------------
-    # Offsets ANCORADOS EM TEMPLATE (calibrados via cursor 2026-05-24).
-    # A gente acha um elemento fixo (titulo do painel) via matchTemplate e
-    # calcula o resto por offset. Funciona em qualquer posicao/tamanho de janela.
-    # O Δ da barra de titulo (captura=window coords, clique=client coords) se
-    # CANCELA porque o offset foi medido como (cursor_client - centro_template).
+    # Offsets ANCHORED TO TEMPLATE (calibrated via cursor 2026-05-24).
+    # We find a fixed element (panel title) via matchTemplate and
+    # calculate the rest by offset. Works at any window position/size.
+    # The title bar delta (capture=window coords, click=client coords) CANCELS
+    # out because the offset was measured as (cursor_client - template_center).
     # ------------------------------------------------------------
     _ANCHOR_THRESHOLD = 0.70
 
-    # Painel Surroundings (ancora: Images/misc/surroundings_title.bmp)
-    _SURR_TO_SEARCH = (140, 347)        # titulo -> campo de busca dourado
-    _SURR_TO_RESULT = (-106, 70)        # titulo -> 1o resultado da lista
+    # Surroundings panel (anchors to: Images/misc/surroundings_title.bmp)
+    _SURR_TO_SEARCH = (140, 347)        # title -> golden search field
+    _SURR_TO_RESULT = (-106, 70)        # title -> 1st result in the list
 
-    # Janela "Dialogue" do NPC (ancora: npc_dialogue_title.bmp)
-    _DIALOGUE_TO_SELL_ITEM = (-114, 181)  # titulo "Dialogue" -> botao "Sell Item"
+    # "Dialogue" NPC window (anchors to: npc_dialogue_title.bmp)
+    _DIALOGUE_TO_SELL_ITEM = (-114, 181)  # "Dialogue" title -> "Sell Item" button
 
-    # Dialog de venda (ancora: npc_sell_dialog_header.bmp). Grid 6 col x 4 linhas = 24 slots.
-    _SELL_TO_SLOT1 = (-97, 43)          # header -> slot 1 (top-left do grid)
+    # Sell dialog (anchors to: npc_sell_dialog_header.bmp). 6-col x 4-row grid = 24 slots.
+    _SELL_TO_SLOT1 = (-97, 43)          # header -> slot 1 (top-left of grid)
     _SELL_COL_SPACING = 34.4
     _SELL_ROW_SPACING = 35.333
-    _SELL_TO_CONFIRM = (-76, 461)       # header -> botao confirmar venda
+    _SELL_TO_CONFIRM = (-76, 461)       # header -> confirm sell button
 
-    # Mapa (ancora: map_title.bmp). Bug do jogo: 2 cliques no mesmo destino nao andam,
-    # entao da um clique-isca numa regiao diferente antes do spot real.
+    # Map (anchors to: map_title.bmp). Game bug: 2 clicks on the same destination don't move,
+    # so we do a decoy click in a different region before the real spot.
     _MAP_DUMMY_OFFSET = (60, 0)
 
     def open_surroundings_ui(self):
         ww, _ = self.get_window_size()
         pos = (ww - self._MINIMAP_SURROUNDINGS_OFFSET_RIGHT,
                self._MINIMAP_SURROUNDINGS_OFFSET_TOP)
-        self.logger.info("open_surroundings_ui: window_width=%d, pos calculada=%s", ww, pos)
+        self.logger.info("open_surroundings_ui: window_width=%d, calculated pos=%s", ww, pos)
         self.left_click(pos)
         time.sleep(1.5)
 
@@ -235,23 +235,23 @@ class AbstractClientWindow(ABC):
             time.sleep(1)
 
     def _find_anchor(self, bmp_name: str, threshold: float = None) -> tuple[int, int] | None:
-        """Centro de um template (titulo de painel) na janela; None se nao achar."""
+        """Center of a template (panel title) in the window; None if not found."""
         return self._image_finder.find_button_center(bmp_name, threshold=threshold or self._ANCHOR_THRESHOLD)
 
     def search_surroundings(self, val):
-        # acha o titulo "Surroundings"; se nao achar, painel fechado -> abre e tenta de novo
+        # find the "Surroundings" title; if not found, panel is closed -> open and try again
         title = self._find_anchor('surroundings_title.bmp')
         if title is None:
             self.open_surroundings_ui()
             title = self._find_anchor('surroundings_title.bmp')
         if title is None:
-            self.logger.error("search_surroundings: titulo 'Surroundings' nao achado (painel visivel?)")
+            self.logger.error("search_surroundings: 'Surroundings' title not found (panel visible?)")
             return
         search = (title[0] + self._SURR_TO_SEARCH[0], title[1] + self._SURR_TO_SEARCH[1])
-        self.logger.info("search_surroundings: titulo %s -> campo de busca %s, digitando '%s'", title, search, val)
+        self.logger.info("search_surroundings: title %s -> search field %s, typing '%s'", title, search, val)
         self.left_click(search)
         time.sleep(0.5)
-        for _ in range(15):            # limpa texto anterior (senao acumula 'XX' nas reexecucoes)
+        for _ in range(15):            # clear previous text (otherwise 'XX' accumulates on re-executions)
             self.press_key('backspace')
         time.sleep(0.3)
         self.type_keys(val)
@@ -260,65 +260,65 @@ class AbstractClientWindow(ABC):
     def goto_first_surrounding_result(self):
         title = self._find_anchor('surroundings_title.bmp')
         if title is None:
-            self.logger.error("goto_first_surrounding_result: titulo 'Surroundings' nao achado")
+            self.logger.error("goto_first_surrounding_result: 'Surroundings' title not found")
             return
         result = (title[0] + self._SURR_TO_RESULT[0], title[1] + self._SURR_TO_RESULT[1])
-        self.logger.info("goto_first_surrounding_result: titulo %s -> resultado %s", title, result)
+        self.logger.info("goto_first_surrounding_result: title %s -> result %s", title, result)
         self.left_click(result)
 
     def close_surroundings_ui(self):
-        # fecha o painel SO se ainda estiver aberto (clicar no resultado pode te-lo fechado)
+        # close the panel ONLY if still open (clicking the result may have closed it)
         if self._find_anchor('surroundings_title.bmp') is not None:
-            self.open_surroundings_ui()  # toggle do olho do minimapa
+            self.open_surroundings_ui()  # minimap eye toggle
 
     def click_npc(self):
-        # NPC fica em cima do char, que esta sempre no centro da tela.
+        # NPC is on top of the char, which is always centered on screen.
         ww, wh = self.get_window_size()
         pos = (ww // 2 + self._NPC_LOCATION_OFFSET_X,
                wh // 2 + self._NPC_LOCATION_OFFSET_Y)
-        self.logger.info("click_npc: window=%dx%d, pos calculada=%s", ww, wh, pos)
+        self.logger.info("click_npc: window=%dx%d, calculated pos=%s", ww, wh, pos)
         self.right_click(pos)
 
     def click_npc_sell_button(self):
-        # PRINCIPAL: acha o texto "Sell Item" direto por imagem. Robusto a NPC/ordem de menu
-        # diferente (no Blacksmith a 1a linha e "Purchase Item", entao o offset fixo erra a linha).
-        # Threshold alto (0.85) pra nunca cair em near-miss de outra linha (~0.72).
+        # MAIN: find "Sell Item" text directly by image. Robust to different NPC/menu order
+        # (at Blacksmith the 1st line is "Purchase Item", so the fixed offset hits the wrong line).
+        # High threshold (0.85) to never hit a near-miss on another line (~0.72).
         sell_item = self._find_anchor('sell_items_button.bmp', threshold=0.85)
         if sell_item is not None:
-            # template casa em coords da CAPTURA (janela inteira); converte p/ area cliente
-            # antes de clicar (senao cai ~1 linha abaixo, na barra de titulo de diferenca)
+            # template matches in CAPTURE coords (entire window); convert to client area
+            # before clicking (otherwise drops ~1 line below, due to title bar difference)
             click_at = self.window_to_client(sell_item) if hasattr(self, 'window_to_client') else sell_item
-            self.logger.info("click_npc_sell_button: 'Sell Item' (template) captura=%s -> cliente=%s",
+            self.logger.info("click_npc_sell_button: 'Sell Item' (template) capture=%s -> client=%s",
                              sell_item, click_at)
             self.left_click(click_at)
             return True
-        # FALLBACK: offset a partir do titulo "Dialogue" (so acerta se Sell Item for a 1a linha).
+        # FALLBACK: offset from "Dialogue" title (only works if Sell Item is the 1st line).
         dlg = self._find_anchor('npc_dialogue_title.bmp')
         if dlg is None:
-            self.logger.error("click_npc_sell_button: nem 'Sell Item' (imagem) nem 'Dialogue' achados "
-                              "(janela do NPC aberta/visivel/a esquerda?)")
+            self.logger.error("click_npc_sell_button: neither 'Sell Item' (image) nor 'Dialogue' found "
+                              "(NPC window open/visible/on the left?)")
             return False
         sell_item = (dlg[0] + self._DIALOGUE_TO_SELL_ITEM[0], dlg[1] + self._DIALOGUE_TO_SELL_ITEM[1])
-        self.logger.warning("click_npc_sell_button: 'Sell Item' por imagem falhou; usando offset do "
-                            "'Dialogue' %s -> %s (pode errar a linha em alguns NPCs)", dlg, sell_item)
+        self.logger.warning("click_npc_sell_button: 'Sell Item' image match failed; using offset from "
+                            "'Dialogue' %s -> %s (may hit wrong line on some NPCs)", dlg, sell_item)
         self.left_click(sell_item)
         return True
 
     def reset_camera(self):
         ww, _ = self.get_window_size()
         pos = (ww - self._VIEW_RESET_OFFSET_RIGHT, self._VIEW_RESET_OFFSET_TOP)
-        self.logger.info("reset_camera: window_width=%d, pos calculada=%s", ww, pos)
+        self.logger.info("reset_camera: window_width=%d, calculated pos=%s", ww, pos)
         self.left_click(pos)
 
     # ------------------------------------------------------------
-    # Dialog de venda (ancora: header "Sell") + grid de 24 slots (6 col x 4 linhas)
+    # Sell dialog (anchors to: "Sell" header) + 24-slot grid (6 cols x 4 rows)
     # ------------------------------------------------------------
     def sell_dialog_header(self) -> tuple[int, int] | None:
-        """Centro do titulo 'Sell' do dialog de venda. None se nao aberto/visivel."""
+        """Center of the 'Sell' title in the sell dialog. None if not open/visible."""
         return self._find_anchor('npc_sell_dialog_header.bmp')
 
     def sell_slot_pos(self, header: tuple[int, int], n: int) -> tuple[int, int]:
-        """Posicao do slot n (1-24) do grid de venda, ancorada no header."""
+        """Position of slot n (1-24) of the sell grid, anchored to the header."""
         idx = n - 1
         row, col = idx // 6, idx % 6
         return (int(header[0] + self._SELL_TO_SLOT1[0] + col * self._SELL_COL_SPACING),
@@ -329,29 +329,29 @@ class AbstractClientWindow(ABC):
 
     def goto_spot_via_map(self, spot_map_offset: tuple[int, int]) -> bool:
         """
-        Abre o mapa (M), clica no spot de farm (clique-isca numa regiao diferente +
-        o spot real, pra furar o bug do jogo de clique repetido no mesmo destino) e
-        fecha o mapa. A espera de chegada fica no chamador (sell.py).
-        `spot_map_offset` = offset a partir do titulo 'Map' (escolhido pelo usuario na UI).
+        Opens the map (M), clicks the farm spot (decoy click in a different region +
+        the real spot, to bypass the game's repeated-click-on-same-destination bug) and
+        closes the map. Arrival wait is in the caller (sell.py).
+        `spot_map_offset` = offset from 'Map' title (chosen by user in UI).
         """
         self.press_key('m')
         time.sleep(2.0)
         title = self._find_anchor('map_title.bmp')
         if title is None:
-            self.press_key('m')   # tenta abrir de novo
+            self.press_key('m')   # try opening again
             time.sleep(2.0)
             title = self._find_anchor('map_title.bmp')
         if title is None:
-            self.logger.error("goto_spot_via_map: 'Map' nao achado (mapa abriu?)")
+            self.logger.error("goto_spot_via_map: 'Map' not found (map opened?)")
             return False
         spot = (title[0] + spot_map_offset[0], title[1] + spot_map_offset[1])
         dummy = (spot[0] + self._MAP_DUMMY_OFFSET[0], spot[1] + self._MAP_DUMMY_OFFSET[1])
-        self.logger.info("goto_spot_via_map: 'Map' %s -> isca %s -> spot %s", title, dummy, spot)
+        self.logger.info("goto_spot_via_map: 'Map' %s -> decoy %s -> spot %s", title, dummy, spot)
         self.right_click(dummy)
         time.sleep(0.5)
         self.right_click(spot)
         time.sleep(0.5)
-        self.press_key('m')   # fecha o mapa pra liberar o movimento
+        self.press_key('m')   # close the map to allow movement
         return True
 
     @abstractmethod

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 @run_at_interval()
 class Sell(Locational):
-    NUM_SELL_BAGS = 3   # bags de 24 itens -> reabre o dialog a cada rodada
+    NUM_SELL_BAGS = 3   # 24-item bags -> reopen dialog each round
 
     def __init__(self, client: BotClientWindow):
         super().__init__(client)
@@ -31,18 +31,18 @@ class Sell(Locational):
             self._use_mount = False
 
         if self.config.return_spot_map_offset is None:
-            self._log_err('return_spot_map_offset nao setado -- nao vai conseguir voltar ao spot')
+            self._log_err('return_spot_map_offset not set -- cannot return to spot')
 
         #self._last_time_sold = time.time()
         self._last_time_sold = 0
 
     def _force_run(self) -> bool:
-        """Pedido de venda FORA do intervalo (ex.: mochila cheia detectada pelo
-        monitor). Consome a bandeira -> Sell roda na proxima volta do loop principal,
-        sequencial com o Attack (sem brigar pelo char). O timer normal segue valendo."""
+        """Sell request OUTSIDE the interval (e.g. inventory full detected by
+        monitor). Consumes the flag -> Sell runs on the next main loop turn,
+        sequential with Attack (no fighting over the char). Normal timer still applies."""
         if getattr(self._client, 'sell_requested', False):
             self._client.sell_requested = False
-            self._log_info("venda solicitada (mochila cheia) -- vendendo agora")
+            self._log_info("sell requested (inventory full) -- selling now")
             return True
         return False
 
@@ -61,9 +61,9 @@ class Sell(Locational):
             return True
 
     def _go_to_npc(self):
-        self._client.set_action("🏃 Indo vender (NPC)")
-        # COMECA no Surroundings (NAO usar o move_to_pos/mapa antigo aqui -- ele abria
-        # o mapa e clicava em coord aleatoria no inicio).
+        self._client.set_action("🏃 Going to sell (NPC)")
+        # STARTS in Surroundings (DO NOT use the old move_to_pos/map here -- it would open
+        # the map and click random coords at the start).
         self._client.search_surroundings(self.config.sell_npc_name)
         try:
             first_result = self._client.pointers.get_sur_info()
@@ -81,58 +81,58 @@ class Sell(Locational):
             self._client.goto_first_surrounding_result()
             time.sleep(5)
             self._client.block_while_moving()
-        self._client.close_surroundings_ui()   # fecha o painel ao chegar
-        time.sleep(2)                            # deixa o char assentar
+        self._client.close_surroundings_ui()   # close panel on arrival
+        time.sleep(2)                            # let char settle
         return True
 
     def _sell_items(self):
-        self._client.set_action("💰 Vendendo no NPC")
-        self._log_info('Vendendo...')
+        self._client.set_action("💰 Selling at NPC")
+        self._log_info('Selling...')
         start_slot = int(self.config.sell_item_pos or 1)
         self._client.reset_camera()
         time.sleep(2)
         for bag in range(self.NUM_SELL_BAGS):
             if not self._client.running:
                 return
-            self._client.click_npc()              # abre a janela Dialogue do NPC
+            self._client.click_npc()              # open NPC Dialogue window
             time.sleep(2)
-            if not self._client.click_npc_sell_button():   # acha "Dialogue" -> clica "Sell Item"
-                self._log_err('Janela do NPC / Sell Item nao encontrada (visivel/a esquerda?)')
+            if not self._client.click_npc_sell_button():   # find "Dialogue" -> click "Sell Item"
+                self._log_err('NPC window / Sell Item not found (visible/on left?)')
                 return
             time.sleep(2)
-            header = self._client.sell_dialog_header()     # acha o titulo "Sell"
+            header = self._client.sell_dialog_header()     # find "Sell" title
             if header is None:
-                self._log_err('Dialog de venda nao abriu (header "Sell" nao achado)')
+                self._log_err('Sell dialog did not open ("Sell" header not found)')
                 return
             slot = self._client.sell_slot_pos(header, start_slot)
-            self._log_info('Bag %d/%d: clicando slot %d em %s (30x)',
+            self._log_info('Bag %d/%d: clicking slot %d at %s (30x)',
                            bag + 1, self.NUM_SELL_BAGS, start_slot, str(slot))
-            for _ in range(30):                    # reflow: vende do slot inicial em diante
-                if not self._client.running:       # Stop = emergencia: aborta na hora
-                    self._log_info('Stop apertado durante a venda -- abortando')
+            for _ in range(30):                    # reflow: sell from initial slot onward
+                if not self._client.running:       # Stop = emergency: abort immediately
+                    self._log_info('Stop pressed during selling -- aborting')
                     return
                 self._client.left_click(slot)
                 time.sleep(0.2)
-            if not self._client.running:           # nao confirma venda parcial apos Stop
+            if not self._client.running:           # do not confirm partial sell after Stop
                 return
-            self._client.left_click(self._client.sell_confirm_pos(header))   # CONFIRMA a venda
-            time.sleep(2)                          # confirma -> dialog fecha
+            self._client.left_click(self._client.sell_confirm_pos(header))   # CONFIRM the sell
+            time.sleep(2)                          # confirm -> dialog closes
 
     def _path_to_attack_spot(self):
-        if not self._client.running:   # Stop apertado -> nem tenta voltar ao spot
+        if not self._client.running:   # Stop pressed -> do not even try to return to spot
             return
-        self._client.set_action("🏃 Voltando ao spot (pós-venda)")
-        # offset do spot no mapa: prioridade pra config de ATTACK (onde fica agora),
-        # cai pro sell por compatibilidade com configs antigas.
+        self._client.set_action("🏃 Returning to spot (post-sell)")
+        # spot offset on map: priority to ATTACK config (where it is now),
+        # falls back to sell for compatibility with old configs.
         _atk = self._client.config.attack
         offset = (getattr(_atk, 'return_spot_map_offset', None) if _atk else None) or self.config.return_spot_map_offset
         if offset is None:
-            self._log_err('return_spot_map_offset nao setado (Attack nem Sell) -- pulando retorno ao spot')
+            self._log_err('return_spot_map_offset not set (neither Attack nor Sell) -- skipping return to spot')
             return
-        self._log_info('Voltando ao spot de farm %s', str(self._return_spot))
-        self._client.goto_spot_via_map(tuple(offset))   # abre mapa -> isca + spot -> fecha mapa
-        time.sleep(2)   # da tempo do char COMECAR a andar antes de checar movimento
-        # CHEGOU = parou de andar (ou ja esta perto). O '> 3' antigo era apertado demais:
-        # o clique no mapa para uns 5-15 do ponto, nunca batia <=3, e o char ficava 60s
-        # parado no spot sem voltar a atacar. block_while_moving desbloqueia ao parar/chegar.
+        self._log_info('Returning to farm spot %s', str(self._return_spot))
+        self._client.goto_spot_via_map(tuple(offset))   # open map -> bait + spot -> close map
+        time.sleep(2)   # give char time to START walking before checking movement
+        # ARRIVED = stopped walking (or already close). The old '> 3' was too tight:
+        # map click stops 5-15 short of the point, never hit <=3, and char stayed 60s
+        # idle at spot without resuming attack. block_while_moving unblocks on stop/arrival.
         self._client.block_while_moving(self._return_spot)

@@ -1,50 +1,36 @@
 """
-Sonda offsets vizinhos da char struct (client.exe+0x00D450EC) pra achar o XP.
-Tira um snapshot, espera 15s (MATE MOBS!), tira outro, e mostra o que mudou.
-XP = offset que SO AUMENTA (e cujo float bate com a % da tela).
+Probe neighboring offsets of the char struct (client.exe+0x00D450EC) to find XP.
+Take a snapshot, wait 15s (KILL MOBS!), take another, and show what changed.
+XP = offset that ONLY INCREASES (and whose float matches the % on screen).
 """
 import time
-from GhostBot.lib.win32.process import PymemProcess
-from GhostBot.lib.talisman_online_python.pointers import Pointers
 
-proc = next(iter(PymemProcess.list_clients()), None)
-if proc is None:
-    raise SystemExit("client.exe nao encontrado")
-p = Pointers(proc.process_id)
+from GhostBot.lib.tooling import get_client, snapshot_int_float_offsets
+
+client = get_client()
+p = client.pointers
 pm = p.pm
 base_ptr = p.CLIENT + 0x00D450EC
 known = {0xDC: 'MAX_HP', 0x3B8: 'HP', 0x3BC: 'MANA', 0x3C4: 'LEVEL', 0x3CC: 'ENERGY', 0x410: 'GOLD'}
 offsets = list(range(0x300, 0x460, 4))
 
-
-def snap():
-    sb = pm.read_int(base_ptr)
-    d = {}
-    for off in offsets:
-        try:
-            d[off] = (pm.read_int(sb + off), pm.read_float(sb + off))
-        except Exception:
-            d[off] = (None, None)
-    return d
-
-
-print("Snapshot inicial tirado. MATE MOBS agora por 15s pra ganhar XP!")
-first = snap()
+print("Initial snapshot taken. KILL MOBS now for 15s to gain XP!")
+first = snapshot_int_float_offsets(pm, base_ptr, offsets)
 time.sleep(15)
-last = snap()
+last = snapshot_int_float_offsets(pm, base_ptr, offsets)
 
-print("\n=== Offsets que AUMENTARAM (candidatos a XP) ===")
+print("\n=== Offsets that INCREASED (XP candidates) ===")
 for off in offsets:
     i0, f0 = first[off]
     i1, f1 = last[off]
-    if i0 is None or i1 is None:
+    if i0 is None or i1 is None or f0 is None or f1 is None:
         continue
-    if i1 > i0:  # so aumentou
+    if i1 > i0:  # only increased
         tag = known.get(off, '?')
         fflag = ' <== float parece % (0-100)' if (0 < f1 < 100) else ''
         print(f"  +{off:#05x} [{tag:6}] int {i0} -> {i1} (delta {i1 - i0}) | float {f0:.4f} -> {f1:.4f}{fflag}")
 
-print("\n=== Outros que mudaram (subiu E desceu, ex HP/Mana) ===")
+print("\n=== Others that changed (went up and down, e.g. HP/Mana) ===")
 for off in offsets:
     i0, f0 = first[off]
     i1, f1 = last[off]

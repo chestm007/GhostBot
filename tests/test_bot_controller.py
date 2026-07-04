@@ -86,8 +86,8 @@ def test_get_functions_for_client(monkeypatch, client):
     )
     client.set_config(config)
     bc = ThreadedBotController()
-    # Regen e Buffs nao sao mais funcoes separadas (aba Regen removida; Buff virou secao
-    # da aba Attack) -> nao aparecem aqui, mesmo presentes na config (compat de .yml).
+    # Regen and Buffs are no longer separate functions (Regen tab removed; Buff became a section
+    # of the Attack tab) -> they don't appear here, even though present in the config (.yml compatibility).
     _func_types = [type(f) for f in bc._get_functions_for_client(client)]
     _func_types.remove(Sell)
     _func_types.remove(Petfood)

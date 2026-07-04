@@ -1,27 +1,26 @@
 """
-Le target_hp / energy / level ao vivo por 20s, pra diagnosticar o dashboard.
-Bata num mob durante o teste pra ver se target_hp muda.
+Read target_hp / energy / level live for 20s, to diagnose the dashboard.
+Hit a mob during the test to see if target_hp changes.
 """
-import time
-from GhostBot.lib.win32.process import PymemProcess
-from GhostBot.lib.talisman_online_python.pointers import Pointers
-
-proc = next(iter(PymemProcess.list_clients()), None)
-if proc is None:
-    raise SystemExit("client.exe nao encontrado")
 import math
+import time
+
+from GhostBot.lib.tooling import get_client
+
 TARGET_MAX_HP, TARGET_MIN_HP = 597, 461
-p = Pointers(proc.process_id)
-print("Lendo por 20s (mira e bata num mob agora)...")
+
+client = get_client()
+p = client.pointers
+print("Reading for 20s (aim and hit a mob now)...")
 for _ in range(20):
     def safe(fn):
         try:
             return fn()
         except Exception as e:
             return f"ERRO {type(e).__name__}"
-    sel = safe(p.is_target_selected)   # gate da property
-    raw = safe(p.target_hp)            # valor cru do pointer
-    # replica a property target_hp de client_window:
+    sel = safe(p.is_target_selected)   # property gate
+    raw = safe(p.target_hp)            # raw value from pointer
+    # replicate the target_hp property of client_window:
     if sel is True:
         prop = (math.ceil((raw - TARGET_MIN_HP) / (TARGET_MAX_HP - TARGET_MIN_HP) * 100)
                 if isinstance(raw, int) and raw >= TARGET_MIN_HP else -1)

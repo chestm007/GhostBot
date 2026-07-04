@@ -1,6 +1,6 @@
 # Talisman Online Python
 
-Scripts, funções e módulos que eu uso para criar bots no jogo Talisman Online.
+Scripts, functions and modules I use to create bots in the Talisman Online game.
 
 ### Website
 [https://tonyrogerio.com.br](https://tonyrogerio.com.br)
@@ -17,29 +17,29 @@ Scripts, funções e módulos que eu uso para criar bots no jogo Talisman Online
 ### DISCORD
 `tonirogerio7`
 
-## Módulo Pointers
+## Pointers Module
 
-**Configure o id de processo antes de testar as funções.**
+**Set the process ID before testing the functions.**
 
 ```python
-# Testando o código
-pid = 972  # Substitua 972 pelo PID do processo correto
+# Testing the code
+pid = 972  # Replace 972 with the correct process PID
 ```
 
-## Módulo Keyboard
+## Keyboard Module
 
-**Exemplo de como enviar uma tecla para o jogo:**
+**Example of how to send a key to the game:**
 
-1. Definir o `hwnd` da janela. Exemplo: `hwnd = 972`. Esse será o alvo, ou seja, a janela do jogo que receberá o comando.
-2. Definir uma tecla. Exemplo: `next_target = 'TAB'`
+1. Set the window's `hwnd`. Example: `hwnd = 972`. This will be the target, i.e., the game window that will receive the command.
+2. Set a key. Example: `next_target = 'TAB'`
 
-**Comando para enviar a tecla TAB usando o módulo `keyboard.py`:**
+**Command to send the TAB key using the `keyboard.py` module:**
 ```python
 send(hwnd, next_target)
 ```
-## Módulo Mouse
+## Mouse Module
 
-**Configure a janela alvo e importe o módulo.**
+**Set the target window and import the module.**
 ```python
 import mouse
 
@@ -51,7 +51,6 @@ mouse.left(hwnd, xPos, yPos)
 
 ## Deleter.py
 
-**Apenas a funçao que uso para deletar itens, note que está configurada para o meu uso, você precisará configurar os comandos
-do mouse e keyboard de acordo com o seu projeto**
+**Just the function I use to delete items, note that it's configured for my use, you'll need to configure the mouse and keyboard commands according to your project**
 
 

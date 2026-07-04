@@ -122,7 +122,7 @@ class ThreadedBotController(BotController):
     def _stop_task(self, task_name: str, timeout: int = 30):
         task = self._tasks.get(task_name)
         if task is None:
-            self.logger.debug("_stop_task: no task named %s -- ja terminou ou nunca existiu", task_name)
+            self.logger.debug("_stop_task: no task named %s -- already finished or never existed", task_name)
             return
         task.join(timeout=timeout)
 
@@ -140,31 +140,31 @@ class ThreadedBotController(BotController):
         self.reload_bot_config(client)
         client.start_bot()
         self._add_task(self._run_bot, client.name, client)
-        # monitor de drop+morte em THREAD paralela (nao depende do loop principal)
+        # monitor of drop+death in a PARALLEL THREAD (does not depend on the main loop)
         self._add_task(self._run_monitor, f"monitor_{client.name}", client)
 
     def _run_monitor(self, client: BotClientWindow) -> None:
-        """Thread PARALELA: monitora drops (OCR do chat) + morte a cada ~2s, independente
-        do loop principal (que fica ocupado atacando). Resolve o 'as vezes detecta, as
-        vezes nao'. Respeita o Stop (client.running)."""
+        """PARALLEL THREAD: monitors drops (OCR from chat) + death every ~2s, independent
+        of the main loop (which stays busy attacking). Fixes 'sometimes detects, sometimes doesn't'.
+        Respects Stop (client.running)."""
         try:
-            drop = DropWatch(client)     # _setup cria o DropWatcher + prima a deteccao
+            drop = DropWatch(client)     # _setup creates the DropWatcher + triggers detection
             death = DeathAlert(client)
         except Exception as e:
             self.logger.exception(e)
             return
-        self.logger.info("%s: monitor (drop + morte) iniciado em paralelo", client.name)
+        self.logger.info("%s: monitor (drop + death) started in parallel", client.name)
         while client.running:
             try:
                 drop._run()
                 death._run()
             except Exception as e:
                 self.logger.exception(e)
-            for _ in range(4):           # ~2s, mas sai rapido se apertar Stop
+            for _ in range(4):           # ~2s, but exits quickly if Stop is pressed
                 if not client.running:
                     break
                 time.sleep(0.5)
-        self.logger.info("%s: monitor parado", client.name)
+        self.logger.info("%s: monitor stopped", client.name)
 
     def _run_bot(self, client: BotClientWindow) -> None:
         client.bot_status = BotStatus.started
@@ -201,7 +201,7 @@ class ThreadedBotController(BotController):
         for client in _stopping:
             self.logger.debug('joining thread %s', client.name)
             self._stop_task(client.name, timeout)
-            self._stop_task(f"monitor_{client.name}", timeout)  # thread do monitor de drop+morte
+            self._stop_task(f"monitor_{client.name}", timeout)  # drop+death monitor thread
             client.bot_status = BotStatus.stopped
 
     def stop_bot(self, client: str | BotClientWindow, timeout=5) -> None:
@@ -211,13 +211,13 @@ class ThreadedBotController(BotController):
                 self.logger.warning('no client %s', client)
                 return
 
-        # PARADA DE EMERGENCIA: forca running=False mesmo se o status nao for 'running'
-        # (ex: venda manual 'Vender agora' em andamento) e espera TODAS as threads do
-        # cliente terminarem -- loop principal E venda manual.
+        # EMERGENCY STOP: forces running=False even if the status is not 'running'
+        # (e.g.: manual 'Sell now' in progress) and waits for ALL client threads to
+        # finish -- main loop AND manual sell.
         client.stop_bot()  # running=False, status=stopping
-        self._stop_task(client.name, timeout)               # loop principal (se houver)
-        self._stop_task(f"sell_now_{client.name}", timeout)  # venda manual (se houver)
-        self._stop_task(f"monitor_{client.name}", timeout)   # thread do monitor de drop+morte
+        self._stop_task(client.name, timeout)               # main loop (if any)
+        self._stop_task(f"sell_now_{client.name}", timeout)  # manual sell (if any)
+        self._stop_task(f"monitor_{client.name}", timeout)   # drop+death monitor thread
         client.bot_status = BotStatus.stopped
 
     def listen(self):

@@ -102,18 +102,18 @@ class GhostbotIPCServer(IPCServer):
                             self.logger.info('char: %s - not found', _char)
                             return Message(Command.ERROR, {
                                 'char': _char,
-                                'reason': f'Personagem "{_char}" nao encontrado. '
-                                          f'Selecione um personagem logado antes de salvar.'})
-                        # Validacao (load_yaml chama validate()) pode falhar -> NAO engolir o
-                        # erro. Responde um ERROR com o motivo pra interface mostrar. Sem isso
-                        # o Save falhava em SILENCIO (config nem gravava nem avisava).
+                                'reason': f'Character "{_char}" not found. '
+                                          f'Select a logged-in character before saving.'})
+                        # Validacao (load_yaml calls validate()) can fail -> DO NOT swallow the
+                        # error. Respond with an ERROR and the reason for the UI to show. Without this
+                        # Save failed in SILENCE (config neither saved nor warned).
                         try:
                             conf = Config.load_yaml(message.target.get('config'))
                         except Exception as e:
                             self.logger.exception('CONFIG_SET validation failed for %s', _char)
                             return Message(Command.ERROR, {
                                 'char': _char,
-                                'reason': f'Configuracao invalida (nada foi salvo):\n{e}'})
+                                'reason': f'Invalid configuration (nothing was saved):\n{e}'})
                         try:
                             ConfigLoader(_client).save(conf)
                             _client.set_config(conf)
@@ -122,7 +122,7 @@ class GhostbotIPCServer(IPCServer):
                             return Message(Command.ERROR, {
                                 'char': _char,
                                 'reason': f'Erro ao gravar a config no disco:\n{e}'})
-                        self.logger.info("char: %s - config salva com sucesso", _client.name)
+                        self.logger.info("char: %s - config saved successfully", _client.name)
                         return message
                     case Command.CONFIG_AUTOLOGIN_SET:
                         self.logger.info("dispatching CONFIG_AUTOLOGIN_SET")

@@ -1,13 +1,11 @@
 """Chama to_json() direto no client pra ver se crasha ou o que retorna."""
 import traceback
-from GhostBot.lib.win32.process import PymemProcess
-from GhostBot.controller.bot_controller import BotClientWindow
 
-proc = next(iter(PymemProcess.list_clients()), None)
-if proc is None:
-    raise SystemExit("client.exe nao encontrado")
+from GhostBot.controller.bot_controller import BotClientWindow
+from GhostBot.lib.tooling import get_client
+
 try:
-    c = BotClientWindow(proc)
+    c = BotClientWindow(get_client().proc)
     print("BotClientWindow criado. name =", repr(c.name))
     d = c.to_json()
     print("to_json OK:")

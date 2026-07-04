@@ -1,20 +1,21 @@
 """
-CICLO COMPLETO (DRY) — encadeia tudo que validamos, sem vender de verdade:
+FULL CYCLE (DRY) — chains everything we validated, without actually selling:
 
-  1. NAVEGAR ate o NPC (surroundings: abre painel -> busca -> 1o resultado -> chega)
-  2. ABRIR VENDA (reset camera -> right-click NPC -> "Dialogue" -> "Sell Item")
-  3. VENDER (acha "Sell" -> 30 cliques no slot 1)  [DRY: NAO confirma]
-  4. FECHAR dialog (Esc)
-  5. VOLTAR ao spot (abre mapa -> isca + spot -> fecha mapa -> espera chegar)
+  1. NAVIGATE to the NPC (surroundings: open panel -> search -> 1st result -> arrive)
+  2. OPEN SELL (reset camera -> right-click NPC -> "Dialogue" -> "Sell Item")
+  3. SELL (find "Sell" -> 30 clicks on slot 1)  [DRY: DON'T confirm]
+  4. CLOSE dialog (Esc)
+  5. RETURN to spot (open map -> bait + spot -> close map -> wait to arrive)
 
-Tudo via template+offset, sem coord fixa. Ajuste DRY_CONFIRM=False so quando
-quiser vender de verdade.
+All via template+offset, no fixed coords. Set DRY_CONFIRM=False only when
+you want to actually sell.
 """
 import time
+
 import cv2
-from GhostBot.client_window import Win32ClientWindow
-from GhostBot.lib.win32.process import PymemProcess
+
 from GhostBot.lib.math import linear_distance
+from GhostBot.lib.tooling import get_client, match_template
 
 MISC = r"C:\Bot\BotTO\src\GhostBot\Images\misc"
 
@@ -33,20 +34,20 @@ DIALOGUE_TO_SELL_ITEM = (-114, 181)
 SELL_HEADER_BMP = MISC + r"\npc_sell_dialog_header.bmp"
 HEADER_TO_SLOT1 = (-97, 43)
 HEADER_TO_SELL_CONFIRM = (-76, 461)
-SELL_COL_SPACING = 34.4      # grid 6 col x 4 linhas = 24 slots
+SELL_COL_SPACING = 34.4      # grid 6 cols x 4 rows = 24 slots
 SELL_ROW_SPACING = 35.333
-SELL_START_SLOT = 1          # usuario escolhe (1-24): vende deste em diante, mantem 1..N-1
+SELL_START_SLOT = 1          # user chooses (1-24): sell from this onward, keep 1..N-1
 SLOT_CLICKS = 30
 
 
 def slot_pos(hdr, n):
-    """Posicao do slot n (1-24) do grid de venda, ancorada no header."""
+    """Position of slot n (1-24) of the sell grid, anchored to the header."""
     idx = n - 1
     row, col = idx // 6, idx % 6
     return (int(hdr[0] + HEADER_TO_SLOT1[0] + col * SELL_COL_SPACING),
             int(hdr[1] + HEADER_TO_SLOT1[1] + row * SELL_ROW_SPACING))
 
-# --- Mapa (volta ao spot) ---
+# --- Map (return to spot) ---
 MAP_TITLE_BMP = MISC + r"\map_title.bmp"
 MAP_TO_SPOT = (-125, 297)
 MAP_DUMMY_OFFSET = (60, 0)
@@ -54,19 +55,8 @@ SPOT_WORLD = (321, 1147)
 
 ARRIVAL = 3
 THRESHOLD = 0.70
-STEP_DELAY = 2.0     # delay entre atividades (dar tempo do jogo terminar cada acao)
-DRY_CONFIRM = True   # True = NAO clica o Sell de confirmar
-
-
-def find_center(client, bmp_path, thr=THRESHOLD):
-    win = client.capture_window()
-    bmp = cv2.imread(bmp_path, cv2.IMREAD_GRAYSCALE)
-    res = cv2.matchTemplate(win, bmp, cv2.TM_CCOEFF_NORMED)
-    _, mv, _, ml = cv2.minMaxLoc(res)
-    h, w = bmp.shape[:2]
-    if mv < thr:
-        return None, mv
-    return (ml[0] + w // 2, ml[1] + h // 2), mv
+STEP_DELAY = 2.0     # delay between activities (give the game time to finish each action)
+DRY_CONFIRM = True   # True = DO NOT click the Sell confirm
 
 
 def wait_arrival(client, target, timeout=60):
@@ -78,13 +68,13 @@ def wait_arrival(client, target, timeout=60):
         d = linear_distance(cur, target)
         print(f"    loc={cur} dist={d:.1f}")
         if d < ARRIVAL:
-            print(f"    >>> CHEGOU (dist={d:.1f})")
+            print(f"    >>> ARRIVED (dist={d:.1f})")
             return True
         if last is not None and linear_distance(cur, last) < 1:
             if stat is None:
                 stat = time.time()
             elif time.time() - stat > 5:
-                print(f"    >>> parou sem chegar (dist={d:.1f})")
+                print(f"    >>> stopped without arriving (dist={d:.1f})")
                 return False
         else:
             stat = None
@@ -95,16 +85,24 @@ def wait_arrival(client, target, timeout=60):
 
 
 def navigate_to_npc(client):
-    print("[1] NAVEGAR ate o NPC")
-    title, score = find_center(client, SURR_TITLE_BMP)
+    print("[1] NAVIGATE to the NPC")
+    try:
+        title_match = match_template(client, SURR_TITLE_BMP, threshold=THRESHOLD)
+        title, score = title_match.center, title_match.score
+    except SystemExit:
+        title, score = None, 0.0
     if title is None:
-        print(f"    painel fechado (score {score:.3f}) -> abrindo")
+        print(f"    panel closed (score {score:.3f}) -> opening")
         client.open_surroundings_ui()
         time.sleep(1.5)
-        title, score = find_center(client, SURR_TITLE_BMP)
+        try:
+            title_match = match_template(client, SURR_TITLE_BMP, threshold=THRESHOLD)
+            title, score = title_match.center, title_match.score
+        except SystemExit:
+            title, score = None, 0.0
     if title is None:
-        raise SystemExit(f"    FALHOU: 'Surroundings' nao achado (score {score:.3f})")
-    print(f"    'Surroundings' em {title} (score {score:.3f})")
+        raise SystemExit(f"    FAILED: 'Surroundings' not found (score {score:.3f})")
+    print(f"    'Surroundings' at {title} (score {score:.3f})")
     search = (title[0] + TITLE_TO_SEARCH[0], title[1] + TITLE_TO_SEARCH[1])
     result = (title[0] + TITLE_TO_FIRST_RESULT[0], title[1] + TITLE_TO_FIRST_RESULT[1])
     client.left_click(search)
@@ -116,62 +114,78 @@ def navigate_to_npc(client):
     time.sleep(1.0)
     client.left_click(result)
     if not wait_arrival(client, NPC_LOCATION):
-        raise SystemExit("    FALHOU: nao chegou no NPC")
-    print(f"    esperando o char parar de vez ({STEP_DELAY}s)...")
+        raise SystemExit("    FAILED: did not reach the NPC")
+    print(f"    waiting for char to stop completely ({STEP_DELAY}s)...")
     time.sleep(STEP_DELAY)
-    client.open_surroundings_ui()  # fecha painel
+    client.open_surroundings_ui()  # close panel
     time.sleep(STEP_DELAY)
 
 
 def open_sell_dialog(client):
-    print("[2] ABRIR VENDA")
+    print("[2] OPEN SELL")
     time.sleep(STEP_DELAY)            # deixa o char assentar antes
     client.reset_camera()
     time.sleep(STEP_DELAY)
     client.click_npc()
     time.sleep(STEP_DELAY)
-    dlg, score = find_center(client, DIALOGUE_BMP)
+    try:
+        dlg_match = match_template(client, DIALOGUE_BMP, threshold=THRESHOLD)
+        dlg, score = dlg_match.center, dlg_match.score
+    except SystemExit:
+        dlg, score = None, 0.0
     if dlg is None:
-        raise SystemExit(f"    FALHOU: 'Dialogue' nao achado (score {score:.3f})")
+        raise SystemExit(f"    FAILED: 'Dialogue' not found (score {score:.3f})")
     sell_item = (dlg[0] + DIALOGUE_TO_SELL_ITEM[0], dlg[1] + DIALOGUE_TO_SELL_ITEM[1])
-    print(f"    'Dialogue' em {dlg} (score {score:.3f}) -> Sell Item {sell_item}")
+    print(f"    'Dialogue' at {dlg} (score {score:.3f}) -> Sell Item {sell_item}")
     client.left_click(sell_item)
     time.sleep(STEP_DELAY)
-    hdr, hscore = find_center(client, SELL_HEADER_BMP)
+    try:
+        hdr_match = match_template(client, SELL_HEADER_BMP, threshold=THRESHOLD)
+        hdr, hscore = hdr_match.center, hdr_match.score
+    except SystemExit:
+        hdr, hscore = None, 0.0
     if hdr is None:
-        raise SystemExit(f"    FALHOU: dialog de venda nao abriu (header score {hscore:.3f})")
-    print(f"    dialog de venda aberto (header {hdr} score {hscore:.3f})")
+        raise SystemExit(f"    FAILED: sell dialog did not open (header score {hscore:.3f})")
+    print(f"    sell dialog open (header {hdr} score {hscore:.3f})")
     return hdr
 
 
 def sell_page(client, hdr):
-    print("[3] VENDER (DRY)" if DRY_CONFIRM else "[3] VENDER")
+    print("[3] SELL (DRY)" if DRY_CONFIRM else "[3] SELL")
     start = slot_pos(hdr, SELL_START_SLOT)
     confirm = (hdr[0] + HEADER_TO_SELL_CONFIRM[0], hdr[1] + HEADER_TO_SELL_CONFIRM[1])
-    print(f"    slot inicial {SELL_START_SLOT} em {start} | confirm {confirm} -> {SLOT_CLICKS} cliques")
+    print(f"    initial slot {SELL_START_SLOT} at {start} | confirm {confirm} -> {SLOT_CLICKS} clicks")
     for _ in range(SLOT_CLICKS):
         client.left_click(start)
         time.sleep(0.2)
     if DRY_CONFIRM:
-        print("    [DRY] nao confirma a venda")
+        print("    [DRY] not confirming the sale")
     else:
         client.left_click(confirm)
         time.sleep(1.0)
-        print("    venda confirmada")
-    print("[4] FECHAR dialog (Esc)")
+        print("    sale confirmed")
+    print("[4] CLOSE dialog (Esc)")
     client.press_key('esc')
     time.sleep(STEP_DELAY)
 
 
 def return_to_spot(client):
-    print("[5] VOLTAR ao spot")
-    client.press_key('m')   # abre mapa
+    print("[5] RETURN to spot")
+    client.press_key('m')   # open map
     time.sleep(STEP_DELAY)
-    title, score = find_center(client, MAP_TITLE_BMP)
+    try:
+        title_match = match_template(client, MAP_TITLE_BMP, threshold=THRESHOLD)
+        title, score = title_match.center, title_match.score
+    except SystemExit:
+        title, score = None, 0.0
     if title is None:
         client.press_key('m')
         time.sleep(STEP_DELAY)
-        title, score = find_center(client, MAP_TITLE_BMP)
+        try:
+            title_match = match_template(client, MAP_TITLE_BMP, threshold=THRESHOLD)
+            title, score = title_match.center, title_match.score
+        except SystemExit:
+            title, score = None, 0.0
     if title is None:
         raise SystemExit(f"    FALHOU: mapa/'Map' nao achado (score {score:.3f})")
     spot = (title[0] + MAP_TO_SPOT[0], title[1] + MAP_TO_SPOT[1])
@@ -181,25 +195,22 @@ def return_to_spot(client):
     time.sleep(0.5)
     client.right_click(spot)
     time.sleep(0.5)
-    client.press_key('m')   # fecha mapa
+    client.press_key('m')   # close map
     if not wait_arrival(client, SPOT_WORLD):
-        print("    AVISO: nao confirmou chegada no spot")
+        print("    WARNING: did not confirm arrival at spot")
 
 
 def main():
-    proc = next(iter(PymemProcess.list_clients()), None)
-    if proc is None:
-        raise SystemExit("client.exe nao encontrado")
-    client = Win32ClientWindow(proc)
-    print(f"Janela: {client.get_window_size()} | DRY_CONFIRM={DRY_CONFIRM}")
-    print(f"Char em {client.location}")
+    client = get_client()
+    print(f"Window: {client.get_window_size()} | DRY_CONFIRM={DRY_CONFIRM}")
+    print(f"Char at {client.location}")
     print()
 
     navigate_to_npc(client)
     hdr = open_sell_dialog(client)
     sell_page(client, hdr)
     return_to_spot(client)
-    print("\n===== CICLO COMPLETO =====")
+    print("\n===== FULL CYCLE =====")
 
 
 if __name__ == "__main__":

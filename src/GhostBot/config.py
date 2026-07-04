@@ -104,8 +104,8 @@ class AttackConfig(FunctionConfig):
     class Bindings(TypedDict):
         battle_hp_pot: NotRequired[int | str]
         battle_mana_pot: NotRequired[int | str]
-        pet_attack: NotRequired[int | str]   # Tamer: comanda o pet a atacar (no alvo novo)
-        heal: NotRequired[int | str]         # Fairy: cura a si mesma (em vez de pot de HP)
+        pet_attack: NotRequired[int | str]   # Tamer: command pet to attack (on new target)
+        heal: NotRequired[int | str]         # Fairy: heals herself (instead of HP pot)
     attacks: list[list[str | int]]
     bindings: Bindings = None
     stuck_interval: int = None
@@ -113,11 +113,11 @@ class AttackConfig(FunctionConfig):
     battle_hp_threshold: float = None
     roam_distance: int = None
     spot: tuple[int, int] = None
-    return_spot_map_offset: tuple[int, int] = None  # offset do spot no MAPA (retorno por mapa); compartilhado com o sell
-    boss_lock: bool = False   # se True, ataca SO o boss (nome abaixo) -- da TAB ate achar
-    boss_name: str = None     # nome (ou parte) do boss pra travar o alvo
-    char_class: str = None    # 'dps' (padrao) | 'tamer' | 'fairy' -- extras por classe no farm
-    # Buffs periodicos (vieram da extinta aba Buff): combo + intervalo em minutos
+    return_spot_map_offset: tuple[int, int] = None  # offset of the spot on the MAP (map return); shared with sell
+    boss_lock: bool = False   # if True, attacks ONLY the boss (name below) -- TAB until found
+    boss_name: str = None     # name (or part) of the boss to lock target
+    char_class: str = None    # 'dps' (default) | 'tamer' | 'fairy' -- class extras on farm
+    # Periodic buffs (from the defunct Buff tab): combo + interval in minutes
     buffs: list[list[str | int]] = None
     buff_interval_mins: int = None
 
@@ -130,7 +130,7 @@ class RegenConfig(FunctionConfig):
     bindings: Bindings = field(default_factory=lambda: dict(sit= 'x'))
     hp_threshold: float = None
     mana_threshold: float = None
-    ignore_mana: bool = False  # classes sem mana (ex: Assassin) -> ignora MP no descanso
+    ignore_mana: bool = False  # classes without mana (e.g. Assassin) -> ignores MP during rest
 
     def __post_init__(self):
         if self.bindings is None:
@@ -146,15 +146,15 @@ class BuffConfig(FunctionConfig):
 @dataclass
 class PetConfig(FunctionConfig):
     class Bindings(TypedDict):
-        spawn: NotRequired[int | str]         # invocar o pet do Tamer (toggle)
-        food: NotRequired[int | str]          # comida do pet do Tamer
-        normal_food: NotRequired[int | str]   # comida do pet NORMAL (companheiro)
+        spawn: NotRequired[int | str]         # spawn the Tamer's pet (toggle)
+        food: NotRequired[int | str]          # Tamer pet food
+        normal_food: NotRequired[int | str]   # NORMAL pet food (companion)
     bindings: Bindings = None
-    # Pet do TAMER (combate): invoca/re-invoca-se-morrer/alimenta
+    # TAMER pet (combat): spawn/re-spawn-on-death/feed
     tamer_pet: bool = None
     spawn_interval_mins: int = None
     food_interval_mins: int = None
-    # Pet NORMAL (companheiro): so alimenta periodicamente
+    # NORMAL pet (companion): only feeds periodically
     normal_pet: bool = None
     normal_food_interval_mins: int = None
 
@@ -169,33 +169,33 @@ class FairyConfig(FunctionConfig):
     heal_team_threshold: float = None
     heal_self_threshold: float = None
     spot: tuple[int, int] = None
-    # Team buff (rotina periodica de aplicar combo de buffs em cada membro)
-    buffs: list[list[str | int]] = None  # [[tecla, ms], ...]
+    # Team buff (periodic routine to apply buff combo on each member)
+    buffs: list[list[str | int]] = None  # [[key, ms], ...]
     buff_interval_mins: int = None
     buff_self: bool = None
-    # Modo Helper (cross-PC): cura + segue (tecla P, default) um aliado SO por tecla.
+    # Helper Mode (cross-PC): heal + follow (key P, default) a single ally per key.
     helper_mode: bool = None
-    heal_interval_secs: float = None   # "cura sempre" a cada X segundos (decimal, ex: 2.5)
+    heal_interval_secs: float = None   # "always heal" every X seconds (decimal, e.g. 2.5)
 
 @dataclass
 class BossConfig(FunctionConfig):
-    """Modo Cave Boss. role = 'tank' | 'dps' | 'fairy'. Campos compartilhados +
-    especificos por papel (a UI mostra so os do papel selecionado).
-    Passo 1 (2026-05-27): TANK funcional; DPS/Fairy em construcao."""
+    """Cave Boss mode. role = 'tank' | 'dps' | 'fairy'. Shared fields +
+    specific to each role (UI shows only the selected role's fields).
+    Step 1 (2026-05-27): TANK functional; DPS/Fairy in progress."""
     class Bindings(TypedDict):
         battle_hp_pot: NotRequired[int | str]
         battle_mana_pot: NotRequired[int | str]
-        heal: NotRequired[int | str]   # fairy (papel futuro)
+        heal: NotRequired[int | str]   # fairy (future role)
     role: str = None
-    attacks: list[list[str | int]] = None   # combo de ataque (tank/dps)
+    attacks: list[list[str | int]] = None   # attack combo (tank/dps)
     boss_name: str = None
     bindings: Bindings = None
     battle_hp_threshold: float = None
     battle_mana_threshold: float = None
-    # Tank: buffs auto-aplicados (so aperta a tecla, sem trocar alvo) a cada buff_interval_secs
+    # Tank: auto-applied buffs (just press key, no target switch) every buff_interval_secs
     buffs: list[list[str | int]] = None
     buff_interval_secs: float = None
-    # Fairy: spama a cura no ALVO ATUAL a cada heal_interval_secs (jogador troca o alvo)
+    # Fairy: continuously heals CURRENT target every heal_interval_secs (player switches target)
     heal_interval_secs: float = None
 
 @dataclass
@@ -204,17 +204,17 @@ class SellConfig(FunctionConfig):
         mount: NotRequired[int | str]
     sell_npc_name: str
     bindings: Bindings = None
-    sell_item_pos: int = 1   # slot inicial de venda (1-24): vende deste em diante, mantem 1..N-1
+    sell_item_pos: int = 1   # initial sell slot (1-24): sells from this onward, keeps 1..N-1
     sell_interval_mins: int = 60
     npc_search_spot: tuple[int, int] = None
     use_mount: bool = None
-    # Spot de farm pra retornar: offset do titulo 'Map' ate o ponto no mapa
-    # (escolhido pelo usuario na UI). As coords do mundo vem de config.attack.spot.
+    # Farm spot to return to: offset from 'Map' title to the point on the map
+    # (chosen by user in UI). World coords come from config.attack.spot.
     return_spot_map_offset: tuple[int, int] = None
-    # Categorização de itens (sprint futura: leitura de bag + ações automáticas)
-    items_trash: list[str] = None  # vender automaticamente
-    items_keep: list[str] = None   # manter sem alertar
-    items_rare: list[str] = None   # alertar no Discord
+    # Item categorization (future sprint: bag reading + automatic actions)
+    items_trash: list[str] = None  # sell automatically
+    items_keep: list[str] = None   # keep without alerting
+    items_rare: list[str] = None   # alert on Discord
 
     def __post_init__(self):
         if self.bindings is None:
@@ -222,9 +222,9 @@ class SellConfig(FunctionConfig):
 
     def validate(self):
         super().validate()
-        # 'Spot de farm (mapa)' agora pode vir da config de ATTACK (compartilhado) -- nao
-        # e mais obrigatorio aqui. O sell le de attack se faltar; sem ele em nenhum dos
-        # dois, o retorno pos-venda so loga aviso (nao trava o save).
+        # 'Farm spot (map)' can now come from ATTACK config (shared) -- no
+        # longer required here. Sell reads from attack if missing; if neither
+        # has it, the post-sell return only logs a warning (does not block save).
 
 @dataclass
 class DeleteConfig(FunctionConfig):

@@ -1,53 +1,11 @@
-# GhostBot #
+# GhostBot
 
-Opensource bot for [Talisman Online](http://www.talismanonline.com) written in python.
+Fork of [chestm007/GhostBot](https://github.com/chestm007/GhostBot) adapted for BotTO / Talisman Online.
 
-Only works on windows at the moment.  
-I have tried running on linux via wine, the UI works, but the server doesn't find any of the TO clients.
+- **Platform:** Windows only
+- **Runtime model:** separate `ghost-bot-server` and `ghost-bot-client` processes
+- **Current status / roadmap:** `PROJECT_PLAN.md`
+- **Repo instructions:** `CLAUDE.md`
+- **Boss-mode notes:** `CAVE_BOSS_BOT.md`
 
-### Contributions are very welcome ###
-
-I figured a few people could collaborate on this and make something useful for 
-everyone with complete control to add or remove features as they wish. Everyone
-seems to have crazy UO scripts or their favourite closed source bot app.
-
-### What Works: ###
-
-- Fully configurable, per char config via the UI
-- Attack functionality
-- Mana / HP Regen
-- Scheduled pet re-spawning / feeding
-- Fairy logic to heal the team
-- Scheduled Buff's
-- Automatic sell to NPC
-- Item deletion
-- Map based pathing in MDV (other areas coming as i personally find the need)
-- Auto start client window and login
-
-### How do i use this thing???
-
-Install python, clone this repository, and `pip install .` in the root directory.
-
-- `ghost-bot-server` - Runs the backend.
-- `ghost-bot-client` - The UI, you'll do everything in here.
-
-> [!NOTE]
-> 
-> Not a great user experience, I know... I havent sorted out building this into actual executables yet.
-
-### Roadmap
-
-check out the [issues](https://github.com/LpiresUrt/BotTO/issues) page
-
-### Development
-
-#### Building executables locally:
-
-```commandline
-nuitka --mode=app GhostBot/run_client.py
-nuitka --mode=app GhostBot/run_server.py
-```
-
-### Special Thanks
-
-[tonirogerio](https://github.com/tonirogerio) - For absolutely invaluable help with finding the right memory pointers
+If you want to run it locally, install the package and launch the two entrypoints from the root repo.

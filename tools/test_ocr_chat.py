@@ -1,16 +1,16 @@
 """
-Teste/tuning de OCR do chat System do TO.
+OCR test/tuning for the TO System chat.
 
-Objetivo: descobrir qual TRATAMENTO de imagem faz o Tesseract ler melhor as
-linhas de drop ("You got the item: [Nome(lvl X)]") e extrair o NOME do item.
+Goal: discover which IMAGE TREATMENT makes Tesseract read drop lines best
+("You got the item: [Name(lvl X)]") and extract the ITEM NAME.
 
-Roda em cima de uma IMAGEM JA SALVA (um recorte do chat ou a janela inteira),
-NAO precisa do jogo aberto -- e so pra calibrar o pre-processamento.
+Runs on a SAVED IMAGE (a crop of the chat or the full window),
+does NOT need the game open -- just for calibrating preprocessing.
 
-Uso:
-    python tools/test_ocr_chat.py [caminho_da_imagem]
+Usage:
+    python tools/test_ocr_chat.py [image_path]
 
-Se nao passar caminho, usa a amostra de teste (tmp_ocr_sample_animalfur.png).
+If no path is given, uses the test sample (tmp_ocr_sample_animalfur.png).
 """
 import os
 import re
@@ -20,7 +20,8 @@ import cv2
 import numpy as np
 import pytesseract
 
-# --- Tesseract nao fica no PATH por padrao; aponta pro .exe instalado ---
+from GhostBot.lib.text_utils import clean_item_name
+
 _TESS_CANDIDATES = [
     r"C:\Program Files\Tesseract-OCR\tesseract.exe",
     r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
@@ -31,40 +32,33 @@ for _c in _TESS_CANDIDATES:
         pytesseract.pytesseract.tesseract_cmd = _c
         break
 
-# psm 6 = "assume um bloco uniforme de texto" (bom pra varias linhas de chat)
+# psm 6 = "assume a uniform text block" (good for multiple chat lines)
 _TESS_CONFIG = "--psm 6"
 
-# Casa "got the item:" seguido do nome entre [colchetes] OU (parenteses) --
-# tolera o erro classico do OCR de trocar '[' por '('. Captura ate o
-# fechamento ']' ou ')'.
+# Match "got the item:" followed by name in [brackets] OR (parens) --
+# tolerates the classic OCR error of swapping '[' for '('. Captures up to
+# the closing ']' or ')'.
 _ITEM_RE = re.compile(r"got the item:\s*[\[\(]\s*(.+?)\s*[\]\)]", re.IGNORECASE)
-# Fallback: QUALQUER coisa entre colchetes/parenteses (o OCR le o '[' e o nome
-# de forma confiavel, mas embola o prefixo "got the item"). Tolera [ <-> ( e ] <-> ).
+# Fallback: ANYTHING in brackets/parens (OCR reads the '[' and name
+# reliably, but messes up the "got the item:" prefix). Tolerates [ <-> ( and ] <-> ).
 _BRACKET_RE = re.compile(r"[\[\(]\s*([A-Za-z][A-Za-z '\-]{2,30}?)\s*[\]\)]")
-# Remove o sufixo "(lvl N)" quando existe (ex.: "Healing Potion(lvl 4)")
-_LVL_RE = re.compile(r"\s*\(lvl\s*\d+\)\s*$", re.IGNORECASE)
-
-
-def _clean(raw: str) -> str:
-    return _LVL_RE.sub("", raw).strip()
-
 
 def extract_item_names(text: str) -> list[str]:
-    """Pega os nomes de item das linhas de drop no texto lido pelo OCR.
+    """Extract item names from drop lines in the text read by OCR.
 
-    Estrategia: primeiro tenta o prefixo exato "got the item: [..]"; se falhar
-    (OCR emborou o prefixo), cai pro fallback de colchetes, ignorando linhas que
-    parecem "Congratulations [Jogador]" (que tambem tem colchete mas nao e item).
+    Strategy: first try the exact prefix "got the item: [..]"; if that fails
+    (OCR messed up the prefix), fall back to bracket matching, ignoring lines
+    that look like "Congratulations [Player]" (which also has brackets but isn't an item).
     """
     names = []
     for line in text.splitlines():
         if (m := _ITEM_RE.search(line)):
-            names.append(_clean(m.group(1)))
+            names.append(clean_item_name(m.group(1)))
             continue
-        if "congrat" in line.lower():  # "Congratulations! [Jogador]..." -> nao e item
+        if "congrat" in line.lower():  # "Congratulations! [Player]..." -> not an item
             continue
         for raw in _BRACKET_RE.findall(line):
-            if (name := _clean(raw)):
+            if (name := clean_item_name(raw)):
                 names.append(name)
     return names
 
@@ -74,28 +68,28 @@ def upscale(img, factor=4):
 
 
 def prep_gray_otsu(bgr):
-    """Tratamento B: cinza + ampliar + binarizacao Otsu (texto preto, fundo branco)."""
+    """Treatment B: gray + upscale + Otsu binarization (black text, white background)."""
     gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
     big = upscale(gray)
     _, thr = cv2.threshold(big, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    # texto do TO e claro sobre fundo escuro -> inverte pra ficar texto preto
+    # TO text is light on dark background -> invert to get black text
     if np.mean(thr) < 127:
         thr = cv2.bitwise_not(thr)
     return thr
 
 
 def prep_bright_mask(bgr):
-    """Tratamento C: isola SO o texto claro (alto brilho) e descarta o cenario.
+    """Treatment C: isolate ONLY light text (high brightness) and discard the background.
 
-    O texto do chat e claro/saturado; o mato de fundo e mais escuro.
-    Pegamos pixels com brilho alto -> mascara limpa, independente da cor exata
-    (serve pra qualquer raridade)."""
+    Chat text is bright/saturated; the grass background is darker.
+    We take high-brightness pixels -> clean mask, independent of exact color
+    (works for any rarity)."""
     hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
     v = hsv[..., 2]
-    # brilho acima de ~150 = provavelmente texto
+    # brightness above ~150 = likely text
     mask = cv2.inRange(v, 150, 255)
     big = upscale(mask)
-    # texto branco sobre preto -> inverte pra texto preto sobre branco (Tesseract gosta)
+    # white text on black -> invert to black text on white (Tesseract likes it)
     return cv2.bitwise_not(big)
 
 
@@ -104,11 +98,11 @@ def run(label, image, save_name=None):
     items = extract_item_names(text)
     print(f"\n{'='*60}\n[{label}]\n{'='*60}")
     print(text.strip())
-    print(f"  -> ITENS DETECTADOS: {items if items else '(nenhum)'}")
+    print(f"  -> ITEMS DETECTED: {items if items else '(none)'}")
     if save_name:
         out = os.path.join(os.path.dirname(__file__), "..", save_name)
         cv2.imwrite(out, image)
-        print(f"  (imagem tratada salva em {os.path.normpath(out)})")
+        print(f"  (processed image saved to {os.path.normpath(out)})")
     return items
 
 
@@ -116,12 +110,12 @@ def main():
     path = sys.argv[1] if len(sys.argv) > 1 else r"C:\Bot\BotTO\tmp_ocr_sample_animalfur.png"
     bgr = cv2.imread(path, cv2.IMREAD_COLOR)
     if bgr is None:
-        raise SystemExit(f"Nao consegui abrir a imagem: {path}")
-    print(f"Imagem: {path}  shape={bgr.shape}")
+        raise SystemExit(f"Could not open the image: {path}")
+    print(f"Image: {path}  shape={bgr.shape}")
 
-    run("A - CRUA (sem tratamento)", bgr)
-    run("B - CINZA + AMPLIAR + OTSU", prep_gray_otsu(bgr), "tmp_ocr_B.png")
-    run("C - ISOLAR TEXTO CLARO (bright mask)", prep_bright_mask(bgr), "tmp_ocr_C.png")
+    run("A - RAW (no treatment)", bgr)
+    run("B - GRAY + UPSCALE + OTSU", prep_gray_otsu(bgr), "tmp_ocr_B.png")
+    run("C - ISOLATE BRIGHT TEXT (bright mask)", prep_bright_mask(bgr), "tmp_ocr_C.png")
 
 
 if __name__ == "__main__":

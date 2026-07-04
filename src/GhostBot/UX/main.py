@@ -28,7 +28,7 @@ from GhostBot.UX.tabbed_widget.pet_frame import PetFrame
 
 class GhostBot(tk.Tk):
     def __init__(self):
-        # AppUserModelID: faz o Windows usar o icone do app (nao o do python) na barra de tarefas
+        # AppUserModelID: makes Windows use the app icon (not Python's) in the taskbar
         try:
             import ctypes
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("TalismanBot.GhostBot")
@@ -37,7 +37,7 @@ class GhostBot(tk.Tk):
         super().__init__()
         self.client = GhostbotIPCClient()
         self.title("Talisman Bot")
-        # icone da janela (logo). No .exe o icone vem do nuitka; aqui e pra quando roda via python.
+        # window icon (logo). In the .exe the icon comes from nuitka; here it's for when running via python.
         try:
             _ico = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Images", "logo.ico")
             if os.path.exists(_ico):
@@ -45,15 +45,15 @@ class GhostBot(tk.Tk):
         except Exception:
             pass
 
-        # Fontes +2 no app todo: aumenta as fontes nomeadas padrao (afeta widgets que nao
-        # definem fonte explicita -- abas, botoes, labels, entries, listas, menus).
+        # Fonts +2 app-wide: increases default named fonts (affects widgets that don't
+        # set an explicit font -- tabs, buttons, labels, entries, lists, menus).
         for _fname in ("TkDefaultFont", "TkTextFont", "TkMenuFont", "TkHeadingFont"):
             try:
                 tkfont.nametofont(_fname).configure(size=12)
             except tk.TclError:
                 pass
 
-        # Paleta escura (tema Talisman Bot) -- cores centralizadas em UX/theme.py
+        # Dark palette (Talisman Bot theme) -- colors centralized in UX/theme.py
         BG_MAIN = T.BG_MAIN
         BG_PANEL = T.BG_PANEL
         BG_LIST = T.BG_LIST
@@ -64,8 +64,8 @@ class GhostBot(tk.Tk):
         self.geometry("1040x720")
         self.minsize(820, 560)
 
-        # Defaults pros widgets tk classicos (Entry/Listbox/Label/Frame/Toplevel/Scrollbar)
-        # ficarem escuros automaticamente, sem precisar setar cor em cada um.
+        # Defaults for classic tk widgets (Entry/Listbox/Label/Frame/Toplevel/Scrollbar)
+        # to stay dark automatically, without needing to set color on each one.
         self.option_add("*Font", "TkDefaultFont 12")
         self.option_add("*background", BG_MAIN)
         self.option_add("*foreground", T.FG_MAIN)
@@ -86,21 +86,21 @@ class GhostBot(tk.Tk):
         self.style = ttk.Style(self)
         self.style.theme_use("clam")
 
-        # Fonte global maior + base escura
+        # Global larger font + dark base
         _default_font = ("TkDefaultFont", 12)
         self.style.configure(".", font=_default_font, background=BG_MAIN, foreground=T.FG_MAIN,
                              fieldbackground=T.BG_INPUT, bordercolor=T.BORDER,
                              lightcolor=BG_PANEL, darkcolor=BG_PANEL)
 
-        # Estilos botoes / labels
+        # Button/label styles
         self.style.configure("TButton", padding=6, relief="solid", borderwidth=1,
                              bordercolor=T.GREEN, background=BG_PANEL, foreground=T.FG_MAIN)
         self.style.map("TButton", background=[("active", "#26392F")],
                        bordercolor=[("active", T.GREEN_HI)])
-        # Start = verde com texto escuro
+        # Start = green with dark text
         self.style.configure("Accent.TButton", background=T.GREEN, foreground="#0E1714")
         self.style.map("Accent.TButton", background=[("active", T.GREEN_HI)])
-        # Stop = vermelho (botao de emergencia)
+        # Stop = red (emergency button)
         self.style.configure("Stop.TButton", background=T.RED, foreground="#ffffff")
         self.style.map("Stop.TButton", background=[("active", "#B83232")])
         self.style.configure("TLabel", background=BG_MAIN, foreground=T.FG_MAIN)
@@ -122,9 +122,9 @@ class GhostBot(tk.Tk):
         self.menu = GhostBotMenu(self)
         self.config(menu=self.menu)
 
-        # === LAYOUT RESPONSIVO COM GRID ===
-        # Coluna 0 (lista): largura fixa.  Coluna 1 (tabs/log): expande.
-        # Linha 0 (tabs+log via PanedWindow): expande.  Linha 1 (botoes): altura fixa.
+        # === RESPONSIVE LAYOUT WITH GRID ===
+        # Column 0 (list): fixed width.  Column 1 (tabs/log): expands.
+        # Row 0 (tabs+log via PanedWindow): expands.  Row 1 (buttons): fixed height.
         self.grid_columnconfigure(0, weight=0, minsize=180)
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -135,7 +135,7 @@ class GhostBot(tk.Tk):
         self.client.add_callback(Command.INFO, lambda message: self.set_char_list(message.target.split(' ')))
         self.client.add_callback(Command.INFO_CHAR, lambda message: update_char_info_display(message.target))
 
-        # Coluna esquerda: banner do logo no topo + lista de personagens embaixo
+        # Left column: logo banner on top + character list below
         left_frame = tk.Frame(self, bg=BG_MAIN)
         left_frame.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(6, 3), pady=6)
         left_frame.grid_rowconfigure(1, weight=1)
@@ -147,10 +147,10 @@ class GhostBot(tk.Tk):
             self._logo_img = ImageTk.PhotoImage(_logo_im)
             tk.Label(left_frame, image=self._logo_img, bg=BG_MAIN, borderwidth=0).grid(row=0, column=0, pady=(0, 6))
         except Exception as _e:
-            logger.debug("logo banner nao carregou: %s", _e)
+            logger.debug("logo banner not loaded: %s", _e)
 
         self.list_box = ScrollableListbox(parent=left_frame, scrollx=False, scrolly=True, listvariable=self._char_list)
-        tk.Frame.configure(self.list_box, bg=BG_MAIN)  # bg do frame em volta da lista
+        tk.Frame.configure(self.list_box, bg=BG_MAIN)  # bg of the frame around the list
         self.list_box.config(bg=BG_LIST, fg=FG_LIST, borderwidth=0, highlightthickness=0,
                              selectbackground=ACCENT, selectforeground="#0E1714")
         if hasattr(self.list_box, "v_scroll"):
@@ -158,7 +158,7 @@ class GhostBot(tk.Tk):
                                              activebackground=T.GREEN, borderwidth=0, highlightthickness=0)
         self.list_box.grid(row=1, column=0, sticky="nsew")
 
-        # PanedWindow vertical: tabs em cima, log embaixo. Usuario arrasta o divisor.
+        # Vertical PanedWindow: tabs on top, log below. User drags the divider.
         self._splitter = tk.PanedWindow(self, orient=tk.VERTICAL, sashwidth=6, bg=BG_MAIN,
                                         sashrelief="flat", borderwidth=0)
         self._splitter.grid(row=0, column=1, sticky="nsew", padx=(3, 6), pady=(6, 3))
@@ -172,8 +172,8 @@ class GhostBot(tk.Tk):
                            insertbackground="#dcddde")
         self._splitter.add(self.log, minsize=80, height=140, stretch="never")
 
-        # Cada aba vai dentro de um ScrollableFrame -> a ABA INTEIRA rola na vertical
-        # (nao so o combo). As abas continuam acessiveis via self._*_frame.
+        # Each tab goes inside a ScrollableFrame -> the ENTIRE TAB scrolls vertically
+        # (not just the combo). Tabs remain accessible via self._*_frame.
         def _make_tab(frame_cls, text, **kw):
             sf = ScrollableFrame(self.tabbed_widget)
             frame = frame_cls(master=sf.inner, **kw)
@@ -188,6 +188,14 @@ class GhostBot(tk.Tk):
         self._pet_frame = _make_tab(PetFrame, "Pet")
         self._sell_frame = _make_tab(SellFrame, "Sell", client=self.client)
 
+        self._functions_frame.register_config_frames(
+            attack=self._attack_frame,
+            fairy=self._fairy_frame,
+            boss=self._boss_frame,
+            pet=self._pet_frame,
+            sell=self._sell_frame,
+        )
+
         def update_char_info_display(response):
             if response.get('name') != self.selected_char():
                 return
@@ -195,16 +203,16 @@ class GhostBot(tk.Tk):
             self.tabbed_widget.setvar("char_info.name", response.get("name", 'loading.'))
             self.tabbed_widget.setvar("char_info.level", response.get("level", 'loading.'))
             self.tabbed_widget.setvar("char_info.location_name", response.get("location_name", 'loading.'))
-            self.tabbed_widget.setvar("char_info.hp", f"{response.get("hp")}/{response.get("max_hp")}")
-            self.tabbed_widget.setvar("char_info.mana", f"{response.get("mana")}/{response.get("max_mana")}")
+            self.tabbed_widget.setvar("char_info.hp", f"{response.get('hp')}/{response.get('max_hp')}")
+            self.tabbed_widget.setvar("char_info.mana", f"{response.get('mana')}/{response.get('max_mana')}")
             self.tabbed_widget.setvar("char_info.target_name", response.get("target_name", 'loading.'))
             self.tabbed_widget.setvar("char_info.target_hp", response.get("target_hp", 'loading.'))
-            self.tabbed_widget.setvar("char_info.position", f"({response.get("location_x")}, {response.get("location_y")})")
+            self.tabbed_widget.setvar("char_info.position", f"({response.get('location_x')}, {response.get('location_y')})")
             self.tabbed_widget.setvar("char_info.status", response.get("status", 'loading.'))
             self.tabbed_widget.setvar("window_info.pos", response.get("window_pos", ''))
             self.tabbed_widget.setvar("window_info.size", response.get("window_size", ''))
 
-            # Barra HP do alvo (0-100, -1 = morto/sem alvo)
+            # Target HP bar (0-100, -1 = dead/no target)
             t_hp = response.get("target_hp", 0)
             try:
                 t_hp_int = int(t_hp) if t_hp is not None else 0
@@ -212,32 +220,25 @@ class GhostBot(tk.Tk):
             except (ValueError, TypeError):
                 self._functions_frame.target_hp_bar['value'] = 0
 
-            # Indicador de combate
+            # Battle indicator
             if response.get("in_battle"):
-                self._functions_frame.battle_label.config(text="🔴 EM COMBATE", bg="#e04040", fg="white")
+                self._functions_frame.battle_label.config(text="🔴 IN BATTLE", bg="#e04040", fg="white")
             else:
-                self._functions_frame.battle_label.config(text="○ Tranquilo", bg=T.BG_PANEL, fg=T.FG_MUTED)
+                self._functions_frame.battle_label.config(text="○ Calm", bg=T.BG_PANEL, fg=T.FG_MUTED)
 
             # Stats (Dashboard)
             self.tabbed_widget.setvar("char_info.kills", str(response.get("kills", 0)))
-            farm_s = int(response.get("farm_time_s") or 0)
-            h, rem = divmod(farm_s, 3600)
-            m, s = divmod(rem, 60)
-            self.tabbed_widget.setvar("char_info.farm_time", f"{h:02d}:{m:02d}:{s:02d}")
+            self.tabbed_widget.setvar("char_info.farm_time", response.get("farm_time_hms", "00:00:00"))
             _energy = response.get("energy")
             self.tabbed_widget.setvar("char_info.energy", str(_energy) if _energy is not None else "—")
             self.tabbed_widget.setvar("char_info.xp", f"+{response.get('xp_gained', 0)}")
-            # gold_gained vem em COPPER -> separa em Gold/Silver/Copper (100c=1s, 100s=1g)
-            _copper_total = max(0, int(response.get('gold_gained', 0) or 0))
-            _g, _rem = divmod(_copper_total, 10000)
-            _s, _c = divmod(_rem, 100)
-            self.tabbed_widget.setvar("char_info.gold_g", str(_g))
-            self.tabbed_widget.setvar("char_info.gold_s", str(_s))
-            self.tabbed_widget.setvar("char_info.gold_c", str(_c))
+            self.tabbed_widget.setvar("char_info.gold_g", str(response.get("gold_g", 0)))
+            self.tabbed_widget.setvar("char_info.gold_s", str(response.get("gold_s", 0)))
+            self.tabbed_widget.setvar("char_info.gold_c", str(response.get("gold_c", 0)))
 
-            # Barra grifada: acao atual do bot
+            # Bold bar: bot's current action
             self.tabbed_widget.setvar("char_info.current_action", response.get("current_action", "—"))
-            # Painel de drops da sessao (lista + botoes Quero/Nao quero)
+            # Session drops panel (list + Want/Don't want buttons)
             self._functions_frame.update_drops(response.get("drops", {}))
 
         self.client.add_callback(Command.CONFIG, self._update_char_config)
@@ -248,11 +249,11 @@ class GhostBot(tk.Tk):
                 config=_functions_frame.save_config()
             )
 
-        # Botoes em frame, alinhados a direita
+        # Buttons in frame, aligned right
         _btn_frame = ttk.Frame(self)
         _btn_frame.grid(row=1, column=1, sticky="e", padx=(3, 10), pady=(3, 8))
-        # Status do Save (verde = salvo / vermelho = falhou) -- feedback VISIVEL: antes o
-        # Save falhava em silencio quando a validacao barrava no servidor.
+        # Save Status (green = saved / red = failed) -- VISIBLE feedback: before Save
+        # failed silently when validation failed on the server.
         self._save_status = tk.Label(_btn_frame, text="", bg=T.BG_MAIN, fg=T.FG_MUTED,
                                      font=("TkDefaultFont", 11), anchor="e", width=22)
         self._save_status.pack(side="left", padx=(0, 8))
@@ -294,35 +295,35 @@ class GhostBot(tk.Tk):
             pass
 
     def _on_config_saved(self, message):
-        # Servidor confirmou que gravou. Callback roda na thread do IPC -> marshala pra UI.
+        # Server confirmed it saved. Callback runs on IPC thread -> marshals to UI.
         _tgt = message.target if isinstance(message.target, dict) else {}
         _char = _tgt.get("char", "?")
-        self.log.insert_log(f'✓ Config salva para {_char}')
-        self.after(0, lambda: self._set_save_status(f'✓ Salvo {time.strftime("%H:%M:%S")}', T.GREEN_HI))
+        self.log.insert_log(f'✓ Config saved for {_char}')
+        self.after(0, lambda: self._set_save_status(f'✓ Saved {time.strftime("%H:%M:%S")}', T.GREEN_HI))
 
     def _on_server_error(self, message):
-        # Falha vinda do servidor (ex: validacao do Save). Mostra VISIVEL (popup + label).
+        # Failure from the server (e.g. Save validation). Shows VISIBLE (popup + label).
         _tgt = message.target if isinstance(message.target, dict) else {}
         _char = _tgt.get("char", "?")
-        _reason = _tgt.get("reason", "erro desconhecido")
-        self.log.insert_log(f'✗ FALHA ({_char}): {_reason}')
+        _reason = _tgt.get("reason", "unknown error")
+        self.log.insert_log(f'✗ FAILED ({_char}): {_reason}')
         def _show():
-            self._set_save_status("✗ Falhou — veja o aviso", T.RED)
-            messagebox.showerror("Falha ao salvar",
-                                 f"Personagem: {_char}\n\n{_reason}", parent=self)
+            self._set_save_status("✗ Failed — see log", T.RED)
+            messagebox.showerror("Save failed",
+                                 f"Character: {_char}\n\n{_reason}", parent=self)
         self.after(0, _show)
 
     def set_char_list(self, _char_list):
-        # tk.Variable.get() devolve TUPLA pra lista (ou '' se vazio); _char_list eh LISTA.
-        # Comparar tupla com lista dava SEMPRE diferente -> repovoava o listbox a cada poll
-        # -> limpava a selecao do usuario -> congelava o dashboard. Normaliza antes de comparar.
+        # tk.Variable.get() returns TUPLE for list (or '' if empty); _char_list is LIST.
+        # Comparing tuple with list was ALWAYS different -> repopulated listbox every poll
+        # -> cleared user selection -> froze the dashboard. Normalize before comparing.
         _cur = self._char_list.get()
         _cur = list(_cur) if isinstance(_cur, (tuple, list)) else []
         _new = list(_char_list)
         if _cur != _new:
-            # set() do listvariable REPOVOA o listbox e LIMPA a selecao. Preserva a selecao
-            # do usuario (por NOME) pra nao desselecionar/congelar o dashboard quando a lista
-            # muda (ex: a 2a conta loga, ou um char some/volta no scan do servidor).
+            # listvariable's set() REPOPULATES the listbox and CLEARS selection. Preserves the user's
+            # selection (by NAME) so we don't deselect/freeze the dashboard when the list
+            # changes (e.g. 2nd account logs in, or a char disappears/returns from server scan).
             _selected = self.selected_char()
             self._char_list.set(_char_list)
             if _selected in _new:
@@ -422,11 +423,11 @@ def main():
         _tick = 0
         while True:
             time.sleep(1)
-            # Pede a LISTA de personagens periodicamente (~3s) pra a interface se
-            # AUTO-RECUPERAR: se for fechada e reaberta (ou se o char logar depois),
-            # a lista volta sozinha. Antes dependia so do "empurrao" unico que o
-            # servidor manda na conexao -- se perdesse, a lista ficava vazia pra sempre.
-            # set_char_list so repovoa se a lista mudou (nao pisca, preserva selecao).
+            # Request the CHARACTER LIST periodically (~3s) so the interface can
+            # AUTO-RECOVER: if it's closed and reopened (or if the char logs in later),
+            # the list comes back on its own. Before it only relied on the single "push" the
+            # server sends on connection -- if missed, the list stayed empty forever.
+            # set_char_list only repopulates if the list changed (no flicker, preserves selection).
             if _tick % 3 == 0:
                 ghost_bot.client.list_chars()
             _tick += 1

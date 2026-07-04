@@ -1,11 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 
-from GhostBot.UX.tabbed_widget.attack_frame import AttackFrame
-from GhostBot.UX.tabbed_widget.boss_frame import BossFrame
-from GhostBot.UX.tabbed_widget.fairy_frame import FairyFrame
-from GhostBot.UX.tabbed_widget.pet_frame import PetFrame
-from GhostBot.UX.tabbed_widget.sell_frame import SellFrame
+from GhostBot.UX.tabbed_widget.tab_frame import TabFrame
 from GhostBot.config import Config
 from GhostBot.UX import theme as T
 
@@ -41,24 +37,24 @@ class FunctionsFrame(tk.Frame):
             current_action=tk.StringVar(master=self, name="char_info.current_action", value="—"),
         )
 
-        # Todos os checkboxes de funcao num BLOCO proprio (topo-esquerda), soltos do grid
-        # dos paineis altos -- senao Sell/Boss caiam no nivel do painel de info/acao.
+        # All function checkboxes in a SEPARATE block (top-left), detached from the tall panels' grid
+        # -- otherwise Sell/Boss would fall at the same level as the info/action panel.
         checks_frame = tk.Frame(master=self, bg=T.BG_MAIN)
         checks_frame.grid(row=0, column=0, rowspan=8, sticky="nw", padx=4, pady=4)
         _checks = (
             ("Attack", 'attack_enabled'), ("Fairy", 'fairy_enabled'), ("Pet", 'pet_enabled'),
             ("Sell", 'sell_enabled'), ("Boss", 'boss_enabled'),
         )
-        self._other_checks = []   # (var_key, checkbutton) das funcoes NAO-boss
+        self._other_checks = []   # (var_key, checkbutton) for NON-boss functions
         for _i, (_txt, _key) in enumerate(_checks):
             _cb = ttk.Checkbutton(master=checks_frame, text=_txt, style="TCheckbutton", width=13,
                                   variable=self._vars[_key])
             _cb.grid(row=_i, column=0, sticky="w", pady=1)
             if _key != 'boss_enabled':
                 self._other_checks.append((_key, _cb))
-        # Regra "Boss e' so Boss": ligar o Boss desmarca e DESABILITA o resto (o modo boss
-        # nao roda junto com o farm normal). O trace pega tanto o clique do usuario quanto
-        # o load de config (quando main.py seta bot_config.boss.enabled).
+        # "Boss is Boss-only" rule: turning Boss on unchecks and DISABLES the rest (the boss mode
+        # doesn't run alongside normal farming). The trace catches both user clicks and
+        # config load (when main.py sets bot_config.boss.enabled).
         self._vars['boss_enabled'].trace_add('write', lambda *a: self._sync_boss_only())
 
         char_info_frame = tk.Frame(master=self)
@@ -79,7 +75,7 @@ class FunctionsFrame(tk.Frame):
         ttk.Label(master=char_info_frame, textvariable=self._vars['hp'], width=25).grid(row=3, column=1)
         ttk.Label(master=char_info_frame, textvariable=self._vars['mana'], width=25).grid(row=4, column=1)
         ttk.Label(master=char_info_frame, textvariable=self._vars['target_name'], width=25).grid(row=5, column=1)
-        # Target HP: numero + barra de progresso vermelha
+        # Target HP: number + red progress bar
         target_hp_box = tk.Frame(master=char_info_frame)
         target_hp_box.grid(row=6, column=1, sticky="w")
         ttk.Label(master=target_hp_box, textvariable=self._vars['target_hp'], width=5).pack(side="left")
@@ -94,23 +90,23 @@ class FunctionsFrame(tk.Frame):
         ttk.Label(master=char_info_frame, text="Status:", width=10).grid(row=0, column=2)
         ttk.Label(master=char_info_frame, textvariable=self._vars['status'], width=10).grid(row=0, column=3)
 
-        # Indicador de combate (atualizado externamente via main.py)
-        ttk.Label(master=char_info_frame, text="Combate:", width=10).grid(row=1, column=2)
-        self.battle_label = tk.Label(master=char_info_frame, text="○ Tranquilo", bg=T.BG_PANEL, fg=T.FG_MUTED, width=16, anchor="center")
+        # Battle indicator (updated externally via main.py)
+        ttk.Label(master=char_info_frame, text="Battle:", width=10).grid(row=1, column=2)
+        self.battle_label = tk.Label(master=char_info_frame, text="○ Calm", bg=T.BG_PANEL, fg=T.FG_MUTED, width=16, anchor="center")
         self.battle_label.grid(row=1, column=3)
 
-        # Stats da sessao (Kills + Tempo de farm)
+        # Session stats (Kills + Farm time)
         stats_frame = tk.Frame(master=self, bd=1, relief="solid", bg=T.BG_PANEL)
         stats_frame.grid(row=5, column=1, columnspan=3, sticky="ew", padx=8, pady=(12, 4))
-        ttk.Label(master=stats_frame, text="📊 SESSÃO ATUAL", background=T.BG_PANEL, foreground=T.FG_MUTED,
+        ttk.Label(master=stats_frame, text="📊 CURRENT SESSION", background=T.BG_PANEL, foreground=T.FG_MUTED,
                   font=("TkDefaultFont", 11, "bold")).grid(row=0, column=0, columnspan=4, sticky="w", padx=8, pady=(6, 2))
 
-        ttk.Label(master=stats_frame, text="Mobs mortos:", background=T.BG_PANEL,
+        ttk.Label(master=stats_frame, text="Mobs killed:", background=T.BG_PANEL,
                   font=("TkDefaultFont", 12)).grid(row=1, column=0, sticky="w", padx=(8, 4), pady=4)
         ttk.Label(master=stats_frame, textvariable=self._vars['kills'], background=T.BG_PANEL,
                   font=("TkDefaultFont", 16, "bold"), foreground=T.GREEN_HI).grid(row=1, column=1, sticky="w", padx=(0, 16), pady=4)
 
-        ttk.Label(master=stats_frame, text="Tempo de farm:", background=T.BG_PANEL,
+        ttk.Label(master=stats_frame, text="Farm time:", background=T.BG_PANEL,
                   font=("TkDefaultFont", 12)).grid(row=1, column=2, sticky="w", padx=(8, 4), pady=4)
         ttk.Label(master=stats_frame, textvariable=self._vars['farm_time'], background=T.BG_PANEL,
                   font=("TkDefaultFont", 16, "bold"), foreground=T.GREEN_HI).grid(row=1, column=3, sticky="w", padx=(0, 8), pady=4)
@@ -120,12 +116,12 @@ class FunctionsFrame(tk.Frame):
         ttk.Label(master=stats_frame, textvariable=self._vars['energy'], background=T.BG_PANEL,
                   font=("TkDefaultFont", 16, "bold"), foreground=T.GREEN_HI).grid(row=2, column=1, sticky="w", padx=(0, 16), pady=(0, 6))
 
-        ttk.Label(master=stats_frame, text="XP ganho:", background=T.BG_PANEL,
+        ttk.Label(master=stats_frame, text="XP gained:", background=T.BG_PANEL,
                   font=("TkDefaultFont", 12)).grid(row=2, column=2, sticky="w", padx=(8, 4), pady=(0, 6))
         ttk.Label(master=stats_frame, textvariable=self._vars['xp'], background=T.BG_PANEL,
                   font=("TkDefaultFont", 16, "bold"), foreground=T.GREEN_HI).grid(row=2, column=3, sticky="w", pady=(0, 6))
 
-        ttk.Label(master=stats_frame, text="Gold ganho:", background=T.BG_PANEL,
+        ttk.Label(master=stats_frame, text="Gold gained:", background=T.BG_PANEL,
                   font=("TkDefaultFont", 12)).grid(row=3, column=0, sticky="w", padx=(8, 4), pady=(0, 8))
         _coins = tk.Frame(stats_frame, bg=T.BG_PANEL)
         _coins.grid(row=3, column=1, columnspan=3, sticky="w", pady=(0, 8))
@@ -135,28 +131,29 @@ class FunctionsFrame(tk.Frame):
             tk.Label(_coins, text=_lbl, bg=T.BG_PANEL, fg=_color,
                      font=("TkDefaultFont", 11, "bold")).pack(side="left", padx=(1, 12))
 
-        # Barra GRIFADA com a ACAO ATUAL do bot (verde, em destaque)
+        # BOLDED bar showing the bot's CURRENT ACTION (green, highlighted)
         self.action_label = tk.Label(
             master=self, textvariable=self._vars['current_action'],
             bg=T.GREEN, fg="#0E1714", font=("TkDefaultFont", 13, "bold"),
             anchor="w", padx=10, pady=5)
         self.action_label.grid(row=6, column=0, columnspan=4, sticky="ew", padx=8, pady=(8, 2))
 
-        # Painel de DROPS da sessao (com triagem de 1 clique: Quero / Nao quero)
+        # SESSION DROPS panel (1-click triage: Want / Don't want)
         drops_frame = tk.Frame(master=self, bd=1, relief="solid", bg=T.BG_PANEL)
         drops_frame.grid(row=7, column=1, columnspan=3, sticky="ew", padx=8, pady=(4, 8))
-        ttk.Label(master=drops_frame, text="🎁 DROPS DA SESSÃO", background=T.BG_PANEL,
+        ttk.Label(master=drops_frame, text="🎁 SESSION DROPS", background=T.BG_PANEL,
                   foreground=T.FG_MUTED, font=("TkDefaultFont", 11, "bold")).pack(
             anchor="w", padx=8, pady=(6, 2))
         self.drops_container = tk.Frame(master=drops_frame, bg=T.BG_PANEL)
         self.drops_container.pack(fill="x", padx=4, pady=(0, 6))
         self._last_drops = None
-        self.update_drops({})  # placeholder inicial
+        self._config_frames: dict[str, TabFrame] = {}
+        self.update_drops({})  # initial placeholder
 
     def _sync_boss_only(self):
-        """Regra 'Boss e' so Boss': com o Boss ligado, desmarca e DESABILITA as outras
-        funcoes (nao da pra marcar). Boss desligado -> reabilita. Chamado pelo trace do
-        bot_config.boss.enabled (clique do usuario ou load de config)."""
+        """'Boss is Boss-only' rule: with Boss on, unchecks and DISABLES the other
+        functions (can't check them). Boss off -> re-enables. Called by the trace of
+        bot_config.boss.enabled (user click or config load)."""
         boss_on = bool(self._vars['boss_enabled'].get())
         for _key, _cb in getattr(self, '_other_checks', []):
             if boss_on:
@@ -166,8 +163,8 @@ class FunctionsFrame(tk.Frame):
                 _cb.state(['!disabled'])
 
     def update_drops(self, drops: dict):
-        """Entrada thread-safe (chamada pela thread do IPC): so redesenha quando
-        os drops mudam, e agenda o desenho na thread da UI (tkinter nao e thread-safe)."""
+        """Thread-safe entry (called by IPC thread): only redraws when
+        drops change, and schedules the draw on the UI thread (tkinter is not thread-safe)."""
         drops = drops or {}
         if drops == self._last_drops:
             return
@@ -175,12 +172,12 @@ class FunctionsFrame(tk.Frame):
         self.after(0, lambda d=dict(drops): self._render_drops(d))
 
     def _render_drops(self, drops: dict):
-        """Redesenha a lista de drops. Item ja classificado mostra uma TAG
-        (🎯 quero / 🚫 ignorado); item ainda nao decidido mostra os botoes."""
+        """Redraws the drops list. Already-classified item shows a TAG
+        (🎯 want / 🚫 ignored); undecided item shows the buttons."""
         for w in self.drops_container.winfo_children():
             w.destroy()
         if not drops:
-            tk.Label(self.drops_container, text="(nenhum drop ainda)", bg=T.BG_PANEL,
+            tk.Label(self.drops_container, text="(no drops yet)", bg=T.BG_PANEL,
                      fg=T.FG_MUTED, font=("TkDefaultFont", 11)).pack(anchor="w", padx=8)
             return
         try:
@@ -195,23 +192,23 @@ class FunctionsFrame(tk.Frame):
             tk.Label(row, text=f"{name}  ×{count}", bg=T.BG_PANEL, fg=T.FG_MAIN,
                      font=("TkDefaultFont", 11), anchor="w", width=30).pack(side="left")
             if low in want:
-                tk.Label(row, text="🎯 quero", bg=T.BG_PANEL, fg=T.GREEN_HI,
+                tk.Label(row, text="🎯 want", bg=T.BG_PANEL, fg=T.GREEN_HI,
                          font=("TkDefaultFont", 10, "bold")).pack(side="left", padx=4)
             elif low in ignore:
-                tk.Label(row, text="🚫 ignorado", bg=T.BG_PANEL, fg=T.FG_MUTED,
+                tk.Label(row, text="🚫 ignored", bg=T.BG_PANEL, fg=T.FG_MUTED,
                          font=("TkDefaultFont", 10)).pack(side="left", padx=4)
             else:
-                tk.Button(row, text="✅ Quero", bg=T.BG_PANEL, fg=T.GREEN_HI, bd=1,
+                tk.Button(row, text="✅ Want", bg=T.BG_PANEL, fg=T.GREEN_HI, bd=1,
                           activebackground="#26392F", relief="solid",
                           command=lambda n=name: self._triage(n, "want")).pack(side="left", padx=2)
-                tk.Button(row, text="❌ Não", bg=T.BG_PANEL, fg=T.RED, bd=1,
+                tk.Button(row, text="❌ Don't", bg=T.BG_PANEL, fg=T.RED, bd=1,
                           activebackground="#3a2222", relief="solid",
                           command=lambda n=name: self._triage(n, "ignore")).pack(side="left", padx=2)
 
     def _triage(self, name: str, which: str):
-        """Botao do Dashboard: joga o item na lista QUERO ou NAO QUERO (escreve
-        no alertas_drop.txt; o DropWatch do server recarrega sozinho). Redesenha
-        ja, pra os botoes daquele item virarem a tag na hora."""
+        """Dashboard button: puts the item in the WANT or DON'T WANT list (writes
+        to alertas_drop.txt; the server's DropWatch reloads automatically). Redraws
+        immediately, so that item's buttons turn into tags instantly."""
         try:
             from GhostBot.drop_watcher import add_to_watchlist
             add_to_watchlist(name, which)
@@ -219,27 +216,16 @@ class FunctionsFrame(tk.Frame):
             pass
         self._render_drops(self._last_drops or {})
 
+    def register_config_frames(self, **frames):
+        self._config_frames = {k: v for k, v in frames.items() if v is not None}
+
     def save_config(self):
         def _function_enabled(f):
             return int(self.getvar(f'bot_config.{f}.enabled')) == 1
 
         _config = Config()
 
-        # As abas agora ficam dentro de containers de scroll (ScrollableFrame), entao nao sao
-        # mais irmas diretas no notebook. Procura cada uma na arvore toda da janela.
-        _types = ((AttackFrame, 'attack'), (PetFrame, 'pet'), (FairyFrame, 'fairy'),
-                  (BossFrame, 'boss'), (SellFrame, 'sell'))
-        found = {}
-
-        def _walk(w):
-            for c in w.winfo_children():
-                for cls, key in _types:
-                    if isinstance(c, cls):
-                        found[key] = c
-                _walk(c)
-
-        _walk(self.winfo_toplevel())
-        for cls, key in _types:
-            if key in found and _function_enabled(key):
-                setattr(_config, key, found[key].extract_config())
+        for key, frame in self._config_frames.items():
+            if _function_enabled(key):
+                setattr(_config, key, frame.extract_config())
         return _config

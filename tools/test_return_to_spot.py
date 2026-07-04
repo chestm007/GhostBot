@@ -1,69 +1,60 @@
 """
-Teste do retorno ao spot via mapa:
-  1. Acha o titulo "Map" do mapa aberto via template (ancora)
-  2. right-click no spot = titulo + offset
-  3. fecha o mapa (tecla M)
-  4. poll de location pra confirmar que o char andou
+Test of the return to spot via map:
+  1. Find the open map's "Map" title via template (anchor)
+  2. right-click on the spot = title + offset
+  3. close the map (M key)
+  4. poll location to confirm the char moved
 
-Mapa precisa estar ABERTO antes de rodar. NAO mexe no codigo de producao.
-O offset aqui eh um ponto de TESTE -- o real sera escolhido pelo usuario na UI.
+Map needs to be OPEN before running. Does NOT modify production code.
+The offset here is a TEST point -- the real one will be chosen by the user in the UI.
 """
 import time
+
 import cv2
-from GhostBot.client_window import Win32ClientWindow
-from GhostBot.lib.win32.process import PymemProcess
+
 from GhostBot.lib.math import linear_distance
+from GhostBot.lib.tooling import get_client, match_template
 
 MAP_TITLE_BMP = r"C:\Bot\BotTO\src\GhostBot\Images\misc\map_title.bmp"
-MAP_TO_SPOT = (-125, 297)   # titulo "Map" -> spot de farm (TESTE; real vem da UI)
-MAP_DUMMY_OFFSET = (60, 0)  # clique-isca: spot + isto -> regiao diferente (quebra o bug
-                            # do jogo que ignora 2 cliques seguidos no MESMO destino)
-SPOT_WORLD = (321, 1147)    # coords do mundo do spot exemplo (lido apos round 1).
-                            # NA PRODUCAO: ler client.location no momento que o usuario
-                            # define o spot (ele esta farmando ali) e salvar junto com o offset.
-ARRIVAL = 3                 # distancia pra considerar "chegou no spot"
+MAP_TO_SPOT = (-125, 297)   # "Map" title -> farm spot (TEST; real comes from UI)
+MAP_DUMMY_OFFSET = (60, 0)  # bait click: spot + this -> different region (fixes the bug
+                            # where the game ignores 2 consecutive clicks to the SAME destination)
+SPOT_WORLD = (321, 1147)    # world coords of the example spot (read after round 1).
+                            # IN PRODUCTION: read client.location at the moment the user
+                            # defines the spot (they're farming there) and save it with the offset.
+ARRIVAL = 3                 # distance to consider "arrived at spot"
 THRESHOLD = 0.70
 
 
-def find_title(client):
-    win = client.capture_window()
-    bmp = cv2.imread(MAP_TITLE_BMP, cv2.IMREAD_GRAYSCALE)
-    res = cv2.matchTemplate(win, bmp, cv2.TM_CCOEFF_NORMED)
-    _, mv, _, ml = cv2.minMaxLoc(res)
-    h, w = bmp.shape[:2]
-    if mv < THRESHOLD:
-        return None, mv
-    return (ml[0] + w // 2, ml[1] + h // 2), mv
-
-
 def main():
-    proc = next(iter(PymemProcess.list_clients()), None)
-    if proc is None:
-        raise SystemExit("client.exe nao encontrado")
-    client = Win32ClientWindow(proc)
-    print(f"Janela: {client.get_window_size()}")
+    client = get_client()
+    print(f"Window: {client.get_window_size()}")
 
-    title, score = find_title(client)
+    try:
+        title_match = match_template(client, MAP_TITLE_BMP, threshold=THRESHOLD)
+        title, score = title_match.center, title_match.score
+    except SystemExit:
+        title, score = None, 0.0
     if title is None:
-        raise SystemExit(f">>> titulo 'Map' nao achado (score {score:.3f}). O mapa esta ABERTO?")
+        raise SystemExit(f">>> 'Map' title not found (score {score:.3f}). Is the map OPEN?")
     spot = (title[0] + MAP_TO_SPOT[0], title[1] + MAP_TO_SPOT[1])
     dummy = (spot[0] + MAP_DUMMY_OFFSET[0], spot[1] + MAP_DUMMY_OFFSET[1])
-    print(f"Titulo 'Map' em {title} (score {score:.3f}) -> spot em {spot} | isca em {dummy}")
+    print(f"'Map' title at {title} (score {score:.3f}) -> spot at {spot} | bait at {dummy}")
 
     start = client.location
     d0 = linear_distance(start, SPOT_WORLD)
-    print(f"Char comeca em {start} (dist ao spot {d0:.1f})")
+    print(f"Char starts at {start} (distance to spot {d0:.1f})")
     if d0 < ARRIVAL:
-        print(">>> AVISO: char ja esta no spot -- anda pra longe antes pra ver o retorno.")
-    # clique-isca numa regiao diferente, depois o spot real -> evita o bug do jogo
-    print("Right-click ISCA, depois SPOT, e fecha mapa (M)...")
+        print(">>> WARNING: char is already at the spot -- move away first to see the return.")
+    # bait click in a different region, then the real spot -> avoid the game bug
+    print("BAIT right-click, then SPOT, and close map (M)...")
     client.right_click(dummy)
     time.sleep(0.5)
     client.right_click(spot)
     time.sleep(0.5)
-    client.press_key('m')   # fecha o mapa pra liberar o movimento
+    client.press_key('m')   # close the map to allow movement
 
-    # timer de chegada: espera o char chegar perto do spot (igual no Blacksmith)
+    # arrival timer: wait for the char to arrive near the spot (same as Blacksmith)
     t0 = time.time()
     last = None
     stationary_t = None
@@ -71,16 +62,16 @@ def main():
     while time.time() - t0 < 45:
         cur = client.location
         d = linear_distance(cur, SPOT_WORLD)
-        print(f"  loc={cur}  dist_ao_spot={d:.1f}")
+        print(f"  loc={cur}  distance_to_spot={d:.1f}")
         if d < ARRIVAL:
             arrived = True
-            print(f"  >>> CHEGOU NO SPOT! dist={d:.1f}")
+            print(f"  >>> ARRIVED AT THE SPOT! dist={d:.1f}")
             break
         if last is not None and linear_distance(cur, last) < 1:
             if stationary_t is None:
                 stationary_t = time.time()
             elif time.time() - stationary_t > 4:
-                print(f"  >>> parou sem chegar (dist={d:.1f})")
+                print(f"  >>> stopped without arriving (dist={d:.1f})")
                 break
         else:
             stationary_t = None
@@ -89,7 +80,7 @@ def main():
     else:
         print("  >>> TIMEOUT")
 
-    print("CHEGOU NO SPOT" if arrived else "NAO CHEGOU")
+    print("ARRIVED AT THE SPOT" if arrived else "DID NOT ARRIVE")
 
 
 if __name__ == "__main__":

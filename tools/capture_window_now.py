@@ -1,21 +1,16 @@
-"""
-Captura a janela do TO EXATAMENTE como o bot a ve (via client.capture_window)
-e salva em tmp_window_now.png. Usado pra inspecionar a UI e definir
-templates/offsets (mesmo esquema do dialog de venda do NPC).
-"""
+"""Capture the TO window exactly as the bot sees it and save it to tmp_window_now.png."""
+from __future__ import annotations
+
 import cv2
-from GhostBot.client_window import Win32ClientWindow
-from GhostBot.lib.win32.process import PymemProcess
 
-proc = next(iter(PymemProcess.list_clients()), None)
-if proc is None:
-    raise SystemExit("client.exe nao encontrado")
+from _shared import capture_window, get_client
 
-client = Win32ClientWindow(proc)
+
+client = get_client()
 ww, wh = client.get_window_size()
 print(f"Window: {ww} x {wh}")
 
-img = client.capture_window(color=True)
+img = capture_window(client, color=True)
 out = r"C:\Bot\BotTO\tmp_window_now.png"
 cv2.imwrite(out, img)
-print(f"Salvo em {out} | shape={img.shape}")
+print(f"Saved to {out} | shape={img.shape}")

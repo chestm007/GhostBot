@@ -1,29 +1,29 @@
 """
-Teste de venda no NPC -- VERSAO ROBUSTA (template matching pra achar dialog).
+Sell test in NPC -- ROBUST VERSION (template matching to find dialog).
 
-Fluxo:
-  1. Acha o header 'Sell' do dialog via template matching de
+Flow:
+  1. Find the 'Sell' header of the dialog via template matching of
      Images/misc/npc_sell_dialog_header.bmp
-  2. A partir do header, computa posicoes de slot 1, slot 30,
-     sell confirm e next page usando offsets capturados
-  3. Pra cada pagina (max 3):
-     - Screenshot do grid superior
-     - Match cada BMP de Images/SELL/ na area do grid
-     - Click cada match
-     - Click Sell confirm (se DRY_RUN=False)
-     - Click Next page (se DRY_RUN=False)
+  2. From the header, compute slot 1, slot 30,
+     sell confirm and next page positions using captured offsets
+  3. For each page (max 3):
+     - Screenshot the top grid
+     - Match each BMP from Images/SELL/ in the grid area
+     - Click each match
+     - Click Sell confirm (if DRY_RUN=False)
+     - Click Next page (if DRY_RUN=False)
 
-Dialog pode estar em QUALQUER posicao -- template matching encontra.
+Dialog can be in ANY position -- template matching finds it.
 """
 import os
 import time
 import cv2
 import numpy as np
-from GhostBot.client_window import Win32ClientWindow
-from GhostBot.lib.win32.process import PymemProcess
 
-# ---- Offsets relativos ao centro do header (capturados via read_cursor_now) ----
-# Y do slot 1 ajustado -25 (era 75) -- captura inicial estava 1 row abaixo
+from GhostBot.lib.tooling import get_client, match_template
+
+# ---- Offsets relative to header center (captured via read_cursor_now) ----
+# Y of slot 1 adjusted -25 (was 75) -- initial capture was 1 row below
 HEADER_TO_SLOT1 = (-90, +50)
 HEADER_TO_SLOT30 = (+85, +153)   # tambem ajustado -25 pra manter spacing
 HEADER_TO_SELL_CONFIRM = (-69, +498)
@@ -39,21 +39,6 @@ DEDUP_TOLERANCE = 15
 DRY_RUN = True  # True = nao clica sell confirm nem next page
 
 
-def find_header_center(window_img):
-    """Acha o header do dialog Sell na janela. Retorna (cx, cy) ou None."""
-    header_bmp = cv2.imread(HEADER_BMP_PATH, cv2.IMREAD_GRAYSCALE)
-    if header_bmp is None:
-        raise SystemExit(f"BMP do header nao encontrado em {HEADER_BMP_PATH}")
-    window_gray = cv2.cvtColor(window_img, cv2.COLOR_BGR2GRAY) if len(window_img.shape) == 3 else window_img
-    result = cv2.matchTemplate(window_gray, header_bmp, cv2.TM_CCOEFF_NORMED)
-    _, max_val, _, max_loc = cv2.minMaxLoc(result)
-    print(f"Header match score: {max_val:.3f} em {max_loc}")
-    if max_val < HEADER_MATCH_THRESHOLD:
-        return None
-    h, w = header_bmp.shape[:2]
-    return (max_loc[0] + w // 2, max_loc[1] + h // 2)
-
-
 def load_sell_bmps():
     bmps = {}
     for fn in os.listdir(SELL_DIR):
@@ -66,7 +51,7 @@ def load_sell_bmps():
 
 
 def find_sellable_in_grid(window_img, header_pos, sell_bmps):
-    """Acha items de SELL/ no grid superior. Retorna lista de (cx, cy, item_name)."""
+    """Find SELL/ items in the top grid. Returns list of (cx, cy, item_name)."""
     hx, hy = header_pos
     s1x, s1y = hx + HEADER_TO_SLOT1[0], hy + HEADER_TO_SLOT1[1]
     s30x, s30y = hx + HEADER_TO_SLOT30[0], hy + HEADER_TO_SLOT30[1]
@@ -99,27 +84,20 @@ def find_sellable_in_grid(window_img, header_pos, sell_bmps):
 
 
 def main():
-    proc = next(iter(PymemProcess.list_clients()), None)
-    if proc is None:
-        raise SystemExit("client.exe nao encontrado")
-    client = Win32ClientWindow(proc)
+    client = get_client()
     print(f"Window: {client.get_window_size()}")
     print(f"DRY_RUN: {DRY_RUN}")
     print()
 
     sell_bmps = load_sell_bmps()
-    print(f"Carregados {len(sell_bmps)} BMPs de SELL/")
+    print(f"Loaded {len(sell_bmps)} BMPs from SELL/")
     print()
-    print("Comecando em 3s...")
+    print(f"Starting in 3s...")
     time.sleep(3)
 
-    # Acha header (uma vez -- assumimos dialog nao move durante execucao)
-    window_img = client.capture_window()
-    header_pos = find_header_center(window_img)
-    if header_pos is None:
-        print(">>> ERRO: Header do dialog nao encontrado. Dialog ta aberto?")
-        return
-    print(f"Header encontrado em {header_pos}")
+    # Find header (once -- we assume dialog doesn't move during execution)
+    header_pos = match_template(client, HEADER_BMP_PATH, threshold=HEADER_MATCH_THRESHOLD).center
+    print(f"Header found at {header_pos}")
 
     sell_confirm_pos = (header_pos[0] + HEADER_TO_SELL_CONFIRM[0],
                         header_pos[1] + HEADER_TO_SELL_CONFIRM[1])
@@ -130,10 +108,10 @@ def main():
 
     for page in range(1, MAX_PAGES + 1):
         print(f"\n===== PAGINA {page}/{MAX_PAGES} =====")
-        # re-screenshot pra refletir items na pagina atual
+        # re-screenshot to reflect items on the current page
         window_img = client.capture_window()
         matches = find_sellable_in_grid(window_img, header_pos, sell_bmps)
-        print(f"Items sellable encontrados: {len(matches)}")
+        print(f"Sellable items found: {len(matches)}")
         for x, y, name in matches:
             print(f"  - {name} em ({x}, {y})")
         matches.sort(key=lambda m: (-m[1], -m[0]))  # bottom-right -> top-left
@@ -145,24 +123,24 @@ def main():
 
         if matches:
             if DRY_RUN:
-                print(f"  [DRY_RUN] PULA Sell confirm em {sell_confirm_pos}")
+                print(f"  [DRY_RUN] SKIPPING Sell confirm at {sell_confirm_pos}")
             else:
-                print(f"  Clicando Sell confirm em {sell_confirm_pos}")
+                print(f"  Clicking Sell confirm at {sell_confirm_pos}")
                 client.left_click(sell_confirm_pos)
                 time.sleep(1.5)
         else:
-            print("  Nenhum item sellable nessa pagina.")
+            print(f"  No sellable items on this page.")
 
         if page < MAX_PAGES:
             if DRY_RUN:
-                print(f"  [DRY_RUN] PULA Next page em {next_page_pos} -- abortando")
+                print(f"  [DRY_RUN] SKIPPING Next page at {next_page_pos} -- aborting")
                 break
             else:
-                print(f"  Clicando Next page em {next_page_pos}")
+                print(f"  Clicking Next page at {next_page_pos}")
                 client.left_click(next_page_pos)
                 time.sleep(1)
 
-    print("\n===== FIM =====")
+    print("\n===== END =====")
 
 
 if __name__ == "__main__":

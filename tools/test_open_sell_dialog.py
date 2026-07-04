@@ -10,9 +10,10 @@ Do char em cima do NPC -> abre o dialog de VENDA (com os grids).
 NAO vende nada -- so abre o dialog e confirma.
 """
 import time
+
 import cv2
-from GhostBot.client_window import Win32ClientWindow
-from GhostBot.lib.win32.process import PymemProcess
+
+from GhostBot.lib.tooling import get_client
 
 MISC = r"C:\Bot\BotTO\src\GhostBot\Images\misc"
 DIALOGUE_BMP = MISC + r"\npc_dialogue_title.bmp"   # ancora: titulo "Dialogue"
@@ -39,11 +40,8 @@ def find_center(client, bmp_path, thr):
 
 
 def main():
-    proc = next(iter(PymemProcess.list_clients()), None)
-    if proc is None:
-        raise SystemExit("client.exe nao encontrado")
-    client = Win32ClientWindow(proc)
-    print("Window:", client.get_window_size())
+    client = get_client()
+
 
     if SKIP_OPEN:
         print("SKIP_OPEN=True: assumindo Dialogue ja aberto (arrastado).")

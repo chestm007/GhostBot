@@ -65,7 +65,7 @@ class ImageFinder:
     def find_items_in_window(self, item_images) -> list[tuple[int, int]]:
         to_delete: list[tuple[int, int]] = []
 
-        tolerance = 3  # Tolerância em pixels para coordenadas duplicadas
+        tolerance = 3  # Tolerance in pixels for duplicate coordinates
 
         window_img = self._client.capture_window()
         #window_gray = cv2.cvtColor(window_img, cv2.COLOR_BGR2GRAY)

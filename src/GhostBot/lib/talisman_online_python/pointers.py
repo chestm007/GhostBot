@@ -15,7 +15,7 @@ class Pointers:
         self.CHAR_NAME_POINTER = 0x011450EC
         self.LEVEL_POINTER = self.get_pointer(self.CLIENT + 0x00D450EC, offsets=[0x3C4])
         self.ENERGY_POINTER = self.get_pointer(self.CLIENT + 0x00D450EC, offsets=[0x3cc])
-        self.XP_POINTER = self.get_pointer(self.CLIENT + 0x00D450EC, offsets=[0x3C8])  # XP atual no nivel (zera ao upar)
+        self.XP_POINTER = self.get_pointer(self.CLIENT + 0x00D450EC, offsets=[0x3C8])  # Current XP in level (resets on level up)
         self.HP_POINTER = self.get_pointer(self.CLIENT + 0x00D450EC, offsets=[0x3B8])
         self.HP_PLUS_POINTER = self.get_pointer(self.CLIENT + 0x00D450EC, offsets=[0xE4])
         self.HP_BUFF_POINTER = self.get_pointer(self.CLIENT + 0x00D450EC, offsets=[0xE0])
@@ -63,9 +63,9 @@ class Pointers:
         self.base = 0x0107C6B0
         self.basei = 0x0
 
-        # Limites para busca bidirecional
-        self.BASE_MIN = 0x0000CE00  # Limite inferior para busca
-        self.BASE_MAX = 0x0EFFFFFF  # Limite superior para busca
+        # Bidirectional search limits
+        self.BASE_MIN = 0x0000CE00  # Lower limit for search
+        self.BASE_MAX = 0x0EFFFFFF  # Upper limit for search
 
         self.ZOOM_POINTER = self.get_pointer(0x116FFF4, offsets=[0x64])
         self.ROTATION_POINTER = self.get_pointer(0x116FFF4, offsets=[0x5C])
@@ -83,11 +83,11 @@ class Pointers:
 
     def get_pointer(self, base_address, offsets) -> int | None:
         """
-        Calcula o ponteiro final seguindo uma cadeia de offsets.
+        Calculate the final pointer following a chain of offsets.
         """
         try:
             address = base_address
-            for offset in offsets:  # Navega pelos offsets até o endereço final
+            for offset in offsets:  # Navigate through offsets to the final address
                 address = self.pm.read_int(address) + offset
             return address
         except Exception as e:
@@ -110,7 +110,7 @@ class Pointers:
             elif data_type == "float":
                 return self.pm.read_float(address)  # 4 bytes float
             else:
-                print(f"Tipo de dado desconhecido: {data_type}")
+                print(f"Unknown data type: {data_type}")
                 return None
         except Exception as e:
             #print(f"Erro ao ler valor ({data_type}): {e}")
@@ -131,16 +131,16 @@ class Pointers:
 
     def read_inventory_slot(self, address: int) -> dict | None:
         """
-        Decodifica o struct de um slot da bag.
+        Decode the struct for a bag slot.
 
-        Layout (descoberto via CE em 2026-05-22 com Teleport Stone @ 0x1801C48C):
-          +0x00 (16 bytes): MSVC std::string -- inline buffer se cap < 16, senao ptr
-          +0x10 (4 bytes):  size do nome
-          +0x14 (4 bytes):  capacity do buffer
+        Layout (discovered via CE on 2026-05-22 with Teleport Stone @ 0x1801C48C):
+          +0x00 (16 bytes): MSVC std::string -- inline buffer if cap < 16, else ptr
+          +0x10 (4 bytes):  name size
+          +0x14 (4 bytes):  buffer capacity
           +0x18 (4 bytes):  quantity (stack size)
 
-        Retorna {'name', 'size', 'cap', 'qty'} ou None se leitura falhou
-        ou se o struct nao parece valido.
+        Returns {'name', 'size', 'cap', 'qty'} or None if read failed
+        or the struct doesn't look valid.
         """
         try:
             raw = self.pm.read_bytes(address, 32)
@@ -252,12 +252,12 @@ class Pointers:
         return self.read_value(self.ENERGY_POINTER, data_type="int")
 
     def get_xp(self) -> int | None:
-        """XP atual DENTRO do nivel (int cru). Zera ao subir de nivel; o max nao eh legivel."""
+        """Current XP WITHIN the level (raw int). Resets on level up; max is not readable."""
         return self.read_value(self.XP_POINTER, data_type="int")
 
     def is_target_selected(self) -> bool:
         if self.TARGET_SELECT is None:
-            print("Erro: Ponteiro TARGET_SELECT não calculado.")
+            print("Error: TARGET_SELECT pointer not calculated.")
             return False
 
         return self.read_value(self.TARGET_SELECT, data_type="byte")  == 1
@@ -345,30 +345,30 @@ class Pointers:
         id = self.read_value(self.TARGET_ID, data_type="int")
         # print(f"Target ID: {id}")
         if id is None:
-            print("Erro ao ler ID")
-            return None  # Retorna None de forma explícita para evitar erros
+            print("Error reading ID")
+            return None  # Explicitly return None to prevent errors
 
         try:
             return hex(id)[2:].upper()
         except Exception as e:
-            print(f"Erro ao converter ID para hexadecimal: {e}")
-            return None  # Retorna None se houver qualquer erro na conversão
+            print(f"Error converting ID to hexadecimal: {e}")
+            return None  # Return None if there's any conversion error
 
     def get_id(self):
         return  self.read_value(self.TARGET_ID, data_type="int")
 
     def search_value(self, base, value) -> tuple[int, int, int | float] | tuple[None, None, None]:
         final_pointer = 0
-        max_attempts = 1  # Número máximo de tentativas completas
-        erro_count = 0  # Contador para limitar mensagens de erro
+        max_attempts = 1  # Maximum number of complete attempts
+        erro_count = 0  # Counter to limit error messages
 
         for attempt in range(max_attempts):
             try:
-                # Obtém o ID do alvo
+                # Get the target ID
                 found = False
-                erro_count = 0  # Reinicia contador de erros para cada nova tentativa
+                erro_count = 0  # Reset error counter for each new attempt
 
-                # Busca crescente (do base atual até BASE_MAX)
+                # Ascending search (from current base to BASE_MAX)
                 current_base = base
                 for i in range(1000000):
                     offset = i*0x04
@@ -380,46 +380,46 @@ class Pointers:
                 continue
 
             except Exception as e:
-                print(f"Erro durante a busca: {e}. Reiniciando...")
+                print(f"Error during search: {e}. Restarting...")
 
-        # Se chegou aqui, todas as tentativas falharam
-        print("Falha em todas as tentativas de busca. Reiniciando o processo...")
+        # If we got here, all attempts failed
+        print("All search attempts failed. Restarting process...")
 
     def search_id(self, id_ = None) -> tuple[int, int, int | float] | tuple[None, None, None]:
         final_pointer = 0
-        max_attempts = 1  # Número máximo de tentativas completas
-        erro_count = 0  # Contador para limitar mensagens de erro
+        max_attempts = 1  # Maximum number of complete attempts
+        erro_count = 0  # Counter to limit error messages
 
         for attempt in range(max_attempts):
             try:
-                # Obtém o ID do alvo
+                # Get the target ID
                 targetid = id_ or self.get_target_id()
                 if targetid is None:
-                    print("Reiniciando busca: ID do alvo não encontrado")
-                    continue  # Passa para a próxima tentativa
+                    print("Restarting search: Target ID not found")
+                    continue  # Move to the next attempt
 
                 found = False
-                erro_count = 0  # Reinicia contador de erros para cada nova tentativa
+                erro_count = 0  # Reset error counter for each new attempt
 
-                # Busca crescente (do base atual até BASE_MAX)
+                # Ascending search (from current base to BASE_MAX)
                 current_base = self.base
                 while current_base <= self.BASE_MAX:
-                    # Lê o valor no endereço base atual
+                    # Read the value at the current base address
                     a = self.read_value(current_base + self.basei, "int")
                     if a is None:
-                        # Limita mensagens de erro
+                        # Limit error messages
                         erro_count += 1
                         if erro_count <= 1:
-                            print("Erro de leitura na busca crescente, pulando para próxima tentativa...")
-                        # Reinicia a busca completamente em vez de continuar com erros
+                            print("Read error in ascending search, skipping to next attempt...")
+                        # Restart the search completely instead of continuing with errors
                         break
 
                     b = a + 0x8
 
-                    # Lê o valor no endereço calculado
+                    # Read the value at the calculated address
                     c_value = self.read_value(b, "int")
                     if c_value is None:
-                        # Avança para o próximo endereço sem mostrar erro
+                        # Advance to the next address without showing error
                         current_base += 0x4
                         continue
 
@@ -432,33 +432,33 @@ class Pointers:
                     else:
                         current_base += 0x4
 
-                # Se houve erro na busca crescente, reinicia a tentativa
+                # If there was an error in the ascending search, restart the attempt
                 if erro_count > 0:
                     continue
 
-                # Se não encontrou na busca crescente, tenta busca decrescente
+                # If not found in ascending search, try descending search
                 if not found:
-                    print("Iniciando busca decrescente...")
+                    print("Starting descending search...")
                     current_base = self.base - 0x4
-                    erro_count = 0  # Reinicia contador para a busca decrescente
+                    erro_count = 0  # Reset counter for descending search
 
                     while current_base >= self.BASE_MIN:
-                        # Lê o valor no endereço base atual
+                        # Read the value at the current base address
                         a = self.read_value(current_base + self.basei, "int")
                         if a is None:
-                            # Limita mensagens de erro
+                            # Limit error messages
                             erro_count += 1
                             if erro_count <= 1:
-                                print("Erro de leitura na busca decrescente, pulando para próxima tentativa...")
-                            # Reinicia a busca completamente em vez de continuar com erros
+                                print("Read error in descending search, skipping to next attempt...")
+                            # Restart the search completely instead of continuing with errors
                             break
 
                         b = a + 0x8
 
-                        # Lê o valor no endereço calculado
+                        # Read the value at the calculated address
                         c_value = self.read_value(b, "int")
                         if c_value is None:
-                            # Avança para o próximo endereço sem mostrar erro
+                            # Advance to the next address without showing error
                             current_base -= 0x4
                             continue
 
@@ -471,45 +471,45 @@ class Pointers:
                         else:
                             current_base -= 0x4
 
-                # Se houve erro na busca decrescente, reinicia a tentativa
+                # If there was an error in the descending search, restart the attempt
                 if erro_count > 0:
                     continue
 
-                # Se encontrou o alvo em qualquer uma das buscas
+                # If found the target in either search
                 if found:
-                    # Lê o ponteiro final e as coordenadas em uma única verificação
+                    # Read the final pointer and coordinates in a single check
                     pointer = self.read_value(final_pointer + self.basei, "int")
                     if pointer is None:
-                        print("Reiniciando: falha ao ler ponteiro final")
+                        print("Restarting: failed to read final pointer")
                         continue
 
-                    # Lê as coordenadas X e Y
+                    # Read X and Y coordinates
                     x_value = self.read_value(pointer + 0x810, "float")
                     y_value = self.read_value(pointer + 0x814, "float")
 
-                    # Verifica se ambas as coordenadas foram lidas com sucesso
+                    # Check if both coordinates were read successfully
                     if x_value is None or y_value is None:
-                        print("Reiniciando: falha ao ler coordenadas")
+                        print("Restarting: failed to read coordinates")
                         continue
 
-                    # Calcula as coordenadas finais
+                    # Calculate final coordinates
                     target_x = int(x_value / 20)
                     target_y = int(y_value / 20)
 
-                    # Atualiza o ponteiro base para a próxima busca
+                    # Update the base pointer for the next search
                     self.base = final_pointer
 
                     # Retorna os valores encontrados
                     return target_x, target_y, pointer
                 else:
-                    print("Alvo não encontrado, reiniciando busca...")
+                    print("Target not found, restarting search...")
 
             except Exception as e:
-                print(f"Erro durante a busca: {e}. Reiniciando...")
+                print(f"Error during search: {e}. Restarting...")
 
-        # Se chegou aqui, todas as tentativas falharam
-        print("Falha em todas as tentativas de busca. Reiniciando o processo...")
-        return None, None, None  # Retorna None para indicar falha
+        # If we got here, all attempts failed
+        print("All search attempts failed. Restarting process...")
+        return None, None, None  # Return None to indicate failure
 
     def is_loot(self):
         loot = self.read_value(self.LOOT_POINTER, data_type="int")
@@ -520,14 +520,14 @@ class Pointers:
             basex = pointer + 0x810
             basey = pointer + 0x814
 
-            # print(f"Escrevendo posição - X: {x} em {hex(basex)}, Y: {y} em {hex(basey)}")
+            # print(f"Writing position - X: {x} at {hex(basex)}, Y: {y} at {hex(basey)}")
 
             self.pm.write_float(basex, float(x))
             self.pm.write_float(basey, float(y))
             return True
 
         except Exception as e:
-            print(f"Erro ao definir posição: {e}")
+            print(f"Error setting position: {e}")
             return False
 
     def write_camera(self, z, r, a) -> None:
@@ -552,7 +552,7 @@ class Pointers:
     def get_sur_info(self) -> dict[str, str] | None:
         info = self.read_string_from_pointer(self.FIRST_LINK_SUR, offset=0x64, max_length=100)
 
-        # Extrai o nome e as coordenadas usando expressões regulares
+        # Extract the name and coordinates using regular expressions
         name_match = re.search(r'text="([^"]+)\s*\[(-?\d+),(-?\d+)\]"', info)
 
         if name_match:
@@ -560,7 +560,7 @@ class Pointers:
             x_coord = name_match.group(2)
             y_coord = name_match.group(3)
 
-            # Retorna um dicionário com as informações formatadas
+            # Returns a dictionary with the formatted information
             return {
                 'name': name,
                 'coords': f'{x_coord},{y_coord}'

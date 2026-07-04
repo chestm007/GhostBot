@@ -1,26 +1,20 @@
 """
-Teste isolado: abre o painel Surroundings + clica no botao Search + digita 'Blacksmith'.
+Isolated test: open the Surroundings panel + click the Search button + type 'Blacksmith'.
 
-Voce deve manter o painel Surroundings no canto SUPERIOR ESQUERDO da janela do TO.
+You must keep the Surroundings panel in the UPPER LEFT corner of the TO window.
 """
 import time
-from GhostBot.client_window import Win32ClientWindow
-from GhostBot.lib.win32.process import PymemProcess
 
-proc = next(iter(PymemProcess.list_clients()), None)
-if proc is None:
-    raise SystemExit("client.exe nao encontrado")
+from GhostBot.lib.tooling import get_client
 
-print(f"PID={proc.process_id}")
-client = Win32ClientWindow(proc)
-
+client = get_client()
 ww, wh = client.get_window_size()
 print(f"Window: {ww} x {wh}")
 print()
-print("Vai abrir surroundings + clicar search + digitar 'Blacksmith' em 3s...")
-print("LEMBRA: painel Surroundings precisa estar no canto SUPERIOR ESQUERDO.")
+print("Going to open surroundings + click search + type 'Blacksmith' in 3s...")
+print("REMEMBER: Surroundings panel must be in the UPPER LEFT corner.")
 time.sleep(3)
 
 client.search_surroundings("Blacksmith")
 print()
-print("Done. Verifica no jogo: o painel abriu, clicou no Search, e digitou Blacksmith?")
+print("Done. Check in-game: did the panel open, click Search, and type Blacksmith?")

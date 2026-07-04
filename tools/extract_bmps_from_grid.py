@@ -1,46 +1,43 @@
 """
-Extrai BMPs dos items visiveis no grid do NPC, salva em Images/SELL/.
+Extract BMPs from visible items in the NPC grid, save to Images/SELL/.
 
-Cada cell do grid eh 35x26 px (6 col x 5 row do grid 211x129).
-Pega o item nos 3 primeiros slots da row 0 e salva.
+Each grid cell is 35x26 px (6 cols x 5 rows of the 211x129 grid).
+Takes the items in the first 3 slots of row 0 and saves them.
 """
+from pathlib import Path
+
 import cv2
-from GhostBot.client_window import Win32ClientWindow
-from GhostBot.lib.win32.process import PymemProcess
+
+from GhostBot.lib.tooling import get_client, match_template
 
 HEADER_BMP = r"C:\Bot\BotTO\src\GhostBot\Images\misc\npc_sell_dialog_header.bmp"
-SELL_DIR = r"C:\Bot\BotTO\src\GhostBot\Images\SELL"
+SELL_DIR = Path(r"C:\Bot\BotTO\src\GhostBot\Images\SELL")
 HEADER_TO_SLOT1 = (-90, +50)
 HEADER_TO_SLOT30 = (+85, +153)
 
-# Tamanho do crop por slot (deixa um pouco menor que o cell pra evitar bordas)
+# Crop size per slot (slightly smaller than cell to avoid borders)
 CROP_W = 22
 CROP_H = 18
 
-proc = next(iter(PymemProcess.list_clients()), None)
-client = Win32ClientWindow(proc)
+client = get_client()
 window_img = client.capture_window()
-
-# Acha header
-header_bmp = cv2.imread(HEADER_BMP, cv2.IMREAD_GRAYSCALE)
+header = match_template(client, HEADER_BMP)
 window_gray = window_img if len(window_img.shape) == 2 else cv2.cvtColor(window_img, cv2.COLOR_BGR2GRAY)
-res = cv2.matchTemplate(window_gray, header_bmp, cv2.TM_CCOEFF_NORMED)
-_, mv, _, ml = cv2.minMaxLoc(res)
-print(f"Header: {mv:.3f} em {ml}")
-hx = ml[0] + header_bmp.shape[1] // 2
-hy = ml[1] + header_bmp.shape[0] // 2
+print(f"Header: {header.score:.3f} em {header.top_left}")
+hx, hy = header.center
 
 # Slot 1 center
 s1x = hx + HEADER_TO_SLOT1[0]
 s1y = hy + HEADER_TO_SLOT1[1]
 
-# Spacing entre slots (calculado de slot 1 -> slot 30 com 6 col 5 row)
+# Spacing between slots (calculated from slot 1 -> slot 30 with 6 cols 5 rows)
 COL_SPACING = (HEADER_TO_SLOT30[0] - HEADER_TO_SLOT1[0]) / 5  # 5 gaps
 ROW_SPACING = (HEADER_TO_SLOT30[1] - HEADER_TO_SLOT1[1]) / 4  # 4 gaps
 print(f"Slot 1 center: ({s1x},{s1y})  spacing col={COL_SPACING:.1f} row={ROW_SPACING:.1f}")
 
-# Extrai 3 primeiros slots da row 0
+# Extract first 3 slots of row 0
 nomes = ["SweetFuit", "GreenScarpPill", "Pork"]
+SELL_DIR.mkdir(parents=True, exist_ok=True)
 for i, name in enumerate(nomes):
     cx = int(s1x + i * COL_SPACING)
     cy = int(s1y)
@@ -49,7 +46,7 @@ for i, name in enumerate(nomes):
     x2 = x1 + CROP_W
     y2 = y1 + CROP_H
     crop = window_gray[y1:y2, x1:x2]
-    out = f"{SELL_DIR}\\{name}.bmp"
-    cv2.imwrite(out, crop)
+    out = SELL_DIR / f"{name}.bmp"
+    cv2.imwrite(str(out), crop)
     print(f"  Slot {i}: center=({cx},{cy})  crop={CROP_W}x{CROP_H}  -> {name}.bmp")
-print("Pronto.")
+print("Done.")

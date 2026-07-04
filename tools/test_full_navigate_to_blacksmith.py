@@ -1,43 +1,38 @@
 """
-Teste do fluxo completo de navegar ate o Blacksmith:
+Test the full flow to navigate to the Blacksmith:
 
-1. Abre Surroundings (formula window-aware)
-2. Clica no botao Search (coord fixa top-left)
-3. Digita "Blacksmith"
-4. Clica no primeiro resultado (coord fixa top-left)
+1. Open Surroundings (window-aware formula)
+2. Click the Search button (fixed top-left coord)
+3. Type "Blacksmith"
+4. Click the first result (fixed top-left coord)
 
-PRE-CONDICOES:
-- Painel Surroundings esta fechado OU aberto no canto superior esquerdo
-- Existe um NPC chamado Blacksmith proximo (ou outro nome com Blacksmith)
+PRE-CONDITIONS:
+- Surroundings panel is closed OR open in the upper-left corner
+- There is an NPC called Blacksmith nearby (or another name with Blacksmith)
 """
 import time
-from GhostBot.client_window import Win32ClientWindow
-from GhostBot.lib.win32.process import PymemProcess
 
-proc = next(iter(PymemProcess.list_clients()), None)
-if proc is None:
-    raise SystemExit("client.exe nao encontrado")
+from GhostBot.lib.tooling import get_client
 
-print(f"PID={proc.process_id}")
-client = Win32ClientWindow(proc)
+client = get_client()
 print(f"Window: {client.get_window_size()}")
 print()
-print("Comecando fluxo completo em 3s...")
+print("Starting full flow in 3s...")
 time.sleep(3)
 
-# Passo 1+2+3: abre surroundings, clica search, digita Blacksmith
+# Step 1+2+3: open surroundings, click search, type Blacksmith
 client.search_surroundings("Blacksmith")
 
-# Espera 1s pro resultado aparecer
-print("Aguardando 1s pro resultado aparecer...")
+# Wait 1s for the result to appear
+print("Waiting 1s for the result to appear...")
 time.sleep(1)
 
-# Passo 4: clica no primeiro resultado (Blacksmith)
+# Step 4: click the first result (Blacksmith)
 client.goto_first_surrounding_result()
 
 print()
-print("Done. Verifica:")
-print("  - Painel abriu?")
-print("  - Search clicou e digitou Blacksmith?")
-print("  - Clicou no Blacksmith na lista?")
-print("  - O char esta andando ate o Blacksmith?")
+print("Done. Check:")
+print("  - Panel opened?")
+print("  - Search clicked and Blacksmith typed?")
+print("  - Clicked on Blacksmith in the list?")
+print("  - Is the char walking to the Blacksmith?")

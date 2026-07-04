@@ -1,119 +1,117 @@
-# 🐉 Cave Boss Bot — Contexto e Design
+# 🐉 Cave Boss Bot — Context and Design
 
-> Documento de trabalho. A gente constrói **passo a passo**; cada etapa é confirmada antes de codar.
-> Criado 2026-05-27 a partir do briefing do dono.
+> Working document. We build **step by step**; each step is confirmed before coding.
+> Created 2026-05-27 from owner's briefing.
 
-## O que é
+## What it is
 
-Modo para lutas de **BOSS em cave** — diferente do farm normal de spot. No boss ninguém fica
-andando: cada um fica parado no seu lugar fazendo seu papel. Vai virar uma **aba nova "Boss"**
-na interface (separada das outras, pra organizar bem).
+Mode for **CAVE BOSS** fights — different from normal spot farming. In boss fights nobody walks around: each person stays in their spot doing their role. Will become a **new "Boss" tab**
+in the interface (separate from the others, for better organization).
 
-**Time padrão (5):** 1 Tank + 2 DPS + 2 Fairies.
+**Default team (5):** 1 Tank + 2 DPS + 2 Fairies.
 
-## Os 3 papéis (roles)
+## The 3 roles
 
 ### 1. 🛡️ TANK (1)
-- Bate **só no boss**, sem parar → usa o **boss target-lock por nome** (já temos: checkbox
-  "Travar no Boss" + nome, dá TAB até achar e ataca só ele).
-- Usa **alguns buffs de tank**, tipo **a cada ~30s** (nada demais).
-- **Base:** reusa o Attack (com boss-lock ligado) + um buff periódico. É o papel mais simples.
+- Hits **only the boss**, non-stop → uses **boss target-lock by name** (we already have: checkbox
+  "Lock onto Boss" + name, TABs until found and attacks only it).
+- Uses **some tank buffs**, like **every ~30s** (nothing major).
+- **Base:** reuses Attack (with boss-lock on) + periodic buff. It's the simplest role.
 
 ### 2. ⚔️ DPS (2)
-- Bate sem parar no boss (também com boss-lock no nome do boss).
-- **Controle de aggro:** se um DPS **puxar o aggro sem querer** → aperta **F1 na hora** (tira o
-  alvo/para de bater) + **espera SAIR de combate** → o tank repuxa o aggro pela ameaça dele →
-  o DPS volta a bater.
-- **Controle de MP:** se o **MP baixar** → mesma coisa: **F1 → espera sair de combate → usa pot**
-  → volta a bater.
-- É o papel mais **complexo** (precisa inferir o aggro — ver "Limitações").
+- Hits non-stop on the boss (also with boss-lock on the boss name).
+- **Aggro control:** if a DPS **accidentally pulls aggro** → presses **F1 immediately** (deselects/stops hitting) + **waits for COMBAT to END** → tank repulls aggro by threat →
+  DPS resumes hitting.
+- **MP control:** if **MP drops** → same thing: **F1 → wait for combat to end → use pot**
+  → resume hitting.
+- It's the most **complex** role (needs to infer aggro — see "Limitations").
 
 ### 3. 🧚 FAIRY (2)
-- **Cura quem levou dano** durante a luta.
-- Plano inicial do dono: "**basta ela spamar a cura e o jogador troca de alvo**". Ou seja, a
-  versão mais simples = spam da tecla de cura no alvo atual.
-- ⚠️ **A definir:** como a Fairy escolhe QUEM curar (ver "Limitações" — não dá pra ler a vida
-  dos outros pela memória).
+- **Heals whoever took damage** during the fight.
+- Owner's initial plan: "**just spam heal and the player switches target**". So the
+  simplest version = spam heal key on current target.
+- ⚠️ **To define:** how does the Fairy choose WHO to heal (see "Limitations" — can't read other HPs
+  from memory).
 
-## ✅ O que o bot CONSEGUE ler/fazer (fundamenta o design)
+## ✅ What the bot CAN read/do (design foundation)
 
-| Capacidade | Como | Uso no boss |
+| Capability | How | Use in boss |
 |---|---|---|
-| Estado de combate | `client.in_battle` (✅ já usado pelo Regen) | "espera sair de combate" (DPS) |
-| Vida/Mana próprias | `client.hp_percent`, `client.mana_percent` | gatilho de pot e de "estou apanhando" |
-| Alvo selecionado | `get_target_name`, `target_hp`, `is_target_selected` | boss-lock (TAB até o nome do boss) |
-| Quem está no grupo | `client.team_size`, `client.team_members` (nomes) | saber quantos/quais membros |
-| Selecionar membro | clique backstage `team_1..team_4` + `F1` (self) | trocar alvo da cura, F1 do DPS |
-| Apertar tecla | `client.press_key(...)` backstage | skills, pot, buffs |
+| Combat state | `client.in_battle` (✅ already used by Regen) | "wait for combat to end" (DPS) |
+| Own HP/MP | `client.hp_percent`, `client.mana_percent` | pot trigger and "I'm getting hit" |
+| Selected target | `get_target_name`, `target_hp`, `is_target_selected` | boss-lock (TAB until boss name) |
+| Who's in party | `client.team_size`, `client.team_members` (names) | know how many/which members |
+| Select member | backstage click `team_1..team_4` + `F1` (self) | switch heal target, DPS F1 |
+| Press key | `client.press_key(...)` backstage | skills, pot, buffs |
 
-## ⚠️ Limitações (importante saber ANTES de prometer)
+## ⚠️ Limitations (important to know BEFORE promising)
 
-- ❌ **Não dá pra ler a vida de OUTRO membro** pela memória — cada bot só lê a **própria** vida.
-  → A Fairy **não sabe sozinha** "quem está ferido".
-- ❌ **Não dá pra ler em quem o boss está mirando** — não existe pointer de "aggro do inimigo".
+- ❌ **Can't read OTHER members' HP** from memory — each bot only reads its **own** HP.
+  → The Fairy **doesn't know on its own** "who is hurt".
+- ❌ **Can't read who the boss is targeting** — no pointer for "enemy aggro".
 
-### Como contornar o AGGRO (a pergunta do dono: "dá pra puxar/ler o aggro?")
-Ler o aggro do boss **direto: não dá**. MAS dá pra **INFERIR**: se um DPS está **apanhando**
-(a vida DELE cai) enquanto está `in_battle`, é sinal de que o boss virou pra ele = puxou o aggro.
-→ Regra do DPS: "perdi vida em combate (sem ser o tank)" → **F1 + espera `in_battle` virar falso**
-→ volta. O tank repuxa naturalmente. Não precisa "puxar o aggro" ativamente — só **parar e esperar**.
+### How to work around AGGRO (owner's question: "can we pull/read aggro?")
+Reading boss aggro **directly: no.** BUT we can **INFER**: if a DPS is **getting hit**
+(HP drops) while `in_battle`, it means the boss turned on them = pulled aggro.
+→ DPS rule: "took damage in combat (not the tank)" → **F1 + wait `in_battle` to become false**
+→ resume. Tank naturally repulls. Doesn't need to "pull aggro" actively — just **stop and wait**.
 
-### Como a FAIRY escolhe quem curar (decisão pendente)
-Como não lê HP dos outros, as opções são:
-- **(a)** Spam de cura no **alvo atual**; um humano (ou o próprio fluxo) troca o alvo. *(plano inicial do dono — mais simples)*
-- **(b)** A Fairy **cicla os retratos** (clica membro → cura → próximo → ...), curando todos em rodízio.
-- **(c)** Outra ideia a discutir.
+### How FAIRY chooses who to heal (pending decision)
+Since it can't read other HPs, the options are:
+- **(a)** Heal spam on **current target**; a human (or the flow itself) switches target. *(owner's initial plan — simplest)*
+- **(b)** Fairy **cycles through portraits** (clicks member → heals → next → ...), healing everyone in rotation.
+- **(c)** Another idea to discuss.
 
-## 🧱 Plano de construção (passo a passo — ordem do mais simples ao mais complexo)
+## 🧱 Construction plan (step by step — simplest to most complex)
 
-1. ✅ **Aba "Boss"** — FEITO. Seletor de **papel** (dropdown Tank/DPS/Fairy) + campos que **mudam
-   conforme o papel** (ideia do dono). Nome do boss + combo compartilhados (Tank/DPS).
-2. ✅ **Papel TANK** — FEITO (2026-05-27, UI/UX validada pelo dono; lógica = reaproveitamento provado
-   do Attack). Trava no boss (TAB até o nome) → ataca com o combo → reaplica os buffs do tank a cada
-   X s (só aperta a tecla, auto-cast, sem trocar de alvo). Pots HP/MP opcionais (tecla vazia = off).
-3. ✅ **Papel FAIRY** — FEITO (2026-05-27). Opção (a): spama a tecla de cura no ALVO ATUAL a cada
-   `heal_interval_secs`; o jogador troca o alvo (clica em quem precisa). Sem mira automática (não lê
-   HP de outros). Pots HP/MP próprios opcionais. Na aba, papel Fairy esconde Nome do Boss + Combo.
-4. ✅ **Papel DPS** — FEITO (2026-05-27). Bate no boss (boss-lock + combo); **aggro automático**:
-   detecta "puxei aggro" por **perder vida em combate** → F1 → espera sair de combate (`in_battle`
-   → False) → o tank repuxa → volta. **MP**: usa o Pot MP comum — ao cair do %, F1 → espera sair de
-   combate → pot → volta. Reaproveita os campos comuns (sem campo novo); aggro sempre ligado.
+1. ✅ **Boss tab** — DONE. **Role selector** (dropdown Tank/DPS/Fairy) + fields that **change
+   by role** (owner's idea). Boss name + shared combo (Tank/DPS).
+2. ✅ **TANK role** — DONE (2026-05-27, UI/UX validated by owner; logic = proven reuse
+   of Attack). Locks onto boss (TAB until name) → attacks with combo → reapplies tank buffs every
+   X s (just presses key, auto-cast, no target switch). HP/MP pots optional (empty key = off).
+3. ✅ **FAIRY role** — DONE (2026-05-27). Option (a): spams heal key on CURRENT TARGET every
+   `heal_interval_secs`; player switches target (clicks who needs it). No auto-aim (can't read
+   other HPs). Own HP/MP pots optional. In tab, Fairy role hides Boss Name + Combo.
+4. ✅ **DPS role** — DONE (2026-05-27). Hits boss (boss-lock + combo); **auto-aggro**:
+   detects "pulled aggro" by **taking damage in combat** → F1 → waits for combat to end (`in_battle`
+   → False) → tank repulls → resumes. **MP**: uses common MP Pot — when % triggers, F1 → waits for combat
+   to end → pot → resumes. Reuses common fields (no new fields); aggro always on.
 
-## ✅ TODOS OS 3 PAPÉIS PRONTOS (2026-05-27). Falta só validar o DPS ao vivo + ajustes finos.
+## ✅ ALL 3 ROLES READY (2026-05-27). Only need to validate DPS live + fine-tuning.
 
-## 🔓 Decisões (resolvidas)
-- ✅ **Arquitetura:** runner novo (`functions/boss.py` + `BossConfig`), separado do farm.
-- ✅ **Tank buff:** só aperta a tecla (auto-cast, sem F1). Buffs + intervalo = config na aba.
-- ✅ **MP opcional:** pot só dispara com tecla preenchida; tank deixa MP vazio.
-- ✅ **Fairy:** opção (a) — spam no alvo atual, jogador troca.
-- ✅ **DPS aggro:** gatilho = **queda de HP em combate** (`hp` caiu desde o último tick do combo).
-  Sem limiar fino por ora (qualquer queda recua). Aggro **sempre ligado** (sem toggle) — adicionar
-  liga/desliga e/ou limiar SE der falso-positivo no teste ao vivo (ex.: AoE leve do boss).
+## 🔓 Decisions (resolved)
+- ✅ **Architecture:** new runner (`functions/boss.py` + `BossConfig`), separate from farm.
+- ✅ **Tank buff:** just presses the key (auto-cast, no F1). Buffs + interval = config in tab.
+- ✅ **MP optional:** pot only fires with key filled; tank leaves MP empty.
+- ✅ **Fairy:** option (a) — spam on current target, player switches.
+- ✅ **DPS aggro:** trigger = **HP drop in combat** (`hp` dropped since last combo tick).
+  No fine threshold for now (any drop retreats). Aggro **always on** (no toggle) — add
+  on/off and/or threshold IF there's a false-positive in live test (e.g., light boss AoE).
 
-## ⚠️ A VALIDAR ao vivo (DPS) / possíveis ajustes
-- **Falso-positivo de aggro:** se o boss tem AoE que tira um tiquinho de todos, o DPS pode recuar à
-  toa. Ajuste fácil se acontecer: exigir queda > X% pra contar como aggro (vira config).
-- **Tempo de "sair de combate":** `_wait_out_of_combat` espera até 20s. Se o tank demora a repuxar,
-  ajustar o timeout.
-- **F1 = self:** confirmar ao vivo que F1 realmente tira o alvo do boss e para o dano (era o mesmo
-  F1 que a Fairy usa pra se selecionar — já validado lá).
+## ⚠️ TO VALIDATE live (DPS) / possible adjustments
+- **False-positive aggro:** if boss has AoE that takes a tiny bit from everyone, DPS might retreat for
+  no reason. Easy fix if it happens: require drop > X% to count as aggro (becomes config).
+- **"Combat end" time:** `_wait_out_of_combat` waits up to 20s. If tank takes long to repull,
+  adjust timeout.
+- **F1 = self:** confirm live that F1 really deselects boss target and stops damage (was the same
+  F1 that Fairy uses to self-select — already validated there).
 
-## ✅ Regra "Boss é só Boss" (ENFORCED na UI)
-Ligar o checkbox **"Boss"** na Dashboard **desmarca e desabilita** os outros (Attack/Fairy/Buff/
-Regen/Pet/Sell) — não dá pra marcar o resto. Desligar o Boss reabilita. Garante que o modo boss
-não roda junto com o farm normal (`FunctionsFrame._sync_boss_only`, trace no `bot_config.boss.enabled`).
+## ✅ "Boss only Boss" rule (ENFORCED in UI)
+Checking the **"Boss"** checkbox in Dashboard **unchecks and disables** the others (Attack/Fairy/Buff/
+Regen/Pet/Sell) — can't check the rest. Unchecking Boss re-enables. Guarantees boss mode
+doesn't run together with normal farm (`FunctionsFrame._sync_boss_only`, trace in `bot_config.boss.enabled`).
 
-## 🔁 DPS — re-pega o alvo (TAB) depois do F1
-Tanto no recuo por aggro quanto na recuperação de MP, depois do **F1** + espera sair de combate
-(+ pot, no caso do MP), o DPS dá **TAB** (`_find_boss`) pra re-travar no boss e voltar a bater na hora.
+## 🔁 DPS — re-grabs target (TAB) after F1
+Both on aggro retreat and MP recovery, after **F1** + wait for combat to end
+(+ pot, in MP case), DPS does **TAB** (`_find_boss`) to re-lock onto boss and resume hitting immediately.
 
-## 💊 Pots: cooldown de 16s (geral) + Tank NÃO pota
-- **Pots no TO são regen ao longo de ~16s** (não instantâneos). Antes, logo após potar a % ainda
-  parecia baixa → o bot potava de novo (pot duplicado, "acontecia muito"). Fix: **cooldown de 16s
-  por tecla de pot** (`Runner._pot_ready`/`_use_pot`, `POT_DURATION_SECS=16`) — aplicado em
-  **attack, boss e regen**. A espera de recuperação após potar também usa 16s (espera "usar a pot
-  toda", saindo antes se encher).
-- **Tank NÃO pota no boss** (decisão do dono — as Fairies curam o tank): o `_run_tank` não chama
-  `_battle_pots`, e a aba **esconde os campos de pot quando o papel é Tank**.
-- DPS: Pot HP opcional (cooldown) + recuperação de MP (recua, pota, espera, TAB). Fairy: pots
-  PRÓPRIOS opcionais (cooldown).
+## 💊 Pots: 16s cooldown (global) + Tank does NOT pot
+- **Pots in TO are regen over ~16s** (not instant). Before, right after potting the % still
+  looked low → bot potted again (duplicate pot, "happened a lot"). Fix: **16s cooldown
+  per pot key** (`Runner._pot_ready`/`_use_pot`, `POT_DURATION_SECS=16`) — applied in
+  **attack, boss and regen**. Recovery wait after potting also uses 16s (waits to "use the pot
+  fully", leaving early if full).
+- **Tank does NOT pot in boss** (owner's decision — Fairies heal tank): `_run_tank` doesn't call
+  `_battle_pots`, and tab **hides pot fields when role is Tank**.
+- DPS: HP Pot optional (cooldown) + MP recovery (retreat, pot, wait, TAB). Fairy: own pots
+  optional (cooldown).

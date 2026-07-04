@@ -1,0 +1,42 @@
+{
+  "project": "GhostBot UI/UX separation cleanup",
+  "status": "planned",
+  "phases": [
+    {
+      "name": "Safe hygiene fixes",
+      "status": "pending",
+      "items": [
+        "Fix autologin callback cleanup bug",
+        "Remove backend presentation strings from set_action call sites",
+        "Trim to_json serialization noise",
+        "Replace eval reads in UI"
+      ]
+    },
+    {
+      "name": "Service extraction",
+      "status": "pending",
+      "items": [
+        "Extract map/spot capture service",
+        "Remove direct Win32ClientWindow/PymemProcess construction from UI",
+        "Move grab-target and cursor math out of widgets"
+      ]
+    },
+    {
+      "name": "UI/business logic decoupling",
+      "status": "pending",
+      "items": [
+        "Move watchlist triage out of FunctionsFrame",
+        "Replace recursive widget-tree config extraction",
+        "Introduce explicit UI view-model boundary if needed"
+      ]
+    },
+    {
+      "name": "Main window refactor",
+      "status": "pending",
+      "items": [
+        "Split UX/main.py composition and formatting logic",
+        "Narrow cross-thread UI callback work"
+      ]
+    }
+  ]
+}

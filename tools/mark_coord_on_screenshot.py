@@ -1,20 +1,21 @@
-"""Marca coords no screenshot da janela pra ver onde elas caem visualmente."""
-import cv2
-from GhostBot.client_window import Win32ClientWindow
-from GhostBot.lib.win32.process import PymemProcess
+"""Mark coords on a screenshot of the TO window to see where they fall visually."""
+from __future__ import annotations
 
-# Coords a marcar (client coord)
+import cv2
+
+from _shared import capture_window, get_client
+
+
 POINTS = [
-    ((450, 294), "slot 1 (que voce capturou)", (0, 255, 255)),     # amarelo
-    ((626, 397), "slot 30 (que voce capturou)", (255, 0, 255)),    # roxo
-    ((479, 713), "Sell confirm", (0, 0, 255)),                     # vermelho
-    ((643, 257), "Next page", (255, 0, 0)),                        # azul
-    ((275, 417), "Sell button (menu NPC)", (0, 255, 0)),           # verde
+    ((450, 294), "slot 1 (that you captured)", (0, 255, 255)),     # yellow
+    ((626, 397), "slot 30 (that you captured)", (255, 0, 255)),    # purple
+    ((479, 713), "Sell confirm", (0, 0, 255)),                     # red
+    ((643, 257), "Next page", (255, 0, 0)),                        # blue
+    ((275, 417), "Sell button (NPC menu)", (0, 255, 0)),           # green
 ]
 
-proc = next(iter(PymemProcess.list_clients()), None)
-client = Win32ClientWindow(proc)
-img = client.capture_window()
+client = get_client()
+img = capture_window(client)
 
 for (x, y), label, color in POINTS:
     cv2.circle(img, (x, y), 8, color, 2)
@@ -24,4 +25,4 @@ for (x, y), label, color in POINTS:
 
 out = r"C:\Bot\BotTO\tmp_marked_window.png"
 cv2.imwrite(out, img)
-print(f"Salvo {out} -- janela {img.shape[1]}x{img.shape[0]}")
+print(f"Saved {out} -- window {img.shape[1]}x{img.shape[0]}")
