@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import threading
 import time
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -21,8 +22,8 @@ if TYPE_CHECKING:
 
 
 class LoginLock:
-    _locked: str = ''
-    _waiting: list = list()
+    _lock = threading.Lock()
+    _locked_proc_id: str = ''
     _poll_frequency: float = 1
     logger = _logger.getChild('LoginLock')
 
@@ -33,25 +34,30 @@ class LoginLock:
         self.release()
 
     @classmethod
-    def acquire(cls, proc_id: str):
-        while cls.locked:
-            cls.logger.debug('LoginLock :: waiting for lock to be unlocked, polling every %ss', cls._poll_frequency)
-            time.sleep(cls._poll_frequency)
-        cls._locked = proc_id
-        return cls
+    def acquire(cls, proc_id: str, timeout: float = 30.0):
+        start_time = time.time()
+        while True:
+            if cls._lock.acquire(timeout=1.0):
+                cls._locked_proc_id = proc_id
+                return cls
+            
+            if timeout is not None and (time.time() - start_time) > timeout:
+                raise TimeoutError(f'LoginLock :: timed out waiting for lock to be unlocked after {timeout}s')
+            cls.logger.debug('LoginLock :: waiting for lock to be unlocked, polling...')
 
     @classmethod
     def release(cls):
-        cls._locked = ''
+        cls._lock.release()
+        cls._locked_proc_id = ''
         return cls
 
     @classproperty
-    def locked(self):
-        return bool(self._locked)
+    def locked(cls):
+        return cls._lock.locked()
 
     @classproperty
-    def unlocked(self):
-        return not bool(self._locked)
+    def unlocked(cls):
+        return not cls._lock.locked()
 
 
 class LoginController:
