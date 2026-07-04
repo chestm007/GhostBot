@@ -38,97 +38,124 @@ class GhostbotIPCServer(IPCServer):
         self.send_to_all(self.bot_controller_clients_message)
 
     def _dispatch(self, conn, _data: str) -> Message | bool | None:
+        _dispatch_map: dict[Command, Callable[[Message], Message | bool | None]] = dict()
+
+        def _dispatch_start(_message: Message):
+            self.logger.debug("dispatching START")
+            self.bot_controller.start_bot(_message.target)
+            return _message
+        _dispatch_map[Command.START] = _dispatch_start
+
+        def _dispatch_stop(_message: Message):
+            self.logger.debug("dispatching STOP")
+            self.bot_controller.stop_bot(_message.target)
+            return _message
+        _dispatch_map[Command.STOP] = _dispatch_stop
+
+        def _dispatch_info(_message: Message):
+            self.vdebug("dispatching INFO")
+            return self.bot_controller_clients_message
+        _dispatch_map[Command.INFO] = _dispatch_info
+
+        def _dispatch_info_char(_message: Message):
+            self.vdebug("dispatching INFO_CHAR")
+            if _message.target:
+                self.vdebug("dispatching INFO containing for [%s]", _message.target)
+                _target = self.bot_controller.get_client(_message.target)
+                if _target:
+                    return Message(Command.INFO_CHAR, _target.to_json())
+                return
+        _dispatch_map[Command.INFO_CHAR] = _dispatch_info_char
+
+        def _dispatch_info_autologin(_message: Message):
+            self.vdebug("dispatching INFO_AUTOLOGIN")
+            return Message(Command.INFO_AUTOLOGIN, ' '.join(self.bot_controller.login_config.chars.keys()))
+        _dispatch_map[Command.INFO_AUTOLOGIN] = _dispatch_info_autologin
+
+        def _dispatch_config_get(_message: Message):
+            self.logger.info("dispatching CONFIG get")
+            _client: BotClientWindow = self.bot_controller.get_client(_message.target['char'])
+            if not _client:
+                self.logger.info('char: %s - not found', _message.target['char'])
+                return
+            if _client.config is None:
+                _client.load_config()
+                if _client.config is None:
+                    self.logger.error('client config not found for %s', _message.target['char'])
+                    return
+            return Message(Command.CONFIG_GET, json.dumps(_client.config.to_yaml()))
+        _dispatch_map[Command.CONFIG_GET] = _dispatch_config_get
+
+        def _dispatch_config_autologin_get(_message: Message):
+            self.logger.info("dispatching CONFIG_AUTOLOGIN_GET")
+            _config = self.bot_controller.login_config.get(_message.target['char'])
+            if _config:
+                return Message(Command.CONFIG_AUTOLOGIN_GET, json.dumps(_config.__dict__))
+            self.logger.info('autologin config not found for %s', _message.target['char'])
+            return Message(Command.CONFIG_AUTOLOGIN_GET, json.dumps({}))
+        _dispatch_map[Command.CONFIG_AUTOLOGIN_GET] = _dispatch_config_autologin_get
+
+        def _dispatch_config_set(_message: Message):
+            self.vdebug("dispatching CONFIG set")
+            _client: BotClientWindow = self.bot_controller.get_client(_message.target['char'])
+            if _client is not None:
+                self.vdebug("Setting config for %s", _client.name)
+                conf = Config.load_yaml(_message.target.get('config'))
+                self.logger.info("char: %s - set config: %s", _client.name, conf)
+                ConfigLoader(_client).save(conf)
+                _client.set_config(conf)
+                return _message
+            self.logger.info('char: %s - not found', _message.target['char'])
+            return False
+        _dispatch_map[Command.CONFIG_SET] = _dispatch_config_set
+
+        def _dispatch_config_autologin_set(_message: Message):
+            self.logger.info("dispatching CONFIG_AUTOLOGIN_SET")
+            _conf_yaml = _message.target
+            _char_autologin_config = LoginDetailsConfigLoader.CharDetails(**_conf_yaml)
+            self.bot_controller.login_config.chars[_char_autologin_config.char_name] = _char_autologin_config
+            LoginDetailsConfigLoader().save(self.bot_controller.login_config)
+            return _message
+        _dispatch_map[Command.CONFIG_AUTOLOGIN_SET] = _dispatch_config_autologin_set
+
+        def _dispatch_config_autologin_delete(_message: Message):
+            self.logger.info("dispatching CONFIG_AUTOLOGIN_DELETE")
+            del self.bot_controller.login_config.chars[_message.target['char']]
+            LoginDetailsConfigLoader().save(self.bot_controller.login_config)
+            return _message
+        _dispatch_map[Command.CONFIG_AUTOLOGIN_DELETE] = _dispatch_config_autologin_delete
+
+        def _dispatch_open_client(_message: Message):
+            self.logger.info("dispatching OPEN_CLIENT")
+            self.bot_controller.requested_logins.append(_message.target['char'])
+            return _message
+        _dispatch_map[Command.OPEN_CLIENT] = _dispatch_open_client
+
+        def _dispatch_close_client(_message: Message):
+            self.logger.info("dispatching CLOSE_CLIENT")
+            _client = self.bot_controller.get_client(_message.target['char'])
+            if _client is not None:
+                _client.close_window()
+                return _message
+            self.logger.info('char: %s - not found', _message.target['char'])
+            return False
+        _dispatch_map[Command.CLOSE_CLIENT] = _dispatch_close_client
+
         self.vdebug('dispatching %s', _data)
         for message in Message.from_json_handling_multiple(_data):
             if not message:
                 self.logger.debug('empty message')
                 continue
             self.logger.debug("dispatching message: %s", message)
-            def _dispatch_message():
-                match message.command:
-                    case Command.EXIT:
-                        self.logger.info(' exit command received')
-                        return
-                    case Command.START:
-                        self.logger.debug("dispatching START")
-                        self.bot_controller.start_bot(message.target)
-                        return message
-                    case Command.STOP:
-                        self.logger.debug("dispatching STOP")
-                        self.bot_controller.stop_bot(message.target)
-                        return message
-                    case Command.INFO:
-                        self.vdebug("dispatching INFO")
-                        return self.bot_controller_clients_message
-                    case Command.INFO_CHAR:
-                        self.vdebug("dispatching INFO_CHAR")
-                        if message.target:
-                            self.vdebug("dispatching INFO containing for [%s]", message.target)
-                            _target = self.bot_controller.get_client(message.target)
-                            if _target:
-                                return Message(Command.INFO_CHAR, _target.to_json())
-                            return
-                    case Command.INFO_AUTOLOGIN:
-                        self.vdebug("dispatching INFO_AUTOLOGIN")
-                        return Message(Command.INFO_AUTOLOGIN, ' '.join(self.bot_controller.login_config.chars.keys()))
-                    case Command.CONFIG_GET:
-                        self.logger.info("dispatching CONFIG get")
-                        _client: BotClientWindow = self.bot_controller.get_client(message.target['char'])
-                        if not _client:
-                            self.logger.info('char: %s - not found', message.target['char'])
-                            return
-                        if _client.config is None:
-                            _client.load_config()
-                            if _client.config is None:
-                                self.logger.error('client config not found for %s', message.target['char'])
-                                return
-                        return Message(Command.CONFIG_GET, json.dumps(_client.config.to_yaml()))
-                    case Command.CONFIG_AUTOLOGIN_GET:
-                        self.logger.info("dispatching CONFIG_AUTOLOGIN_GET")
-                        _config = self.bot_controller.login_config.get(message.target['char'])
-                        if _config:
-                            return Message(Command.CONFIG_AUTOLOGIN_GET, json.dumps(_config.__dict__))
-                        self.logger.info('autologin config not found for %s', message.target['char'])
-                        return Message(Command.CONFIG_AUTOLOGIN_GET, json.dumps({}))
-                    case Command.CONFIG_SET:
-                        self.vdebug("dispatching CONFIG set")
-                        _client: BotClientWindow = self.bot_controller.get_client(message.target['char'])
-                        if _client is not None:
-                            self.vdebug("Setting config for %s", _client.name)
-                            conf = Config.load_yaml(message.target.get('config'))
-                            self.logger.info("char: %s - set config: %s", _client.name, conf)
-                            ConfigLoader(_client).save(conf)
-                            _client.set_config(conf)
-                            return message
-                        self.logger.info('char: %s - not found', message.target['char'])
-                        return False
-                    case Command.CONFIG_AUTOLOGIN_SET:
-                        self.logger.info("dispatching CONFIG_AUTOLOGIN_SET")
-                        _conf_yaml = message.target
-                        _char_autologin_config = LoginDetailsConfigLoader.CharDetails(**_conf_yaml)
-                        self.bot_controller.login_config.chars[_char_autologin_config.char_name] = _char_autologin_config
-                        LoginDetailsConfigLoader().save(self.bot_controller.login_config)
-                        return message
-                    case Command.CONFIG_AUTOLOGIN_DELETE:
-                        self.logger.info("dispatching CONFIG_AUTOLOGIN_DELETE")
-                        del self.bot_controller.login_config.chars[message.target['char']]
-                        LoginDetailsConfigLoader().save(self.bot_controller.login_config)
-                        return message
-                    case Command.OPEN_CLIENT:
-                        self.logger.info("dispatching OPEN_CLIENT")
-                        self.bot_controller.requested_logins.append(message.target['char'])
-                        return message
-                    case Command.CLOSE_CLIENT:
-                        self.logger.info("dispatching CLOSE_CLIENT")
-                        _client = self.bot_controller.get_client(message.target['char'])
-                        if _client is not None:
-                            _client.close_window()
-                            return message
-                        self.logger.info('char: %s - not found', message.target['char'])
-                        return False
-                return None
+            result = _dispatch_map.get(message.command)(message)
+            if isinstance(result, Message):
+                pass
+            elif isinstance(result, bool):
+                result = str(result)
+            else:
+                result = None
             try:
-                conn.sendall(_dispatch_message().encode('utf8'))
+                conn.sendall(result.encode('utf8'))
             except Exception as e:
                 self.logger.exception(e)
 

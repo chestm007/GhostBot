@@ -15,12 +15,13 @@ __all__ = [
     'ScriptFunctionConfigLoader',
 ]
 
+import datetime
 import inspect
 import logging
 import os
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import TypedDict, NotRequired, Any, TYPE_CHECKING, Sized, TypeVar, Self, overload
+from typing import TypedDict, NotRequired, Any, TYPE_CHECKING, Sized, TypeVar, Self, overload, Literal
 
 import yaml
 from GhostBot.functions.script import ScriptDefinition
@@ -176,6 +177,26 @@ class DeleteConfig(FunctionConfig):
     interval: int = None
 
 @dataclass
+class ScriptExecutionConfig(ABC):
+    script_name: str
+
+@dataclass
+class TimeScriptExecution(ScriptExecutionConfig):
+    execution_time: datetime.time
+    @abstractmethod
+    def should_run(self): ...
+
+@dataclass
+class RepeatScriptExecution(ScriptExecutionConfig):
+    num_repeats: int = -1
+    """-1 represents forever."""
+
+@dataclass
+class ScriptConfig(FunctionConfig):
+    script_name: str
+    script_execution_type: ScriptExecutionConfig = None
+
+@dataclass
 class Config:
     logger = _logger.getChild('Config')
 
@@ -186,6 +207,7 @@ class Config:
     regen: RegenConfig = None
     sell: SellConfig = None
     delete: DeleteConfig = None
+    script: ScriptConfig = None
 
     def to_yaml(self) -> dict:
         return {k: v.__dict__ for k, v in self.__dict__.items() if v is not None}

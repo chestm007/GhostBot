@@ -1,4 +1,6 @@
 import logging
+import threading
+import time
 
 import pytest
 from GhostBot.controller.threaded_bot_controller import ThreadedBotController
@@ -35,9 +37,8 @@ def test_script_definition(client):
     assert isinstance((conditional_loop := script_runner.script.steps[0]), ConditionalScriptStep)
     assert isinstance(conditional_loop.steps[0], MoveScriptStep)
 
-@pytest.mark.skip("local testing only")
 def test_jc_rep_script():
-    script_str = """
+    jc_manager_str = """
     jc_rep_daily:
     - conditional_loop:
         pre_conditions:
@@ -80,19 +81,8 @@ def test_jc_rep_script():
         - move: 290 -480
     """
 
-    bc = ThreadedBotController()
-    bc._running = True
-    bc._scan_for_clients()
-    wyp = bc.clients.get('bot_name')
-    wyp.bot_status = BotStatus.running
-    wyp.running = True
-    script_runner = Script(wyp, script_str)
-    assert script_runner.run()
-
-@pytest.mark.skip("local testing only")
-def test_jc_manager_congcan_daily():
     logger.debug = print
-    script_str = """
+    jc_rep_str = """
     jc_manager_cogren_daily:
     - conditional_loop:
         pre_conditions:

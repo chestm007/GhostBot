@@ -40,9 +40,9 @@ class Command(Enum):
 class Message:
     def __init__(self, command: str | Command, target: str | dict = None):
         if isinstance(command, Command):
-            self.command = command
+            self.command: Command = command
         else:
-            self.command = Command.from_str(command)
+            self.command: Command = Command.from_str(command)
 
         self.target: str | dict = target
 

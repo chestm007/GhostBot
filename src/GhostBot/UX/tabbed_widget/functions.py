@@ -24,6 +24,7 @@ class FunctionsFrame(tk.Frame):
             pet_enabled=tk.BooleanVar(master=self, name="bot_config.pet.enabled", value=False),
             sell_enabled=tk.BooleanVar(master=self, name="bot_config.sell.enabled", value=False),
             delete_enabled=tk.BooleanVar(master=self, name="bot_config.delete.enabled", value=False),
+            script_enabled=tk.BooleanVar(master=self, name="bot_config.script.enabled", value=False),
 
             name=tk.StringVar(master=self, name="char_info.name", value="loading."),
             lvl=tk.StringVar(master=self, name="char_info.level", value="loading."),
@@ -43,9 +44,10 @@ class FunctionsFrame(tk.Frame):
         ttk.Checkbutton(master=self, text="Pet", style="TCheckbutton", width=13, variable=self._vars['pet_enabled']).grid(row=4, column=0)
         ttk.Checkbutton(master=self, text="Sell", style="TCheckbutton", width=13, variable=self._vars['sell_enabled']).grid(row=5, column=0)
         ttk.Checkbutton(master=self, text="Delete", style="TCheckbutton", width=13, variable=self._vars['delete_enabled']).grid(row=6, column=0)
+        ttk.Checkbutton(master=self, text="Script", style="TCheckbutton", width=13, variable=self._vars['script_enabled']).grid(row=7, column=0)
 
         char_info_frame = tk.Frame(master=self)
-        char_info_frame.grid(row=0, column=1, rowspan=5)
+        char_info_frame.grid(row=0, column=1, rowspan=7)
 
         ttk.Label(master=char_info_frame, text="Name:", width=15).grid(row=0, column=0)
         ttk.Label(master=char_info_frame, text="level:", width=15).grid(row=1, column=0)
@@ -89,4 +91,5 @@ class FunctionsFrame(tk.Frame):
                 _config.sell = child.extract_config()
             elif isinstance(child, DeleteFrame) and _function_enabled('delete'):
                 _config.delete = child.extract_config()
+            # TODO: script
         return _config
