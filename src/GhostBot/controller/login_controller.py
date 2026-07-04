@@ -69,6 +69,7 @@ class LoginController:
         self._client = client
         self._config: LoginDetailsConfigLoader.CharDetails | None = None
         self._image_finder = ImageFinder(client)
+        self._server_busy_retries = 0
 
     def set_config(self, config: LoginDetailsConfigLoader.CharDetails):
         self._config = config
@@ -131,11 +132,20 @@ class LoginController:
             self._client.press_key("tab")
             self._client.type_keys(self._config.password, char_only=True)
             self._client.press_key("enter")
+            
             if not retry(lambda: self._server_select, 3, 2):
-                self.logger.debug("%s :: login server is busy, restarting login process...", self._client.identifier)
+                self._server_busy_retries += 1
+                self.logger.debug("%s :: login server is busy, restarting login process... (retry %s/3)", self._client.identifier, self._server_busy_retries)
                 self._client.left_click((510, 335)) # 'login server is busy' dialog
                 time.sleep(0.5)
                 self._client.left_click((620, 390))  # username text box
+                
+                if self._server_busy_retries >= 3:
+                    self.logger.error("%s :: max 'server busy' retries reached, aborting login", self._client.identifier)
+                    raise RuntimeError("Max server busy retries reached")
+            else:
+                # Moved to server_select stage or succeeded, reset counter
+                self._server_busy_retries = 0
 
     def _handle_server_select(self):
         self._login_lock.release()
